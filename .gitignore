@@ -58,12 +58,13 @@ typings/
 .env
 
 # PonkBot active config
-config.js
+#config.js
 
 # PonkBot development testing and scraps
 test-*
 dev-*
 
 # PonkBot extensions
-/balloons
+#/balloons
 
+ponkbot.db
