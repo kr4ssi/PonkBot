@@ -65,6 +65,10 @@ test-*
 dev-*
 
 # PonkBot extensions
-#/balloons
+/balloons/_bak
 
 ponkbot.db
+
+# Webinterface
+/templates
+/www

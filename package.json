@@ -30,6 +30,7 @@
     "connect-session-knex": "latest",
     "cookie-parser": "latest",
     "date-and-time": "0.6.3",
+    "dotenv": "7.0.0",
     "express": "latest",
     "express-session": "latest",
     "gitlab": "4.3.0",
