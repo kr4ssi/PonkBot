@@ -64,11 +64,6 @@ typings/
 test-*
 dev-*
 
-# PonkBot extensions
-/balloons/_bak
-
+# Not needed Files
+/_bak
 ponkbot.db
-
-# Webinterface
-/templates
-/www
