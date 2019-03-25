@@ -50,6 +50,7 @@ module.exports = {
     omdb         : process.env.api_omdb,
     tmdb         : process.env.api_tmdb,
     gitlab       : process.env.api_gitlab,
-    gitrepo      : process.env.gitrepo
+    gitrepo      : process.env.gitrepo,
+    imagehost    : process.env.imagehost
   }
 }
