@@ -37,7 +37,7 @@ module.exports = {
   },
   webhost: {
     secret   : process.env.secret,
-    weblink  : 'https://localhost',
+    weblink  : process.env.weblink,
     webport  : process.env.PORT || '24233',
     sockport : '22356',
   },
