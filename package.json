@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/Xaekai/PonkBot#readme",
   "dependencies": {
+    "@microlink/youtube-dl": "1.13.1",
     "bcrypt-nodejs": "latest",
     "body-parser": "latest",
     "chalk": "chalk/chalk",
@@ -36,6 +37,7 @@
     "gitlab": "4.3.0",
     "google-translate-api": "arthurlacoste/google-translate-api",
     "i18n-iso-countries": "3.7.8",
+    "instagram-nodejs-without-api": "1.2.0",
     "jstransformer-marked": "latest",
     "knex": "latest",
     "limiter": "latest",
