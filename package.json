@@ -47,6 +47,7 @@
     "passport": "latest",
     "passport-local": "latest",
     "pg-connection-string": "2.0.0",
+    "phantomjs": "2.1.7",
     "pug": "latest",
     "request": "latest",
     "socket.io": "latest",
