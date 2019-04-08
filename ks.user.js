@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        openload fürn KS
-// @namespace   https://github.com/kr4ssi/synch-api/
-// @version     1.0.3
+// @namespace   https://github.com/kr4ssi/PonkBot/
+// @version     1.0.4
 // @author      kr4ssi
 // @include     /https?:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
 // @include     /https?:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
