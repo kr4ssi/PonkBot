@@ -23,6 +23,7 @@ const timer = setInterval(() => {
     if (!e) return
     link = e.src
   }
-  if (confirm(`Userlink:\n"${link}"\n\nfür Addierungslink:\n${window.location.href}\ngefunden. An die Api schicken?`)) window.location.replace(`https://synchapi.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)
   clearInterval(timer)
+  if (confirm(`Userlink:\n"${link}"\n\nfür Addierungslink:\n${window.location.href}\ngefunden. An die Api schicken?`))
+  window.location.replace(`https://synchapi.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)
 }, 1000)
