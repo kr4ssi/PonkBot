@@ -23,6 +23,11 @@ const timer = setInterval(() => {
     if (!e) return
     link = e.src
   }
+  else if (window.location.href.match(/https?:\/\/www\.rapidvideo\.com\/v\/[^/?#&]+/)) {
+    let e = document.getElementById('videojs').lastElementChild.src
+    if (!e) return
+    link = e.src
+  }
   clearInterval(timer)
   if (confirm(`Userlink:\n"${link}"\n\nfür Addierungslink:\n${window.location.href}\ngefunden. An die Api schicken?`))
   window.location.replace(`https://synchapi.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)

@@ -47,6 +47,7 @@ module.exports = {
     wunderground : process.env.api_wunderground || 'MyWUndergroundAPIkey',
     cleverbot    : process.env.api_cleverbot || 'MyCleverBotAPIkey',
     giphy        : process.env.api_giphy,
+    tenor        : process.env.api_tenor,
     omdb         : process.env.api_omdb,
     tmdb         : process.env.api_tmdb,
     gitlab       : process.env.api_gitlab,
