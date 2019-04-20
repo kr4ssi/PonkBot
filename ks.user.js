@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name        openload fürn KS
 // @namespace   https://github.com/kr4ssi/PonkBot/
-// @version     1.0.4
+// @version     1.0.5
 // @author      kr4ssi
-// @include     /https?:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
-// @include     /https?:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
+// @include     /https?:\/\/(?:www.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
+// @include     /https?:\/\/(?:www.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
+// @include     /https?:\/\/(?:www.)?rapidvideo\.com\/v\/[^/?#&]+/
 // ==/UserScript==
 
 const timer = setInterval(() => {
@@ -24,11 +25,11 @@ const timer = setInterval(() => {
     link = e.src
   }
   else if (window.location.href.match(/https?:\/\/www\.rapidvideo\.com\/v\/[^/?#&]+/)) {
-    let e = document.getElementById('videojs').lastElementChild.src
+    let e = document.getElementById('videojs_html5_api').lastElementChild || document.getElementById('videojs_html5_api')
     if (!e) return
     link = e.src
   }
   clearInterval(timer)
   if (confirm(`Userlink:\n"${link}"\n\nfür Addierungslink:\n${window.location.href}\ngefunden. An die Api schicken?`))
-  window.location.replace(`https://synchapi.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)
+  window.location.replace(`https://becci.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)
 }, 1000)
