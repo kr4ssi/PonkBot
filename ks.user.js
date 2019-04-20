@@ -25,7 +25,7 @@ const timer = setInterval(() => {
     link = e.src
   }
   else if (window.location.href.match(/https?:\/\/www\.rapidvideo\.com\/v\/[^/?#&]+/)) {
-    let e = document.getElementById('videojs_html5_api').lastElementChild || document.getElementById('videojs_html5_api')
+    let e = document.querySelector('video').lastElementChild || document.querySelector('video')
     if (!e) return
     link = e.src
   }
