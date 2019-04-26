@@ -9,7 +9,7 @@
 
 'use strict';
 
-require('dotenv').config();
+if (require('fs').existsSync('./.env')) require('dotenv').config();
 
 const PonkBot = require('./lib/ponkbot.js');
 const config = require('./config')
