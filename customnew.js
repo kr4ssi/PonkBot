@@ -20,6 +20,8 @@ const gitclient = new Gitlab({
 })
 const gitrepo = process.env.gitrepo
 
+const userscriptts = require('fs').statSync(path.join(__dirname, '..', 'ks.user.js')).mtime.toLocaleDateString('de');
+
 let count = 0
 const waiting = []
 let lastImages = []
@@ -236,6 +238,33 @@ module.exports = {
             this.addNetzm(regMatch[1].replace(/^http:\/\//i, 'https://'), (params != cleanparams), user, 'fi', title)
           })
         }
+        const allowedHosts = [
+          'liveleak.com',
+          'imgur.com',
+          'instagram.com',
+          'ndr.de',
+          'arte.tv',
+          'bandcamp.com',
+          'archive.org',
+          'ccc.de',
+          'bitchute.com'
+        ]
+        const needManifest = [
+          'twitter.com',
+          'daserste.de',
+          'zdf.de',
+          'wdr.de',
+          'mdr.de',
+          'br.de',
+          'bild.de',
+          'mixcloud.com',
+          'watchbox.de'
+        ]
+        const needUserScript = [
+          'openload.co',
+          'streamango.com',
+          'rapidvideo.com'
+        ]
         const manifest = {
           title,
           live: false,
@@ -258,7 +287,7 @@ module.exports = {
             manifest.sources[0].url = this.server.weblink + '/redir?url=' + url
             this.client.createPoll({
               title: manifest.title,
-              opts: ['Geht nur mit Userscript', this.server.weblink + '/ks.user.js (update vom ' + new Date((this.server.userscriptts || this.started)).toLocaleDateString('de') + ')', 'dann ' + urlbak + ' öffnen', 'Ok klicken und falls es schon läuft player neu laden'],
+              opts: ['Geht nur mit Userscript', this.server.weblink + '/ks.user.js (update vom ' + userscriptts + ')', 'dann ' + urlbak + ' öffnen', 'Ok klicken und falls es schon läuft player neu laden'],
               obscured: false
             })
           }
@@ -336,36 +365,8 @@ module.exports = {
           const media = parseLink(url)
           if (media.type) return this.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
           if (media.msg) this.sendMessage(media.msg)
-        } else this.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHosts())
+        } else this.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + [...allowedHosts, ...needManifest, ...needUserScript].join(', '))
       } else this.sendMessage('Ist keine Elfe /pfräh')
     } else this.sendMessage('Graunamen detektiert. /verdacht')
-  },
-  allowedHosts: () => [...allowedHosts, ...needManifest, ...needUserScript].join(', ')
+  }
 }
-const allowedHosts = [
-  'liveleak.com',
-  'imgur.com',
-  'instagram.com',
-  'ndr.de',
-  'arte.tv',
-  'bandcamp.com',
-  'mixcloud.com',
-  'archive.org',
-  'ccc.de',
-  'bitchute.com'
-]
-const needManifest = [
-  'twitter.com',
-  'daserste.de',
-  'zdf.de',
-  'wdr.de',
-  'mdr.de',
-  'br.de',
-  'bild.de',
-  'watchbox.de'
-]
-const needUserScript = [
-  'openload.co',
-  'streamango.com',
-  'rapidvideo.com'
-]
