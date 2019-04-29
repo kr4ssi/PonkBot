@@ -31,5 +31,5 @@ const timer = setInterval(() => {
   }
   clearInterval(timer)
   if (confirm(`Userlink:\n"${link}"\n\nfür Addierungslink:\n${window.location.href}\ngefunden. An die Api schicken?`))
-  window.location.replace(`https://becci.herokuapp.com/add.json?url=${window.location.href}&userlink=${link}`)
+  window.location.replace(`##WEBLINK##/add.json?url=${window.location.href}&userlink=${link}`)
 }, 1000)
