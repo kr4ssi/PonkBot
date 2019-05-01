@@ -38,7 +38,6 @@
     "request": "latest",
     "socket.io": "latest",
     "socket.io-client": "latest",
-    "url-exists-deep": "latest",
     "valid-url": "latest"
   },
   "optionalDependencies": {
