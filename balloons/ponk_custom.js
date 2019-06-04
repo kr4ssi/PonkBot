@@ -59,6 +59,10 @@ function sendquote(user, params, meta) {
   this.sendByFilter(quote(meta.command))
 }
 module.exports = {
+  meta: {
+    active: true,
+    type: 'gumdrop'
+  },
   handlers: {
     zen       : sendquote,
     stoll     : sendquote,
@@ -457,14 +461,6 @@ module.exports = {
     },
     hintergrund: logoHintergrund,
     logo: logoHintergrund,
-    add: function(user, params, meta) {
-      const split = params.split(' ')
-      let url = split.shift()
-      let title = split.join(' ').trim()
-      url = validUrl.isHttpsUri(url)
-      if (url) this.add(url, title, { user, willkür: meta.addnext })
-      else this.sendMessage('Ist keine https-Elfe /pfräh')
-    },
     lauer: function(user, params, meta) {
       const siteurl = 'https://kohlchan.net'
       const url = params.match(/^https:\/\/(?:www.)?kohlchan\.net\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
@@ -563,7 +559,7 @@ module.exports = {
     },
     help: function(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
-        (params === 'add' ? this.allowedHosts() : '') +
+        (params === 'add' ? this.API.fiku.allowedHosts() : '') +
         (this.commands.helpdata[params].rank > 1 ? '. Geht ab Level: ' + this.commands.helpdata[params].rank :
         (this.commands.helpdata[params].rank === 1 ? '. Geht für für registrierte User' : '')))
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))
