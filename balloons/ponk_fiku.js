@@ -100,8 +100,8 @@ class FikuSystem {
       const url = fixurl(req.query.url);
       if (!url) return res.send('invalid url');
       if (!req.query.userlink) return res.send('invalid userlink');
-      if (!this.bot.userLinks[url]) this.bot.userLinks[url] = {};
-      this.bot.userLinks[url][md5ip(req)] = req.query.userlink;
+      if (!this.userLinks[url]) this.userLinks[url] = {};
+      this.userLinks[url][md5ip(req)] = req.query.userlink;
       res.send('added');
     }
 
