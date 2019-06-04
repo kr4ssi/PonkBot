@@ -323,7 +323,7 @@ class FikuSystem {
     return new Promise(resolve => {
       this.bot.fetch('https://api.themoviedb.org/3/movie/' + id + (info ? '/' + info : ''), {
         qs: {
-          api_key: this.API.keys.tmdb,
+          api_key: this.bot.API.keys.tmdb,
           language,
         }, json: true
       }).then(body => {
@@ -373,7 +373,7 @@ module.exports = {
             const winner = opts.filter((opt, i) => pollvotes[i] === max)
             if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
             if (winner[0] === 'Partei') return this.sendMessage('Partei!')
-            this.API.fiku.getFiku.call(this, winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
+            this.API.fiku.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
               this.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
               this.API.fiku.add(url, title + ' (ID: ' + id + ')', { user, willkür: true, fiku: true })
             })
@@ -404,7 +404,7 @@ module.exports = {
       })
     },
     fikulöschen: function(user, params, meta) {
-      this.API.fiku.getFiku.call(this, params).then(fiku => {
+      this.API.fiku.getFiku(params).then(fiku => {
         this.db.knex('fiku').where(fiku).del().then(deleted => {
           if (deleted) {
             this.API.fiku.fikuList.splice(this.API.fiku.fikuList.indexOf(fiku), 1);
@@ -422,21 +422,21 @@ module.exports = {
       else this.sendMessage('Ist keine https-Elfe /pfräh')
     },
     fikuadd: function(user, params, meta) {
-      this.API.fiku.getFiku.call(this, params).then(({ url, title, id, user }) => {
+      this.API.fiku.getFiku(params).then(({ url, title, id, user }) => {
         this.API.fiku.add(url, title + ' (ID: ' + id + ')', { user, willkür: true, fiku: true })
       })
     },
     fikuelfe: function(user, params, meta) {
-      this.API.fiku.getFiku.call(this, params).then(fiku => {
+      this.API.fiku.getFiku(params).then(fiku => {
         this.sendMessage('Elfe für "' + fiku.title + '": ' + fiku.url)
       })
     },
     fikuinfo: function(user, params, meta) {
       const getInfo = title => {
-        this.API.fiku.getTmdbId.call(this, title).then(id => {
-          this.API.fiku.getTmdbInfo.call(this, id, 'credits', 'de').then(body => {
+        this.API.fiku.getTmdbId(title).then(id => {
+          this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(body => {
             const cast = body.cast.filter(row => row.order < 3).map(row => row.name).join(', ')
-            this.API.fiku.getTmdbInfo.call(this, id, '', 'de').then(body => {
+            this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
               const rlsdate = new Date(body.release_date)
               this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" /> ${body.original_title} ` +
               `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
@@ -449,15 +449,15 @@ module.exports = {
         })
       }
       if (!/^\d+$/.test(params)) return getInfo(params)
-      this.API.fiku.getFiku.call(this, params).then(fiku => {
+      this.API.fiku.getFiku(params).then(fiku => {
         getInfo(fiku.title)
       })
     },
     trailer: function(user, params, meta) {
-      this.API.fiku.getFiku.call(this, params).then(fiku => {
-        this.API.fiku.getTmdbId.call(this, fiku.title).then(id => {
+      this.API.fiku.getFiku(params).then(fiku => {
+        this.API.fiku.getTmdbId(fiku.title).then(id => {
           const addTrailer = lang => {
-            this.API.fiku.getTmdbInfo.call(this, id, 'videos', lang).then(body => {
+            this.API.fiku.getTmdbInfo(id, 'videos', lang).then(body => {
               if (body.results.length < 1) return (lang ? addTrailer('') : this.sendMessage('Keine Ergebnisse /elo'))
               const trailer = body.results.reduce((first, second) => second.size > first.size ? second : first)
               if (trailer.site == 'YouTube') this.addNetzm(trailer.key, true, user, 'yt')
