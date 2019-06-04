@@ -70,22 +70,16 @@ class FikuSystem {
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
-    if (!/localhost/.test(this.bot.server.weblink)) {
-      //const name = '/' + this.bot.name.toLowerCase();
-      //const trigger = this.bot.emotes.find(emote => emote.name === name);
-      //if (!trigger || trigger.image != this.weblink) this.bot.client.socket.emit('updateEmote', { name, image: this.weblink });
-
-      this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-        const newuserscripthash = crypto.createHash('md5').update(userscript).digest('hex');
-        if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
-          this.bot.userscriptdate = parseDate(userscriptts)
-        });
-        this.bot.userscriptdate = parseDate(this.bot.started);
-        this.bot.db.setKeyValue('userscriptts', this.bot.started);
-        this.bot.db.setKeyValue('userscripthash', newuserscripthash);
+    if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
+    else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
+      const newuserscripthash = crypto.createHash('md5').update(userscript).digest('hex');
+      if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
+        this.userscriptdate = parseDate(userscriptts)
       });
-    }
-    else this.bot.userscriptdate = parseDate(this.bot.started);
+      this.userscriptdate = parseDate(this.bot.started);
+      this.bot.db.setKeyValue('userscriptts', this.bot.started);
+      this.bot.db.setKeyValue('userscripthash', newuserscripthash);
+    });
 
     const fixurl = url => {
       if (typeof url === 'undefined') return false;
@@ -138,6 +132,7 @@ class FikuSystem {
       this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
     });
   }
+
   add (url, title, { user, willkür, fiku }) {
     let host = {}
     const manifest = {
@@ -164,7 +159,7 @@ class FikuSystem {
           title: manifest.title,
           opts: [
             'Geht nur mit Userscript',
-            this.bot.server.weblink + '/ks.user.js (update vom ' + this.bot.userscriptdate + ')',
+            this.bot.server.weblink + '/ks.user.js (update vom ' + this.userscriptdate + ')',
             'dann ' + url + ' öffnen',
             'Ok klicken und falls es schon läuft player neu laden'
           ],
@@ -326,7 +321,7 @@ class FikuSystem {
   }
   getTmdbInfo(id, info, language) {
     return new Promise(resolve => {
-      this.fetch('https://api.themoviedb.org/3/movie/' + id + (info ? '/' + info : ''), {
+      this.bot.fetch('https://api.themoviedb.org/3/movie/' + id + (info ? '/' + info : ''), {
         qs: {
           api_key: this.API.keys.tmdb,
           language,
