@@ -557,13 +557,26 @@ module.exports = {
         'Zutaten: ' + body.ingredients.map(row => row.name).join(', ') + '<br><br>' + 'Tags: ' + body.tags_channelized.join(', ')  + '</div>', true)
       })
     },
+    wetter: function(user, params, meta) {
+      this.fetch('http://api.openweathermap.org/data/2.5/weather', {
+        qs: {
+          APPID: this.API.keys.openweather,
+          q: params,
+          lang: 'de',
+          units: 'metric'
+        }, json: true
+      }).then(body => {
+        console.log(body)
+        this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' - ' + body.main.temp + '°C', true)
+      })
+    },
     help: function(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
         (params === 'add' ? this.API.fiku.allowedHosts() : '') +
         (this.commands.helpdata[params].rank > 1 ? '. Geht ab Level: ' + this.commands.helpdata[params].rank :
         (this.commands.helpdata[params].rank === 1 ? '. Geht nur für registrierte User' : '')))
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))
-      }
+      },
     },
     helpdata: require('./help.js')
   }

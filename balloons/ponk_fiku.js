@@ -346,7 +346,7 @@ module.exports = {
   },
   handlers: {
     fikupoll: function(user, params, meta) {
-      this.API.fiku.getFikuList.call(this).then(() => {
+      this.API.fiku.getFikuList().then(() => {
         const split = params.split(' ')
         let timeout = 0
         let runoff = 0
@@ -391,7 +391,7 @@ module.exports = {
       this.db.knex('fiku').insert({ title, url, user }).returning('id').then(result => {
         if (result.length > 0) {
           const id = result.pop()
-          this.API.fiku.getFikuList.call(this).then(push => {
+          this.API.fiku.getFikuList().then(push => {
             this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
             if (push) this.API.fiku.fikuList.push({ title, url, id, user })
           })
@@ -399,7 +399,7 @@ module.exports = {
       })
     },
     fikuListe: function(user, params, meta) {
-      this.API.fiku.getFikuList.call(this).then(() => {
+      this.API.fiku.getFikuList().then(() => {
         this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')').join('\n'))
       })
     },

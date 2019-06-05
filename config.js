@@ -50,6 +50,7 @@ module.exports = {
     tenor        : process.env.api_tenor,
     tmdb         : process.env.api_tmdb,
     gitlab       : process.env.api_gitlab,
+    openweather  : process.env.api_openweather,
     gitrepo      : process.env.gitrepo,
     imagehost    : process.env.imagehost
   }

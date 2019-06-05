@@ -283,6 +283,10 @@ module.exports = {
   },
   waskochen: {
     synop: '',
-    rank: 1
+    rank: 0
+  },
+  wetter: {
+    synop: '',
+    rank: 0
   }
 }
