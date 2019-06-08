@@ -1,5 +1,5 @@
 /*!
-**|   PonkBot FIKU-System
+**|   PonkBot add
 **@
 */
 
@@ -232,7 +232,8 @@ class addCustom {
     }
     if (url.match(/https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?(\w+)/i)) return nxLoad()
     if (/.*\.m3u8$/.test(url)) return getDuration(manifest).then(sendJson)
-    if (this.hostAllowed(url)) return execFile('youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+    host = this.hostAllowed(url)
+    if (host) return execFile('youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
     }, (err, stdout, stderr) => {
       if (err) {

@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/Xaekai/PonkBot#readme",
   "dependencies": {
+    "await-to-js": "2.1.1",
     "chalk": "github:chalk/chalk",
     "date-and-time": "latest",
     "dotenv": "8.0.0",
