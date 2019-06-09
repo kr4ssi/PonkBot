@@ -256,8 +256,14 @@ module.exports = {
             this.sendMessage('Faden ' + faden + ' 404ed')
             if (faeden.length) getNetzm(faeden)
           })
-          const regMatch = [...body.files || [], ...body.posts.map(post => post.files) || []]
-          console.log(regMatch)
+          const regMatch = [...(body.files || []), ...((body.posts && body.posts.map(post => post.files)) || [])].filter(file => [
+            'video/mp4',
+            'video/webm',
+            'video/ogg',
+            'audio/aac',
+            'audio/ogg',
+            'audio/mpeg'
+          ].includes(file.mime)).map(file => file.path)
           //body.match(/(\/\w+\/\.media\/[\w-\.]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
           if (!regMatch.length) return this.db.knex('netzms').where({faden}).del().then(() => {
             this.sendMessage('Keine netzms in ' + faden + ' gefunden')
