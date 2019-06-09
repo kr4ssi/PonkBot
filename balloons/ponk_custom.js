@@ -248,16 +248,18 @@ module.exports = {
       const netzms = []
       const getNetzm = (faeden, initial) => {
         const faden = faeden.pop()
-        this.fetch(faden, {
-          json: false,
+        this.fetch(faden.replace('.html', '.json'), {
+          json: true,
           customerr: [404]
         }).then(body => {
           if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => {
             this.sendMessage('Faden ' + faden + ' 404ed')
             if (faeden.length) getNetzm(faeden)
           })
-          const regMatch = body.match(/(\/\w+\/src\/[0-9-]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
-          if (!regMatch) return this.db.knex('netzms').where({faden}).del().then(() => {
+          const regMatch = [...body.files || [], ...body.posts.map(post => post.files) || []]
+          console.log(regMatch)
+          //body.match(/(\/\w+\/\.media\/[\w-\.]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
+          if (!regMatch.length) return this.db.knex('netzms').where({faden}).del().then(() => {
             this.sendMessage('Keine netzms in ' + faden + ' gefunden')
             if (faeden.length) getNetzm(faeden)
           })
