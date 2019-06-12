@@ -51,6 +51,7 @@ const matchInclude = {
     if (!e) return
     if (!typeof e.on === 'function') return
     clearInterval(timer)
+    includesRegExArr.pop()
     e.on('changeMedia', ({ id }) => {
       const e = document.getElementById('ytapiplayer_html5_api')
       if (!e) return
@@ -59,7 +60,7 @@ const matchInclude = {
       if (!match) return
       const url = match[1]
       if (!url) return
-      if (includesRegExArr.findIndex(include => include.test(url)) < 1) return
+      if (!includesRegExArr.find(include => include.test(url))) return
       setTimeout(() => e.src = GM_getValue(url), 1000)
       console.log(document.getElementById('ytapiplayer_html5_api'))
     })
