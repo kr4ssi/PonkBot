@@ -49,6 +49,7 @@ const matchInclude = {
     return true
   },
   [GM_info.script.includes[4]]: () => {
+    const matchLinkRegEx = new RegExp('^' + (weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
     const socket = unsafeWindow.socket
     if (!socket) return
     if (typeof socket.on !== 'function') return
