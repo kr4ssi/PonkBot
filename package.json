@@ -24,17 +24,18 @@
   "dependencies": {
     "chalk": "github:chalk/chalk",
     "date-and-time": "latest",
-    "dotenv": "8.0.0",
+    "dotenv": "latest",
     "express": "latest",
     "forwarded": "latest",
     "gitlab": "latest",
-    "i18n-iso-countries": "4.0.0",
+    "i18n-iso-countries": "latest",
     "knex": "latest",
     "limiter": "latest",
     "mysql": "latest",
     "request": "latest",
     "socket.io": "latest",
     "socket.io-client": "latest",
+    "userscript-meta": "latest",
     "valid-url": "latest"
   },
   "optionalDependencies": {

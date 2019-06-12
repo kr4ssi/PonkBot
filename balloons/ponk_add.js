@@ -10,10 +10,11 @@ const parseLink = require('./parselink.js')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
+const userscriptmeta = require('userscript-meta')
 
 const URL = require('url')
 const path = require('path')
-const crypto = require('crypto');
+const crypto = require('crypto')
 const { execFile } = require('child_process')
 
 class addCustom {
@@ -51,7 +52,11 @@ class addCustom {
       ].map(host => ({
         regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + ({
           'openload.co': 'openload\\.(?:co|io|link|pw)|oload\\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services)|oladblock\\.(?:services|xyz|me)|openloed\\.co'
-        }[host] || host.replace('.', '\\.')) + '\\/.+', 'i'),
+          // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
+          // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
+          // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/
+          // @include     /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/[^/?#&]+/
+        }[host] || host.replace('.', '\\.')) + '\\/.+'),//, 'i'),
         needManifest: needManifest.includes(host),
         needUserScript: needUserScript.includes(host),
         host
@@ -70,14 +75,33 @@ class addCustom {
     });
   }
 
-  setupUserScript() {
-    const userscript = require('fs').readFileSync('ks.user.js', {encoding: "utf-8"}).replace('##WEBLINK##', this.bot.server.weblink);
-    this.userscript = userscript
+  async setupUserScript() {
+
+    const userscript = require('fs').readFileSync('ks.user.js', {encoding: "utf-8"}).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)([\S\s]*)/)
+
+    this.userscript = userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), {
+      include: [
+        ...this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex)
+      ]
+    })) + userscript[2] + '\nweblink = \'' + this.bot.server.weblink + '\'\n';
+
+    this.userscriptdontask = this.userscript.replace('if (!confirm', '//$&');
+
+    this.userscriptnew = userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), {
+      include: [
+        ...this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex),
+        new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
+      ],
+      grant: [
+        'GM_setValue', 'GM_getValue', 'unsafeWindow'
+      ]
+    })) + userscript[2] + '\nweblink = \'' + this.bot.server.weblink + '\'\nuseGetValue = true\n';
+
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
-    else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-      const newuserscripthash = crypto.createHash('md5').update(userscript).digest('hex');
+    else return this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
+      const newuserscripthash = crypto.createHash('md5').update(this.userscript).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
       });
@@ -133,7 +157,11 @@ class addCustom {
     })
 
     this.bot.server.host.get('/ks.dontask.user.js', (req, res) => {
-      res.end(this.userscript.replace('if (confirm', '//$&'));
+      res.end(this.userscriptdontask);
+    })
+
+    this.bot.server.host.get('/ks.new.user.js', (req, res) => {
+      res.end(this.userscriptnew);
     })
   }
 
@@ -164,8 +192,10 @@ class addCustom {
           opts: [
             'Geht nur mit Userscript',
             this.bot.server.weblink + '/ks.user.js (update vom ' + this.userscriptdate + ')',
+            this.bot.server.weblink + '/ks.dontask.user.js (ODER ohne Abfrage)',
+            this.bot.server.weblink + '/ks.new.user.js (ODER neue Methode, ohne Umweg über den Server, aber mit zusätzlichen Berechtigungen, nach Installation muss der Synch neu ladiert werden)',
             'dann ' + url + ' öffnen',
-            'Ok klicken und falls es schon läuft player neu laden'
+            '(Ok klicken) und falls es schon läuft player neu laden'
           ],
           obscured: false
         })

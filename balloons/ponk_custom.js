@@ -247,8 +247,8 @@ module.exports = {
     netzm: function(user, params, meta) {
       const netzms = []
       const getNetzm = (faeden, initial) => {
-        const faden = faeden.pop()
-        this.fetch(faden.replace('.html', '.json'), {
+        let count = faeden.length
+        faeden.forEach(faden => this.fetch(faden.replace('.html', '.json'), {
           json: true,
           customerr: [404]
         }).then(body => {
@@ -256,24 +256,23 @@ module.exports = {
             this.sendMessage('Faden ' + faden + ' 404ed')
             if (faeden.length) getNetzm(faeden)
           })
-          let files = (body.files || [])
-          if (body.posts) body.posts.forEach(post => files = [...files, ...post.files])
-          files = files.filter(file => [
+          const files = (body.files || []).concat(...(body.posts || []).map(post => post.files)).filter(file => [
             'video/mp4',
             'video/webm',
             'video/ogg',
             'audio/aac',
             'audio/ogg',
             'audio/mpeg'
-          ].includes(file.mime)).map(file => file.path)
+          ].includes(file.mime)).map(file => ({ faden, item: file.path}))
           //body.match(/(\/\w+\/\.media\/[\w-\.]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
           if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => {
             this.sendMessage('Keine netzms in ' + faden + ' gefunden')
-            if (faeden.length) getNetzm(faeden)
           })
           const addNetzm = () => {
-            netzms.push.apply(netzms, files.map(item => ({ item, faden })));
-            if (faeden.length) return getNetzm(faeden)
+            netzms.push(...files)
+            console.log(netzms)
+            count--
+            if (count > 0) return
             let added = {};
             [...Array(meta.repeat)].forEach((c, i) => {
               const netzm = netzms[Math.floor(Math.random() * netzms.length)]
@@ -292,7 +291,7 @@ module.exports = {
             addNetzm()
           })
           addNetzm()
-        })
+        }))
       }
       if (params.match(/^https:\/\/(www.)?kohlchan\.net/i)) return this.db.knex('netzms').where({ faden: params }).then(result => {
         if (result.length < 1) return getNetzm([params], true)
