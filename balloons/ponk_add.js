@@ -51,7 +51,7 @@ class addCustom {
         ...needManifest
       ].map(host => ({
         regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + ({
-          'openload.co': '(?:openload\\.(?:co|io|link|pw)|oload\\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services)|oladblock\\.(?:services|xyz|me)|openloed\\.co)'
+          'openload.co': '(?:openload\.(?:co|io|link|pw)|oload\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services|website)|oladblock\.(?:services|xyz|me)|openloed\.co)'
           // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/

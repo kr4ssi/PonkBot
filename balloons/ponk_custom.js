@@ -576,7 +576,7 @@ module.exports = {
         }, json: true
       }).then(body => {
         console.log(body)
-        this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' - ' + body.main.temp + '°C', true)
+        this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
       })
     },
     help: function(user, params, meta) {

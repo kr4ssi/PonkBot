@@ -17,6 +17,8 @@ let link = `${window.location.protocol}//${window.location.hostname}`
 
 const includesRegExArr = GM_info.script.includes.map(include => new RegExp(include.replace(/^\/(.*)\/$/, '$1')))
 
+const matchLinkRegEx = new RegExp('^' + (weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
+
 const matchInclude = {
   [GM_info.script.includes[0]]: () => {
     let e = document.querySelector("[id^=lqEH1]")
@@ -47,22 +49,27 @@ const matchInclude = {
     return true
   },
   [GM_info.script.includes[4]]: () => {
-    const e = unsafeWindow.socket
-    if (!e) return
-    if (!typeof e.on === 'function') return
+    const socket = unsafeWindow.socket
+    if (!socket) return
+    if (typeof socket.on !== 'function') return
     clearInterval(timer)
     includesRegExArr.pop()
-    e.on('changeMedia', ({ id }) => {
-      const e = document.getElementById('ytapiplayer_html5_api')
-      if (!e) return
-      const match = id.match(new RegExp('^' + (weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)'))
-      console.log(match)
+    let srcTimer
+    socket.on('changeMedia', ({ id }) => {
+      clearInterval(srcTimer)
+      const match = id.match(matchLinkRegEx)
       if (!match) return
       const url = match[1]
       if (!url) return
       if (!includesRegExArr.find(include => include.test(url))) return
-      setTimeout(() => e.src = GM_getValue(url), 1000)
-      console.log(document.getElementById('ytapiplayer_html5_api'))
+      srcTimer = setInterval(() => {
+        const e = document.getElementById('ytapiplayer_html5_api')
+        console.log(e)
+        if (!e) return
+        e.src = GM_getValue(url)
+        clearInterval(srcTimer)
+      }, 1000)
+      console.log(match)
     })
   }
 }[includesRegExArr.find(include => include.test(window.location.href))]
