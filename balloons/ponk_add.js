@@ -75,27 +75,30 @@ class addCustom {
     });
   }
 
-  async setupUserScript() {
+  setupUserScript() {
+    const userscript = require('fs').readFileSync('ks.user.js', {
+      encoding: "utf-8"
+    }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
+    if (!userscript) throw new Error('Userscript broken');
 
-    const userscript = require('fs').readFileSync('ks.user.js', {encoding: "utf-8"}).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)([\S\s]*)/)
+    const getHeader = (include = [], header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
+      include: this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex).concat(include, header.includes || [])
+    }));
+    const getConfig = (assign = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
+      weblink: this.bot.server.weblink,
+    }, assign)) + '\')' + userscript[2];
 
-    this.userscript = userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), {
-      include: [
-        ...this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex)
-      ]
-    })) + userscript[2] + '\nweblink = \'' + this.bot.server.weblink + '\'\n';
-
-    this.userscriptdontask = this.userscript.replace('if (!confirm', '//$&');
-
-    this.userscriptnew = userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), {
-      include: [
-        ...this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex),
-        new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
-      ],
+    this.userscript = getHeader() + getConfig()
+    this.userscriptdontask = getHeader() + getConfig({
+      dontAsk: true
+    })
+    this.userscriptnew = getHeader(new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan), {
       grant: [
         'GM_setValue', 'GM_getValue', 'unsafeWindow'
       ]
-    })) + userscript[2] + '\nweblink = \'' + this.bot.server.weblink + '\'\nuseGetValue = true\n';
+    }) + getConfig({
+      useGetValue: true
+    });
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 

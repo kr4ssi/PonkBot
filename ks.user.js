@@ -1,23 +1,15 @@
 // ==UserScript==
 // @name openload fürn KS
 // @namespace https://github.com/kr4ssi/PonkBot/
-// @version 1.0.6
+// @version 1.0.7
 // @author kr4ssi
-// @include /^https?:\/\/([-\w]+\.)*openload\.(?:co|io|link|pw)|oload\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services)|oladblock\.(?:services|xyz|me)|openloed\.co\/.+/
-// @include /^https?:\/\/([-\w]+\.)*streamango\.com\/.+/
-// @include /^https?:\/\/([-\w]+\.)*rapidvideo\.com\/.+/
-// @include /^https?:\/\/([-\w]+\.)*verystream\.com\/.+/
 // ==/UserScript==
 
-let useGetValue = false
+const config = {}
 
-let weblink = ''
-
-let link = `${window.location.protocol}//${window.location.hostname}`
+const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
 
 const includesRegExArr = GM_info.script.includes.map(include => new RegExp(include.replace(/^\/(.*)\/$/, '$1')))
-
-const matchLinkRegEx = new RegExp('^' + (weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
 
 const matchInclude = {
   [GM_info.script.includes[0]]: () => {
@@ -49,11 +41,10 @@ const matchInclude = {
     return true
   },
   [GM_info.script.includes[4]]: () => {
-    const matchLinkRegEx = new RegExp('^' + (weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
     const socket = unsafeWindow.socket
     if (!socket) return
     if (typeof socket.on !== 'function') return
-    clearInterval(timer)
+    clearInterval(initTimer)
     includesRegExArr.pop()
     let srcTimer
     socket.on('changeMedia', ({ id }) => {
@@ -61,26 +52,27 @@ const matchInclude = {
       const match = id.match(matchLinkRegEx)
       if (!match) return
       const url = match[1]
-      if (!url) return
       if (!includesRegExArr.find(include => include.test(url))) return
+      console.log(match)
       srcTimer = setInterval(() => {
         const e = document.getElementById('ytapiplayer_html5_api')
         console.log(e)
         if (!e) return
-        e.src = GM_getValue(url)
         clearInterval(srcTimer)
+        e.src = GM_getValue(url)
       }, 1000)
-      console.log(match)
     })
   }
 }[includesRegExArr.find(include => include.test(window.location.href))]
 
-const timer = setInterval(() => {
+const initTimer = setInterval(() => {
   if (typeof matchInclude === 'function' && !matchInclude()) return
-  clearInterval(timer)
+  clearInterval(initTimer)
   const confirmString = `Userlink:\n${link}\n\nfür Addierungslink:\n${window.location.href}\ngefunden. Dem Bot schicken?`
   console.log(link)
-  if (useGetValue) return GM_setValue(window.location.href, link)
-  if (!confirm(confirmString)) return
-  window.location.replace(weblink + `/add.json?url=${window.location.href}&userlink=${link}`)
+  if (config.useGetValue) return GM_setValue(window.location.href, link)
+  if (!config.dontAsk && !confirm(confirmString)) return
+  window.location.replace(config.weblink + `/add.json?url=${window.location.href}&userlink=${link}`)
 }, 1000)
+
+let link = `${window.location.protocol}//${window.location.hostname}`
