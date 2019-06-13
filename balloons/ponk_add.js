@@ -81,22 +81,23 @@ class addCustom {
     }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
     if (!userscript) throw new Error('Userscript broken');
 
-    const getHeader = (include = [], header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
-      include: this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex).concat(include, header.includes || [])
+    const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
+      include: this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex).concat(header.include || [])
     }));
-    const getConfig = (assign = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
+    const getScript = (assign = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
       weblink: this.bot.server.weblink,
     }, assign)) + '\')' + userscript[2];
 
-    this.userscript = getHeader() + getConfig()
-    this.userscriptdontask = getHeader() + getConfig({
+    this.userscript = getHeader() + getScript()
+    this.userscriptdontask = getHeader() + getScript({
       dontAsk: true
-    })
-    this.userscriptnew = getHeader(new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan), {
+    });
+    this.userscriptnew = getHeader({
+      include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
       grant: [
         'GM_setValue', 'GM_getValue', 'unsafeWindow'
       ]
-    }) + getConfig({
+    }) + getScript({
       useGetValue: true
     });
 
