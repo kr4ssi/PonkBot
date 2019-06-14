@@ -254,7 +254,7 @@ module.exports = {
         }).then(body => {
           if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => {
             this.sendMessage('Faden ' + faden + ' 404ed')
-            if (faeden.length) getNetzm(faeden)
+            addNetzm()
           })
           const files = (body.files || []).concat(...(body.posts || []).map(post => post.files)).filter(file => [
             'video/mp4',
@@ -268,7 +268,7 @@ module.exports = {
           if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => {
             this.sendMessage('Keine netzms in ' + faden + ' gefunden')
           })
-          const addNetzm = () => {
+          const addNetzm = (files = []) => {
             netzms.push(...files)
             console.log(netzms)
             count--
@@ -288,9 +288,9 @@ module.exports = {
           }
           if (initial) return this.db.knex('netzms').insert({ faden }).then(() => {
             this.sendMessage(faden + ' ' + files.length + ' netzms ladiert')
-            addNetzm()
+            addNetzm(files)
           })
-          addNetzm()
+          addNetzm(files)
         }))
       }
       if (params.match(/^https:\/\/(www.)?kohlchan\.net/i)) return this.db.knex('netzms').where({ faden: params }).then(result => {

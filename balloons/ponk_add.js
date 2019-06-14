@@ -84,9 +84,9 @@ class addCustom {
     const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
       include: this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex).concat(header.include || [])
     }));
-    const getScript = (assign = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
+    const getScript = (config = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
       weblink: this.bot.server.weblink,
-    }, assign)) + '\')' + userscript[2];
+    }, config)) + '\')' + userscript[2];
 
     this.userscript = getHeader() + getScript()
     this.userscriptdontask = getHeader() + getScript({
