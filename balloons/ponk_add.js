@@ -53,7 +53,7 @@ class addCustom {
         regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + ({
           'openload.co': '(?:openload\.(?:co|io|link|pw)|oload\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services|website)|oladblock\.(?:services|xyz|me)|openloed\.co)'.replace('\\', '\\\\')
           // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
-          // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/
+          // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/streamcherry\.com
           // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/[^/?#&]+/
         }[host] || host.replace('.', '\\.')) + '\\/.+'),//, 'i'),
@@ -64,6 +64,7 @@ class addCustom {
       //userMedia   : [],    // A list of added media
       cmManifests : {},    // Custom-json-manifests
       userLinks   : {},    // Userlinks for IP-Bound hosters
+      userScripts : {},    // Different userscripts
       bot         : ponk   // The bot
     })
     this.allowedHostsString = this.allowedHosts.map(host => host.host).join(', ')
@@ -88,11 +89,11 @@ class addCustom {
       weblink: this.bot.server.weblink,
     }, config)) + '\')' + userscript[2];
 
-    this.userscript = getHeader() + getScript()
-    this.userscriptdontask = getHeader() + getScript({
+    this.userScripts.default = getHeader() + getScript();
+    this.userScripts.dontask = getHeader() + getScript({
       dontAsk: true
     });
-    this.userscriptnew = getHeader({
+    this.userScripts.new = getHeader({
       include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
       grant: [
         'GM_setValue', 'GM_getValue', 'unsafeWindow'
@@ -105,7 +106,7 @@ class addCustom {
 
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
     else return this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-      const newuserscripthash = crypto.createHash('md5').update(this.userscript).digest('hex');
+      const newuserscripthash = crypto.createHash('md5').update(this.userScripts.default).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
       });
@@ -156,16 +157,13 @@ class addCustom {
       else res.redirect(empty);
     });
 
-    this.bot.server.host.get('/ks.user.js', (req, res) => {
-      res.end(this.userscript);
-    })
-
-    this.bot.server.host.get('/ks.dontask.user.js', (req, res) => {
-      res.end(this.userscriptdontask);
-    })
-
-    this.bot.server.host.get('/ks.new.user.js', (req, res) => {
-      res.end(this.userscriptnew);
+    Object.entries(this.userScripts).forEach(([key, userscript]) => {
+      let filename = '/ks.user.js';
+      if (key != 'default') filename = '/ks' + '.' + key + '.user.js';
+      this.pushToGit(filename, userscript)
+      this.bot.server.host.get(filename, (req, res) => {
+        res.end(userscript);
+      })
     })
   }
 

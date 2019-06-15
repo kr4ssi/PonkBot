@@ -247,6 +247,7 @@ module.exports = {
     netzm: function(user, params, meta) {
       const netzms = []
       const getNetzm = (faeden, initial) => {
+        if (faeden.length < 1) return this.sendMessage('Kein Faden ladiert')
         let count = faeden.length
         faeden.forEach(faden => this.fetch(faden.replace('.html', '.json'), {
           json: true,
@@ -293,13 +294,9 @@ module.exports = {
           addNetzm(files)
         }))
       }
-      if (params.match(/^https:\/\/(www.)?kohlchan\.net/i)) return this.db.knex('netzms').where({ faden: params }).then(result => {
-        if (result.length < 1) return getNetzm([params], true)
-        getNetzm([params])
-      })
       this.db.knex('netzms').select('faden').then(result => {
-        if (result.length < 1) return this.sendMessage('Kein Faden ladiert')
-        getNetzm(result.map(row => row.faden))
+        const faden = (params.match(/^(https:\/\/(?:www.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
+        getNetzm(faden ? [faden] : result.map(row => row.faden), !result.includes(faden))
       })
     },
     lastimage: function(user, params, meta) {

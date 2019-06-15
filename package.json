@@ -32,6 +32,7 @@
     "knex": "latest",
     "limiter": "latest",
     "mysql": "latest",
+    "python-shell": "1.0.7",
     "request": "latest",
     "socket.io": "latest",
     "socket.io-client": "latest",
