@@ -157,12 +157,12 @@ class addCustom {
       else res.redirect(empty);
     });
 
-    Object.entries(this.userScripts).forEach(([key, userscript]) => {
-      let filename = '/ks.user.js';
-      if (key != 'default') filename = '/ks' + '.' + key + '.user.js';
-      this.bot.pushToGit(filename, userscript)
-      this.bot.server.host.get(filename, (req, res) => {
-        res.end(userscript);
+    Object.keys(this.userScripts).forEach((key) => {
+      let filename = 'ks.user.js';
+      if (key != 'default') filename = 'ks' + '.' + key + '.user.js';
+      this.bot.pushToGit(filename, this.userScripts[key])
+      this.bot.server.host.get('/' + filename, (req, res) => {
+        res.end(this.userScripts[key]);
       })
     })
   }
