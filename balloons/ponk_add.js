@@ -160,7 +160,7 @@ class addCustom {
     Object.entries(this.userScripts).forEach(([key, userscript]) => {
       let filename = '/ks.user.js';
       if (key != 'default') filename = '/ks' + '.' + key + '.user.js';
-      this.pushToGit(filename, userscript)
+      this.bot.pushToGit(filename, userscript)
       this.bot.server.host.get(filename, (req, res) => {
         res.end(userscript);
       })
