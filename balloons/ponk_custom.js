@@ -490,7 +490,7 @@ module.exports = {
         }
         if (post.markdown && !/ pics$/.test(params)) {
           const text = post.markdown.replace(/((?:href)|(?:src))="\//g, '$1="' + siteurl + '/').replace(/class="greenText"/g, 'class="greentext"')
-          this.sendByFilter(text, true)
+          this.sendByFilter((post.flag ? imageHtml(siteurl + post.flag) : '') + text, true)
         }
       })
     },
