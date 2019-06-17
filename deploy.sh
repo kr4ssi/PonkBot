@@ -2,5 +2,7 @@
 cd $(dirname $0)
 git pull
 npm install
-./bin/youtube-dl -U --restrict-filenames
+cd ../youtube-dl
+git pull
+cp bin/youtube-dl youtube-dl
 pm2 restart ksbot

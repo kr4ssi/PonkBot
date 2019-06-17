@@ -16,63 +16,89 @@ const URL = require('url')
 const path = require('path')
 const crypto = require('crypto')
 const { execFile } = require('child_process')
+const { PythonShell } = require('python-shell')
 
 class addCustom {
   constructor(ponk){
-    const needUserScript = [
-      'openload.co',
-      'streamango.com',
-      'rapidvideo.com',
-      'verystream.com'
-    ]
-    const needManifest = [
-      'twitter.com',
-      'daserste.de',
-      'zdf.de',
-      'wdr.de',
-      'mdr.de',
-      'br.de',
-      'bild.de',
-      'watchbox.de',
-      ...needUserScript
-    ]
-    Object.assign(this, {
-      allowedHosts : [
-        'liveleak.com',
-        'imgur.com',
-        'instagram.com',
-        'ndr.de',
-        'arte.tv',
-        'bandcamp.com',
-        'mixcloud.com',
-        'archive.org',
-        'ccc.de',
-        'bitchute.com',
-        ...needManifest
-      ].map(host => ({
-        regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + ({
-          'openload.co': '(?:openload\.(?:co|io|link|pw)|oload\.(?:tv|stream|site|xyz|win|download|cloud|cc|icu|fun|club|info|press|pw|live|space|services|website)|oladblock\.(?:services|xyz|me)|openloed\.co)'.replace('\\', '\\\\')
+    PythonShell.run('../youtube-dl/youtube-dl_get-regex.py', {
+      parser: data => {
+        let [name, regex, groups] = JSON.parse(data)
+        regex = new RegExp(regex.replace(/^(?:\(\?\w+\))/, '').replace(/(?:\(\?P\<(\w+)\>)|(?:\(\?\((\w+)\))|(?:\(\?P=(\w+)\))/g, (match, p1, p2, p3) => {
+          if (p1) {
+            groups.push(p1)
+            return '('
+          }
+          const p = p2 || p3
+          if (p && !groups.includes(p) && !Number(p)) throw new Error('error')
+          groups.push(p)
+          return p2 ? '(' : ''
+        }))
+        return { [name]: { regex, groups } }
+      }
+    }, (err, result) => {
+      if (err) throw err.message
+      const ydlRegEx = Object.assign(...result)
+      const needUserScript = [
+        'openload.co',
+        'streamango.com',
+        'rapidvideo.com',
+        'verystream.com'
+      ]
+      const needManifest = [
+        'twitter.com',
+        'daserste.de',
+        'zdf.de',
+        'wdr.de',
+        'mdr.de',
+        'br.de',
+        'bild.de',
+        'watchbox.de',
+        ...needUserScript
+      ]
+      Object.assign(this, {
+        allowedHosts : [
+          'liveleak.com',
+          'imgur.com',
+          'instagram.com',
+          'ndr.de',
+          'arte.tv',
+          'bandcamp.com',
+          'mixcloud.com',
+          'archive.org',
+          'ccc.de',
+          'bitchute.com',
+          ...needManifest
+        ].map(host => Object.assign({
+          host,
+          regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + host.replace('.', '\\.') + '\\/.+'),
+          needManifest: needManifest.includes(host),
+          needUserScript: needUserScript.includes(host)
+        }, {
+          'openload.co': ydlRegEx['OpenloadIE'],
+          'streamango.com': ydlRegEx['StreamangoIE'],
+          'rapidvideo.com': {
+            regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/([^/?#&])+/
+          },
+          'verystream.com': ydlRegEx['VerystreamIE'],
           // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/streamcherry\.com
           // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/[^/?#&]+/
-        }[host] || host.replace('.', '\\.')) + '\\/.+'),//, 'i'),
-        needManifest: needManifest.includes(host),
-        needUserScript: needUserScript.includes(host),
-        host
-      })),
-      //userMedia   : [],    // A list of added media
-      cmManifests : {},    // Custom-json-manifests
-      userLinks   : {},    // Userlinks for IP-Bound hosters
-      userScripts : {},    // Different userscripts
-      bot         : ponk   // The bot
-    })
-    this.allowedHostsString = this.allowedHosts.map(host => host.host).join(', ')
-    this.setupUserScript();
-    this.setupServer();
-    this.bot.client.on('queueFail', data => {
-      console.log(data)
-      this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
+        }[host] || {})),
+        //userMedia   : [],    // A list of added media
+        cmManifests : {},    // Custom-json-manifests
+        userLinks   : {},    // Userlinks for IP-Bound hosters
+        userScripts : {},    // Different userscripts
+        bot         : ponk   // The bot
+      })
+      console.log(this.allowedHosts)
+      this.allowedHostsString = this.allowedHosts.map(host => host.host).join(', ')
+      this.setupUserScript();
+      this.setupServer();
+      this.bot.client.on('queueFail', data => {
+        console.log(data)
+        this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
+      });
     });
   }
 
@@ -113,6 +139,11 @@ class addCustom {
       this.userscriptdate = parseDate(this.bot.started);
       this.bot.db.setKeyValue('userscriptts', this.bot.started);
       this.bot.db.setKeyValue('userscripthash', newuserscripthash);
+      Object.keys(this.userScripts).forEach((key) => {
+        let filename = 'ks.user.js';
+        if (key != 'default') filename = 'ks' + '.' + key + '.user.js';
+        this.bot.pushToGit(filename, this.userScripts[key])
+      })
     });
   }
 
@@ -160,7 +191,6 @@ class addCustom {
     Object.keys(this.userScripts).forEach((key) => {
       let filename = 'ks.user.js';
       if (key != 'default') filename = 'ks' + '.' + key + '.user.js';
-      this.bot.pushToGit(filename, this.userScripts[key])
       this.bot.server.host.get('/' + filename, (req, res) => {
         res.end(this.userScripts[key]);
       })
@@ -265,7 +295,7 @@ class addCustom {
     if (url.match(/https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?(\w+)/i)) return nxLoad()
     if (/.*\.m3u8$/.test(url)) return getDuration(manifest).then(sendJson)
     host = this.hostAllowed(url)
-    if (host) return execFile('youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+    if (host) return execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
     }, (err, stdout, stderr) => {
       if (err) {
@@ -335,6 +365,14 @@ module.exports = {
       const split = params.split(' ')
       let url = split.shift()
       let title = split.join(' ').trim()
+      if (url === 'regex') {
+        const host = this.API.add.allowedHosts.find(host => host.host === title)
+        console.log(host)
+        if (host) this.sendMessage(JSON.stringify(Object.assign(host, {
+          regex: host.regex.source
+        })))
+        return
+      }
       url = validUrl.isHttpsUri(url)
       if (url) this.API.add.add(url, title, { user, willkür: meta.addnext })
       else this.sendMessage('Ist keine https-Elfe /pfräh')
