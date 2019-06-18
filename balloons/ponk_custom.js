@@ -483,7 +483,7 @@ module.exports = {
         if (post.files.length > 0) {
           let fileshtml = ''
           post.files.forEach(file => {
-            const filehtml = imageHtml(siteurl + ((file.mime != 'image/gif') ? file.thumb : file.path), siteurl + file.path)
+            const filehtml = imageHtml(siteurl + ((file.mime != 'image/gif' && file.thumb != '/spoiler.png') ? file.thumb : file.path), siteurl + file.path)
             if ((fileshtml + filehtml).length < 1000) fileshtml += filehtml
           })
           this.sendByFilter(fileshtml, true)
