@@ -79,7 +79,7 @@ class addCustom {
           'rapidvideo.com': {
             regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/([^/?#&])+/
           },
-          'verystream.com': ydlRegEx['VerystreamIE'],
+          'verystream.com': ydlRegEx['VerystreamIE']
           // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
           // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/streamcherry\.com
           // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/
@@ -368,9 +368,10 @@ module.exports = {
       if (url === 'regex') {
         const host = this.API.add.allowedHosts.find(host => host.host === title)
         console.log(host)
-        if (host) this.sendMessage(JSON.stringify(Object.assign(host, {
+        if (host) this.sendMessage(JSON.stringify({
+          ...host,
           regex: host.regex.source
-        })))
+        }))
         return
       }
       url = validUrl.isHttpsUri(url)
