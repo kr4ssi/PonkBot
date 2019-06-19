@@ -34,6 +34,7 @@
     "mysql": "latest",
     "python-shell": "1.0.7",
     "request": "latest",
+    "rss-watcher": "1.4.0",
     "socket.io": "latest",
     "socket.io-client": "latest",
     "userscript-meta": "latest",

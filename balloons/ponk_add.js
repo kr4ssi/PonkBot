@@ -38,53 +38,44 @@ class addCustom {
     }, (err, result) => {
       if (err) throw err.message
       const ydlRegEx = Object.assign(...result)
-      const needUserScript = [
-        'openload.co',
-        'streamango.com',
-        'rapidvideo.com',
-        'verystream.com'
-      ]
-      const needManifest = [
-        'twitter.com',
-        'daserste.de',
-        'zdf.de',
-        'wdr.de',
-        'mdr.de',
-        'br.de',
-        'bild.de',
-        'watchbox.de',
+      const needUserScript = {
+        'openload.co': ydlRegEx['OpenloadIE'],
+        'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
+        'rapidvideo.com': {
+          regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/([^/?#&])+/
+        },
+        'verystream.com': ydlRegEx['VerystreamIE']
+      }
+      const needManifest = {
+        'twitter.com': {},
+        'daserste.de': {},
+        'zdf.de': {},
+        'wdr.de': {},
+        'mdr.de': {},
+        'br.de': {},
+        'bild.de': {},
+        'watchbox.de': {},
         ...needUserScript
-      ]
+      }
       Object.assign(this, {
-        allowedHosts : [
-          'liveleak.com',
-          'imgur.com',
-          'instagram.com',
-          'ndr.de',
-          'arte.tv',
-          'bandcamp.com',
-          'mixcloud.com',
-          'archive.org',
-          'ccc.de',
-          'bitchute.com',
+        allowedHosts : Object.entries({
+          'liveleak.com': {},
+          'imgur.com': {},
+          'instagram.com': {},
+          'ndr.de': {},
+          'arte.tv': {},
+          'bandcamp.com': {},
+          'mixcloud.com': {},
+          'archive.org': {},
+          'ccc.de': {},
+          'bitchute.com': {},
           ...needManifest
-        ].map(host => Object.assign({
-          host,
-          regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + host.replace('.', '\\.') + '\\/.+'),
-          needManifest: needManifest.includes(host),
-          needUserScript: needUserScript.includes(host)
-        }, {
-          'openload.co': ydlRegEx['OpenloadIE'],
-          'streamango.com': ydlRegEx['StreamangoIE'],
-          'rapidvideo.com': {
-            regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/([^/?#&])+/
-          },
-          'verystream.com': ydlRegEx['VerystreamIE']
-          // @include     /https?:\/\/(?:www\.)?(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\/[^/?#&]+/
-          // @include     /https?:\/\/(?:www\.)?(streamango\.com|fruithosts\.net)\/(f|embed)\/[^/?#&]+/streamcherry\.com
-          // @include     /https?:\/\/(?:www\.)?verystream\.com\/(stream|e)\/[^/?#&]+/
-          // @include     /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/[^/?#&]+/
-        }[host] || {})),
+        }).map(([name, rules]) => Object.assign({
+          name,
+          regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
+          needManifest: Object.keys(needManifest).includes(name),
+          needUserScript: Object.keys(needUserScript).includes(name)
+        }, rules || {})),
         //userMedia   : [],    // A list of added media
         cmManifests : {},    // Custom-json-manifests
         userLinks   : {},    // Userlinks for IP-Bound hosters
@@ -92,13 +83,27 @@ class addCustom {
         bot         : ponk   // The bot
       })
       console.log(this.allowedHosts)
-      this.allowedHostsString = this.allowedHosts.map(host => host.host).join(', ')
+      this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
       this.bot.client.on('queueFail', data => {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
       });
+      const Watcher = require('rss-watcher')
+      const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
+      watcher.on('new article', article => {
+        this.bot.sendMessage(article.title + ' addiert')
+        this.add(article.link, undefined, {fiku: true})
+      }).on('error', err => {
+        console.error(err)
+      }).run((err, articles) => {
+        if (err) return console.error(err)
+        articles.forEach(article => {
+          //console.log(article)
+        })
+      })
+
     });
   }
 
@@ -329,7 +334,7 @@ class addCustom {
           {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
         ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
       }
-      if (host.host === 'rapidvideo.com') {
+      if (host.name === 'rapidvideo.com') {
         manifest.title = manifest.title.replace(/^Generic/, 'Rapidvideo')
         url = url.replace(/rapidvideo\.com\/e\//, 'rapidvideo.com/v/')
       }
@@ -366,7 +371,7 @@ module.exports = {
       let url = split.shift()
       let title = split.join(' ').trim()
       if (url === 'regex') {
-        const host = this.API.add.allowedHosts.find(host => host.host === title)
+        const host = this.API.add.allowedHosts.find(host => host.name.includes(title))
         console.log(host)
         if (host) this.sendMessage(JSON.stringify({
           ...host,
