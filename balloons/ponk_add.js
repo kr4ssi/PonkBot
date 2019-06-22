@@ -69,6 +69,9 @@ class addCustom {
           'archive.org': {},
           'ccc.de': {},
           'bitchute.com': {},
+          'kinox.su': {
+            exec: this.kinoX
+          },
           ...needManifest
         }).map(([name, rules]) => Object.assign({
           name,
@@ -205,6 +208,17 @@ class addCustom {
     })
   }
 
+  kinoX(url, title, { user, willkür, fiku }) {
+    this.bot.fetch(url).then(body => {
+      const match = body.match(/<iframe src="([^"]+)"/)
+      if (!match) {
+        console.log(body)
+        return this.bot.sendMessage('fehler')
+      }
+      this.add(match[1], ...Array.from(arguments).slice(1))
+    })
+  }
+  
   add (url, title, { user, willkür, fiku }) {
     let host = {}
     const manifest = {
@@ -303,6 +317,7 @@ class addCustom {
     if (url.match(/https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?(\w+)/i)) return nxLoad()
     if (/.*\.m3u8$/.test(url)) return getDuration(manifest).then(sendJson)
     host = this.hostAllowed(url)
+    if (host && typeof host.exec === 'function') return host.exec.call(this, ...arguments)
     if (host) return execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
     }, (err, stdout, stderr) => {
