@@ -271,7 +271,6 @@ module.exports = {
           })
           const addNetzm = (files = []) => {
             netzms.push(...files)
-            console.log(netzms)
             count--
             if (count > 0) return
             let added = {};
@@ -572,7 +571,6 @@ module.exports = {
           units: 'metric'
         }, json: true
       }).then(body => {
-        console.log(body)
         this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
       })
     },

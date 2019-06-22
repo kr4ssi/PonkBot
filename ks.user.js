@@ -70,6 +70,7 @@ const initTimer = setInterval(() => {
   clearInterval(initTimer)
   const confirmString = `Userlink:\n${link}\n\nfür Addierungslink:\n${window.location.href}\ngefunden. Dem Bot schicken?`
   console.log(link)
+  if (config.useSendMessage) return window.parent.postMessage({userlink: link}, 'https://cytu.be/r/' + config.chan)
   if (config.useGetValue) return GM_setValue(window.location.href, link)
   if (!config.dontAsk && !confirm(confirmString)) return
   window.location.replace(config.weblink + `/add.json?url=${window.location.href}&userlink=${link}`)

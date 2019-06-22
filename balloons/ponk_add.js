@@ -82,7 +82,6 @@ class addCustom {
         userScripts : {},    // Different userscripts
         bot         : ponk   // The bot
       })
-      console.log(this.allowedHosts)
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
@@ -132,6 +131,10 @@ class addCustom {
     }) + getScript({
       useGetValue: true
     });
+    this.userScripts.auto = getHeader() + getScript({
+      useSendMessage: true,
+      chan: this.bot.client.chan
+    })
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
@@ -237,7 +240,7 @@ class addCustom {
           obscured: false
         })
       }
-      this.bot.addNetzm(this.bot.server.weblink + '/add.json?url=' + url, willkür, user, 'cm', manifest.title)
+      this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (host.needUserScript ? 'userscript&' : '') + 'url=' + url, willkür, user, 'cm', manifest.title)
     }
     const getDuration = (manifest, info = {}) => {
       return new Promise((resolve, reject) => {
