@@ -582,10 +582,12 @@ module.exports = {
           subaction: 'search',
           story: params
         } : {},
+        json: false,
         match: (params.length > 0) ? /<span class="plovkaz"><a href="([^"]+)">([^<]+)/ :
         /<div class="carousel_box"><a href="([^"]+)" class="thumbnail"  title="([^"]+)"/
       }).then(match => {
         this.fetch(match[1], {
+          json: false,
           match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
         }).then(match => {
           this.sendMessage(match[1] + '; ' + match[2])

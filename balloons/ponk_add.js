@@ -290,83 +290,95 @@ class addCustom {
       })
     }
     const nxLoad = () => {
-      this.bot.fetch(url.replace(/embed-/i, ''), {
-        json: false
-      }).then(body => {
-        const regMatch = body.match(/master\.m3u8","([^"]+)"(?:,"([^"]+)")?/i)
-        if (!regMatch) {
-          this.bot.sendMessage('Fehler')
-          return console.error(body)
-        }
-        const titleMatch = body.match(/<title>Watch ([^<]+)/i)
-        if (!title && titleMatch) title = titleMatch[1]
-        if (!regMatch[2]) return this.bot.addNetzm(regMatch[1].replace(/^http:\/\//i, 'https://'), willkür, user, 'fi', title)
+      this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+        json: false,
+        match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+      }).then(match => {
+        if (!title) title = match[1]
+        const url = 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'
+        console.log(url)
         manifest.title = title
-        manifest.sources[0].url = regMatch[2].replace(/^http:\/\//i, 'https://')
+        manifest.sources[0].url = url
         manifest.sources[0].contentType = 'video/mp4'
-        manifest.sources[1] = {}
-        manifest.sources[1].url = regMatch[1].replace(/^http:\/\//i, 'https://')
-        manifest.sources[1].contentType = 'video/mp4'
-        manifest.sources[1].quality = 1080
         getDuration(manifest).then(sendJson)
       })
-    }
-    if (url.match(/https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?(\w+)/i)) return nxLoad()
-    if (/.*\.m3u8$/.test(url)) return getDuration(manifest).then(sendJson)
-    host = this.hostAllowed(url)
-    if (host && typeof host.exec === 'function') return host.exec.call(this, ...arguments)
-    if (host) return execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
-      maxBuffer: 10485760
-    }, (err, stdout, stderr) => {
-      if (err) {
-        this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
-        return console.error(err)
-      }
-      let data = stdout.trim().split(/\r?\n/)
-      let info
-      try {
-        info = data.map((rawData) => JSON.parse(rawData))
-      }
-      catch(err) {
-        return console.error(err)
-      }
-      if (!info.title) info = info[0];
-      console.log(info)
-      title = title || ((new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title))
-      if (!host.needManifest) return this.bot.addNetzm(info.url.replace(/^http:\/\//i, 'https://'), willkür, user, 'fi', title, url)
-      manifest.title = title
-      if (info.manifest_url) manifest.sources[0].url = info.manifest_url
-      else {
-        manifest.sources[0].url = info.url
-        manifest.sources[0].contentType = ([
-          {type: 'video/mp4', ext: ['.mp4']},
-          {type: 'video/webm', ext: ['.webm']},
-          {type: 'application/x-mpegURL', ext: ['.m3u8']},
-          {type: 'video/ogg', ext: ['.ogv']},
-          {type: 'application/dash+xml', ext: ['.mpd']},
-          {type: 'audio/aac', ext: ['.aac']},
-          {type: 'audio/ogg', ext: ['.ogg']},
-          {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-        ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
-      }
-      if (host.name === 'rapidvideo.com') {
-        manifest.title = manifest.title.replace(/^Generic/, 'Rapidvideo')
-        url = url.replace(/rapidvideo\.com\/e\//, 'rapidvideo.com/v/')
-      }
-      if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
-      if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
-      manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
-      manifest.duration = info.duration
-      getDuration(manifest, info).then(sendJson)
-    })
-    if (!fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
-    const media = parseLink(url)
-    if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
-    if (media.msg) this.bot.sendMessage(media.msg)
+      /*this.bot.fetch(url.replace(/embed-/i, ''), {
+      json: false
+    }).then(body => {
+    const regMatch = body.match(/master\.m3u8","([^"]+)"(?:,"([^"]+)")?/i)
+    if (!regMatch) {
+    this.bot.sendMessage('Fehler')
+    return console.error(body)
   }
-  hostAllowed(url) {
-    return this.allowedHosts.find(host => host.regex.test(url))
+  const titleMatch = body.match(/<title>Watch ([^<]+)/i)
+  if (!title && titleMatch) title = titleMatch[1]
+  if (!regMatch[2]) return this.bot.addNetzm(regMatch[1].replace(/^http:\/\//i, 'https://'), willkür, user, 'fi', title)
+  manifest.title = title
+  manifest.sources[0].url = regMatch[2].replace(/^http:\/\//i, 'https://')
+  manifest.sources[0].contentType = 'video/mp4'
+  manifest.sources[1] = {}
+  manifest.sources[1].url = regMatch[1].replace(/^http:\/\//i, 'https://')
+  manifest.sources[1].contentType = 'video/mp4'
+  manifest.sources[1].quality = 1080
+  getDuration(manifest).then(sendJson)
+})*/
+}
+if (url.match(/https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?(\w+)/i)) return nxLoad()
+if (/.*\.m3u8$/.test(url)) return getDuration(manifest).then(sendJson)
+host = this.hostAllowed(url)
+if (host && typeof host.exec === 'function') return host.exec.call(this, ...arguments)
+if (host) return execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+  maxBuffer: 10485760
+}, (err, stdout, stderr) => {
+  if (err) {
+    this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
+    return console.error(err)
   }
+  let data = stdout.trim().split(/\r?\n/)
+  let info
+  try {
+    info = data.map((rawData) => JSON.parse(rawData))
+  }
+  catch(err) {
+    return console.error(err)
+  }
+  if (!info.title) info = info[0];
+  console.log(info)
+  title = title || ((new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title))
+  if (!host.needManifest) return this.bot.addNetzm(info.url.replace(/^http:\/\//i, 'https://'), willkür, user, 'fi', title, url)
+  manifest.title = title
+  if (info.manifest_url) manifest.sources[0].url = info.manifest_url
+  else {
+    manifest.sources[0].url = info.url
+    manifest.sources[0].contentType = ([
+      {type: 'video/mp4', ext: ['.mp4']},
+      {type: 'video/webm', ext: ['.webm']},
+      {type: 'application/x-mpegURL', ext: ['.m3u8']},
+      {type: 'video/ogg', ext: ['.ogv']},
+      {type: 'application/dash+xml', ext: ['.mpd']},
+      {type: 'audio/aac', ext: ['.aac']},
+      {type: 'audio/ogg', ext: ['.ogg']},
+      {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+    ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
+  }
+  if (host.name === 'rapidvideo.com') {
+    manifest.title = manifest.title.replace(/^Generic/, 'Rapidvideo')
+    url = url.replace(/rapidvideo\.com\/e\//, 'rapidvideo.com/v/')
+  }
+  if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
+  if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
+  manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
+  manifest.duration = info.duration
+  getDuration(manifest, info).then(sendJson)
+})
+if (!fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
+const media = parseLink(url)
+if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
+if (media.msg) this.bot.sendMessage(media.msg)
+}
+hostAllowed(url) {
+  return this.allowedHosts.find(host => host.regex.test(url))
+}
 }
 module.exports = {
   meta: {
