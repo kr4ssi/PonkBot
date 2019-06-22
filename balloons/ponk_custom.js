@@ -574,6 +574,21 @@ module.exports = {
         this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
       })
     },
+    kinox: function(user, params, meta) {
+      this.fetch('https://kinox.su/', {
+        method: (params.length > 0) ? 'post' : 'get',
+        qs: (params.length > 0) ? {
+          do: 'search',
+          subaction: 'search',
+          story: params
+        } : {},
+        match: (params.length > 0) ? /<span class="plovkaz"><a href="([^"]+)">([^<]+)/ :
+        /<div class="carousel_box"><a href="([^"]+)" class="thumbnail"  title="([^"]+)"/
+      }).then(match => {
+        this.sendMessage(match[1])
+        this.commands.handlers.fikuinfo.call(this, user, match[2], meta)
+      })
+    },
     help: function(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
         (params === 'add' ? this.API.add.allowedHostsString : '') +

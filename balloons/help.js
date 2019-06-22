@@ -288,5 +288,9 @@ module.exports = {
   wetter: {
     synop: '',
     rank: 0
+  },
+  kinox: {
+    synop: '',
+    rank: 1
   }
 }
