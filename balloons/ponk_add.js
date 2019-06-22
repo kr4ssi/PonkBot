@@ -208,14 +208,11 @@ class addCustom {
     })
   }
 
-  kinoX(url, title, { user, willkür, fiku }) {
-    this.bot.fetch(url).then(body => {
-      const match = body.match(/<iframe src="([^"]+)"/)
-      if (!match) {
-        console.log(body)
-        return this.bot.sendMessage('fehler')
-      }
-      this.add(match[1], ...Array.from(arguments).slice(1))
+  kinoX(url, title, meta) {
+    this.bot.fetch(url, {
+      match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+    }).then(match => {
+      this.add(match[2], title || match[1], meta)
     })
   }
 

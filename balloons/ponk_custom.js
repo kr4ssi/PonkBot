@@ -585,8 +585,12 @@ module.exports = {
         match: (params.length > 0) ? /<span class="plovkaz"><a href="([^"]+)">([^<]+)/ :
         /<div class="carousel_box"><a href="([^"]+)" class="thumbnail"  title="([^"]+)"/
       }).then(match => {
-        this.sendMessage(match[2] + '; ' + match[1])
-        this.commands.handlers.fikuinfo.call(this, user, match[2], meta)
+        this.fetch(match[1], {
+          match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+        }).then(match => {
+          this.sendMessage(match[1] + '; ' + match[2])
+          this.commands.handlers.fikuinfo.call(this, user, match[1], meta)
+        })
       })
     },
     help: function(user, params, meta) {
