@@ -585,7 +585,7 @@ module.exports = {
         match: (params.length > 0) ? /<span class="plovkaz"><a href="([^"]+)">([^<]+)/ :
         /<div class="carousel_box"><a href="([^"]+)" class="thumbnail"  title="([^"]+)"/
       }).then(match => {
-        this.sendMessage(match[1])
+        this.sendMessage(match[2] + ' ' + match[1])
         this.commands.handlers.fikuinfo.call(this, user, match[2], meta)
       })
     },

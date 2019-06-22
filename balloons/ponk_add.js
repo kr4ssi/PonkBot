@@ -218,7 +218,7 @@ class addCustom {
       this.add(match[1], ...Array.from(arguments).slice(1))
     })
   }
-  
+
   add (url, title, { user, willkür, fiku }) {
     let host = {}
     const manifest = {
