@@ -61,9 +61,6 @@ const lastCSS = {
   logo: '',
   hintergrund: ''
 }
-let w0bm = ''
-let pr0=''
-const imageHtml = (image, link) => '<a class="bild" href="' + (link || image) + '" target="_blank"><img class="image-embed-small" src="' + image + '" /></a>'
 
 function sendquote(user, params, meta) {
   ponk.sendByFilter(quote(meta.command))

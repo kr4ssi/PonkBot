@@ -8,6 +8,10 @@
 const request = require('request')
 const UserAgent = require('user-agents')
 
+let w0bm = ''
+let pr0=''
+const imageHtml = (image, link) => '<a class="bild" href="' + (link || image) + '" target="_blank"><img class="image-embed-small" src="' + image + '" /></a>'
+
 module.exports = {
   meta: {
     active: true,
