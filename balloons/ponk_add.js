@@ -70,10 +70,25 @@ class addCustom {
           'ccc.de': {},
           'bitchute.com': {},
           'kinox.su': {
-            exec: this.kinoX
+            custom(url, title, meta) {
+              this.bot.fetch(url, {
+                json: false,
+                match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+              }).then(match => {
+                this.add(match[2], title || match[1], meta)
+              })
+            }
           },
           'nxload.com': {
-            exec: this.nxLoad
+            custom(url, title, meta) {
+              this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+                json: false,
+                match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+              }).then(match => {
+                const manifest = this.manifest(title || match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
+                this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
+              })
+            }
           },
           ...needManifest
         }).map(([name, rules]) => Object.assign({
@@ -95,25 +110,6 @@ class addCustom {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
       });
-      const Watcher = require('rss-watcher')
-      const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
-      watcher.on('new article', article => {
-        this.bot.db.getKeyValue('newfeed').then(newfeed => {
-          console.log(newfeed, article, article.pubdate, article.title)
-          if (article.pubdate === newfeed) return
-          this.bot.sendMessage(article.title + ' addiert')
-          this.add(article.link, undefined, {fiku: true})
-          this.bot.db.setKeyValue('newfeed', article.pubdate)
-        })
-      }).on('error', err => {
-        console.error(err)
-      }).run((err, articles) => {
-        if (err) return console.error(err)
-        articles.forEach(article => {
-          //console.log(article)
-        })
-      })
-
     });
   }
 
@@ -167,6 +163,25 @@ class addCustom {
   }
 
   setupServer() {
+    const Watcher = require('rss-watcher')
+    const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
+    watcher.on('new article', article => {
+      this.bot.db.getKeyValue('newfeed').then(newfeed => {
+        console.log(newfeed, article, article.pubdate, article.title)
+        if (article.pubdate === newfeed) return
+        this.bot.sendMessage(article.title + ' addiert')
+        this.add(article.link, undefined, {fiku: true})
+        this.bot.db.setKeyValue('newfeed', article.pubdate)
+      })
+    }).on('error', err => {
+      console.error(err)
+    }).run((err, articles) => {
+      if (err) return console.error(err)
+      articles.forEach(article => {
+        //console.log(article)
+      })
+    })
+
     const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
 
     const fixurl = url => {
@@ -216,45 +231,8 @@ class addCustom {
     })
   }
 
-  getDuration(manifest, info = {}) {
-    return new Promise((resolve, reject) => {
-      if (manifest.live || manifest.duration) return resolve(manifest)
-      let tries = 0
-      const tryToGetDuration = err => {
-        if (err) {
-          console.error(err)
-          if (tries > 1) {
-            return this.bot.sendMessage('Can\'t get duration')
-          }
-        }
-        tries++
-        let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
-        if (info.http_headers) {
-          const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
-          console.log(headers)
-          params = [...params, '-headers', headers]
-        }
-        execFile('ffprobe', [...params, manifest.sources[0].url], (err, stdout, stderr) => {
-          if (err) return tryToGetDuration(err)
-          console.log(stderr)
-          let info
-          try {
-            info = JSON.parse(stdout)
-          }
-          catch(err) {
-            return console.error(err)
-          }
-          console.log(info.format)
-          if (info.format && info.format.duration) resolve(Object.assign(manifest, { duration: parseFloat(info.format.duration) }))
-          else tryToGetDuration(info)
-        })
-      }
-      tryToGetDuration()
-    })
-  }
-
   sendManifest(manifest, url, {cache, addnext, user, needUserScript}) {
-    if (!cache) this.cmManifests[url] = {
+    if (!cache) this.cmManifests[url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/').replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/')] = {
       manifest,
       //timestamp,
       user: {}
@@ -292,22 +270,40 @@ class addCustom {
     }
   }
 
-  kinoX(url, title, meta) {
-    this.bot.fetch(url, {
-      json: false,
-      match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-    }).then(match => {
-      this.add(match[2], title || match[1], meta)
-    })
-  }
-
-  nxLoad(url, title, meta) {
-    this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-      json: false,
-      match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
-    }).then(match => {
-      const manifest = this.manifest(title || match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
-      this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
+  getDuration(manifest, info = {}) {
+    return new Promise((resolve, reject) => {
+      if (manifest.live || manifest.duration) return resolve(manifest)
+      let tries = 0
+      const tryToGetDuration = err => {
+        if (err) {
+          console.error(err)
+          if (tries > 1) {
+            return this.bot.sendMessage('Can\'t get duration')
+          }
+        }
+        tries++
+        let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
+        if (info.http_headers) {
+          const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
+          console.log(headers)
+          params = [...params, '-headers', headers]
+        }
+        execFile('ffprobe', [...params, manifest.sources[0].url], (err, stdout, stderr) => {
+          if (err) return tryToGetDuration(err)
+          console.log(stderr)
+          let info
+          try {
+            info = JSON.parse(stdout)
+          }
+          catch(err) {
+            return console.error(err)
+          }
+          console.log(info.format)
+          if (info.format && info.format.duration) resolve(Object.assign(manifest, { duration: parseFloat(info.format.duration) }))
+          else tryToGetDuration(info)
+        })
+      }
+      tryToGetDuration()
     })
   }
 
@@ -316,7 +312,7 @@ class addCustom {
     const manifest = this.manifest(title, url)
     if (/.*\.m3u8$/.test(url)) return this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
     host = this.hostAllowed(url)
-    if (host) return (typeof host.exec === 'function') ? host.exec.call(this, ...arguments) :
+    if (host) return (typeof host.custom === 'function') ? host.custom.call(this, ...arguments) :
     execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
     }, (err, stdout, stderr) => {
@@ -359,7 +355,7 @@ class addCustom {
       if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
       manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
       manifest.duration = info.duration
-      this.getDuration(manifest, info).then(manifest => this.sendManifest(manifest, url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/').replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/'), {
+      this.getDuration(manifest, info).then(manifest => this.sendManifest(manifest, url, {
         needUserScript: host.needUserScript,
         ...meta
       }))
@@ -369,6 +365,7 @@ class addCustom {
     if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
     if (media.msg) this.bot.sendMessage(media.msg)
   }
+
   hostAllowed(url) {
     return this.allowedHosts.find(host => host.regex.test(url))
   }
