@@ -7,6 +7,16 @@
 
 const validUrl = require('valid-url')
 
+const Gitlab = require('gitlab').Gitlab
+const gitclient = new Gitlab({
+  token: process.env.api_gitlab
+})
+const gitrepo = process.env.gitrepo
+
+let count = 0
+const waiting = []
+let lastImages = []
+
 const quotes = {
   zen: require('./quotes/zen.js'),
   stoll: require('./quotes/stoll.js'),
@@ -56,13 +66,9 @@ let pr0=''
 const imageHtml = (image, link) => '<a class="bild" href="' + (link || image) + '" target="_blank"><img class="image-embed-small" src="' + image + '" /></a>'
 
 function sendquote(user, params, meta) {
-  this.sendByFilter(quote(meta.command))
+  ponk.sendByFilter(quote(meta.command))
 }
 module.exports = {
-  meta: {
-    active: true,
-    type: 'gumdrop'
-  },
   handlers: {
     zen       : sendquote,
     stoll     : sendquote,
@@ -147,155 +153,6 @@ module.exports = {
         setTimeout(() => {
           cleanban.splice(cleanban.indexOf(user), 1)
         }, 4 * 1000 * 60 * 60) //Cooldown
-      })
-    },
-    giphy: function(user, params, meta) {
-      this.fetch('https://api.giphy.com/v1/gifs/search', {
-        qs: {
-          api_key: this.API.keys.giphy,
-          q: params,
-          limit: 5
-        }, json: true,
-        getlist: 'data',
-        getrandom: true
-      }).then(body => this.addLastImage(body.images.fixed_height.url).then(image => {
-        this.sendMessage(image + '.pic')
-      }))
-    },
-    tenor: function(user, params, meta) {
-      this.fetch('https://api.tenor.com/v1/search', {
-        qs: {
-          api_key: this.API.keys.tenor,
-          tag: params,
-          limit: 5
-        }, json: true,
-        getlist: 'results',
-        getrandom: true
-      }).then(body => this.addLastImage(body.media[0].gif.url).then(image => {
-        this.sendMessage(image + '.pic')
-      }))
-    },
-    w0bm: function(user, params, meta) {
-      const getW0bm = (page = '') => {
-        this.fetch('https://w0bm.com/index', {
-          qs: {
-            q: params,
-            page
-          }, json: false
-        }).then(body => {
-          const getMatches = (string, regex, index = 1) => {
-            let matches = []
-            let match
-            while (match = regex.exec(string)) {
-              matches.push(match[index])
-            }
-            return matches
-          }
-          if (!page) {
-            const pages = getMatches(body, /&amp;page=(\d+)"/g)
-            if (pages.length > 0) {
-              const page = Math.ceil(Math.random() * Math.max(...pages))
-              if (page > 1) return getW0bm(page)
-            }
-          }
-          const vids = getMatches(body, /<tr data-thumb="(\d+)"/g)
-          if (!vids || vids.length < 1) return this.sendMessage('Keine Ergebnisse /elo')
-          w0bm = vids[Math.floor(Math.random() * vids.length)]
-          this.sendByFilter(imageHtml('https://w0bm.com/thumbs/' + w0bm + '.gif', 'https://b.w0bm.com/' + w0bm + '.webm'), true)
-        })
-      }
-      if (params.length > 0) return getW0bm()
-      if (!w0bm) return [...Array(meta.repeat)].forEach((c, i) => this.fetch('https://w0bm.com/api/video/random', {
-        json: true
-      }).then(body => {
-        this.addNetzm('https://b.w0bm.com/' + body.file, meta.addnext, user)
-        if (meta.repeat === 1) this.sendMessage('Zufälliges netzm von w0bm.com addiert')
-        else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige netzms von w0bm.com addiert')
-      }))
-      this.addNetzm('https://b.w0bm.com/' + w0bm + '.webm', meta.addnext, user)
-      this.sendMessage('Letztes gif als netzm addiert')
-      w0bm = false
-    },
-    pr0: function(user, params, meta) {
-      let video = false
-      params = params.replace(/(?:^| )video(?: |$)/, () => ((video = true) && '')).trim()
-      if (params.length < 1 && pr0) {
-        this.addNetzm('https://img.pr0gramm.com/' + pr0, meta.addnext, user)
-        this.sendMessage('Letzter Daumennagel als Video addiert')
-        pr0 = false
-      }
-      else this.fetch('https://pr0gramm.com/api/items/get', {
-        qs: {
-          tags: '!' + (!video ? '-' : '') + 'video ' + params,
-        }, json: true,
-        getlist: 'items'
-      }).then(body => {
-        let item = body[Math.floor(Math.random() * body.length)]
-        if (!video) return this.addLastImage('https://img.pr0gramm.com/' + item.image).then(image => {
-          this.sendMessage(image + '.pic')
-        })
-        if (params.length < 1) return [...Array(meta.repeat)].forEach((c, i) => {
-          item = body[Math.floor(Math.random() * body.length)]
-          this.addNetzm('https://img.pr0gramm.com/' + item.image, meta.addnext, user)
-          if (meta.repeat === 1) this.sendMessage('Zufälliges Video von pr0gramm.com addiert')
-          else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige Videos von pr0gramm.com addiert')
-        })
-        pr0 = item.image
-        this.sendByFilter(imageHtml('https://thumb.pr0gramm.com/' + item.thumb, 'https://img.pr0gramm.com/' + item.image), true)
-      })
-    },
-    netzm: function(user, params, meta) {
-      const netzms = []
-      const getNetzm = (faeden, initial) => {
-        if (faeden.length < 1) return this.sendMessage('Kein Faden ladiert')
-        let count = faeden.length
-        faeden.forEach(faden => this.fetch(faden.replace('.html', '.json'), {
-          json: true,
-          customerr: [404]
-        }).then(body => {
-          if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => {
-            this.sendMessage('Faden ' + faden + ' 404ed')
-            addNetzm()
-          })
-          const files = (body.files || []).concat(...(body.posts || []).map(post => post.files)).filter(file => [
-            'video/mp4',
-            'video/webm',
-            'video/ogg',
-            'audio/aac',
-            'audio/ogg',
-            'audio/mpeg'
-          ].includes(file.mime)).map(file => ({ faden, item: file.path}))
-          //body.match(/(\/\w+\/\.media\/[\w-\.]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
-          if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => {
-            this.sendMessage('Keine netzms in ' + faden + ' gefunden')
-          })
-          const addNetzm = (files = []) => {
-            netzms.push(...files)
-            count--
-            if (count > 0) return
-            let added = {};
-            [...Array(meta.repeat)].forEach((c, i) => {
-              const netzm = netzms[Math.floor(Math.random() * netzms.length)]
-              this.addNetzm('https://kohlchan.net' + netzm.item, meta.addnext, user)
-              if (!added[netzm.faden]) added[netzm.faden] = 1
-              else added[netzm.faden]++
-            })
-            Object.keys(added).forEach(faden => {
-              const count = added[faden]
-              if (count > 1) this.sendMessage(count + ' zufällige netzms aus ' + faden + ' addiert')
-              else this.sendMessage('Zufälliges netzm aus ' + faden + ' addiert')
-            })
-          }
-          if (initial) return this.db.knex('netzms').insert({ faden }).then(() => {
-            this.sendMessage(faden + ' ' + files.length + ' netzms ladiert')
-            addNetzm(files)
-          })
-          addNetzm(files)
-        }))
-      }
-      this.db.knex('netzms').select('faden').then(result => {
-        const faden = (params.match(/^(https:\/\/(?:www.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
-        getNetzm(faden ? [faden] : result.map(row => row.faden), !result.includes(faden))
       })
     },
     lastimage: function(user, params, meta) {
@@ -466,135 +323,6 @@ module.exports = {
     },
     hintergrund: logoHintergrund,
     logo: logoHintergrund,
-    lauer: function(user, params, meta) {
-      const siteurl = 'https://kohlchan.net'
-      const url = params.match(/^https:\/\/(?:www.)?kohlchan\.net\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
-      if (!url) return this.sendMessage('Lauere nur auf KC!')
-      const board = url[1]
-      const thread = url[2]
-      const postid = url[3] || thread
-      this.fetch(siteurl + '/' + board + '/res/' + thread + '.json', {
-        json: true
-      }).then(body => {
-        const post = (body.threadId == postid) ? body : body.posts.find(posts => posts.postId == postid)
-        if (!post) return this.sendMessage('Pfosten nicht gefunden')
-        if (post.subject && !/ pics$/.test(params)) this.sendByFilter('<span class="lauersubject">' + post.subject + '<span>', true)
-        if (post.files.length > 0) {
-          let fileshtml = ''
-          post.files.forEach(file => {
-            const filehtml = imageHtml(siteurl + ((file.mime != 'image/gif' && file.thumb != '/spoiler.png') ? file.thumb : file.path), siteurl + file.path)
-            if ((fileshtml + filehtml).length < 1000) fileshtml += filehtml
-          })
-          this.sendByFilter(fileshtml, true)
-        }
-        if (post.markdown && !/ pics$/.test(params)) {
-          const text = post.markdown.replace(/((?:href)|(?:src))="\//g, '$1="' + siteurl + '/').replace(/class="greenText"/g, 'class="greentext"')
-          this.sendByFilter((post.flag ? imageHtml(siteurl + post.flag) : '') + text, true)
-        }
-      })
-    },
-    wiki: function(user, params, meta) {
-      this.fetch('https://de.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(params), {
-        json: true,
-        customerr: [404]
-      }).then(body => {
-        if (body === 404) return this.sendMessage('Keine Ergebnisse /elo')
-        this.sendMessage(body.content_urls.desktop.page)
-        this.sendByFilter('<div class="wikiinfo">' + (body.thumbnail ? `<img class="fikuimage" src="${body.thumbnail.source}" />` : '') + body.extract_html + '</div>', true)
-      })
-    },
-    pic: function(user, params, meta) {
-      const url = validUrl.isHttpsUri(params.split(' ').shift())
-      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      if (/https:\/\/(?:www\.)?instagram\.com\/p\/[\w-]+\/?/i.test(url)) this.fetch(url + '?__a=1', {
-        json: true
-      }).then(body => {
-        const image = body.graphql && body.graphql.shortcode_media && body.graphql.shortcode_media.display_url
-        if (image) this.addLastImage(image).then(image => {
-          this.sendMessage(image + '.pic')
-        })
-      })
-    },
-    anagramde: function(user, params, meta) {
-      const text = params.toLowerCase().trim()
-      if (text.length > 17) this.sendMessage('Nur 17 Zeichen /elo')
-      this.fetch('http://www.sibiller.de/anagramme/cgi-bin/CallWP.cgi', {
-        method: 'post',
-        form: {
-          text,
-          anz: 5,
-          max: 12,
-          min: 2,
-          typ: 1
-        }, json: false
-      }).then(body => {
-        let regMatch = body.match(/     1\.  ([^\n]+)/i)
-        if (!regMatch) return this.sendMessage('Keine Ergebnisse /elo')
-        let anagram = regMatch[1].toLowerCase()
-        if (anagram === text) {
-          regMatch = body.match(/     2\.  ([^\n]+)/i)
-          if (!regMatch) return this.sendMessage('Keine Ergebnisse /elo')
-          anagram = regMatch[1].toLowerCase()
-        }
-        this.sendMessage(anagram.charAt(0).toUpperCase() + anagram.slice(1))
-      })
-    },
-    waskochen: function(user, params, meta) {
-      params = params.replace(/;/g, ',').split(',').map(param => param.trim()).join(',')
-      .replace(/ö/g, 'o')
-      .replace(/ä/g, 'a')
-      .replace(/ü/g, 'u')
-      .replace(/ß/g, 'ss')
-      this.fetch('https://serve.restegourmet.de/search/', {
-        method: 'post',
-        json: {
-          request_doc: {
-            rg_wp_url: '/rezeptsuche/_/' + params + '/_/'
-          }
-        },
-        getprop: 'recipes',
-        getlist: 'items',
-        getrandom: true
-      }).then(body => {
-        body = body._source
-        this.sendMessage(body.url)
-        this.sendByFilter('<div class="wikiinfo">' + ((body.images && body.images[0].url_external) ? `<img class="fikuimage" src="${body.images[0].url_external}" />` : '') +
-        'Zutaten: ' + body.ingredients.map(row => row.name).join(', ') + '<br><br>' + 'Tags: ' + body.tags_channelized.join(', ')  + '</div>', true)
-      })
-    },
-    wetter: function(user, params, meta) {
-      this.fetch('http://api.openweathermap.org/data/2.5/weather', {
-        qs: {
-          APPID: this.API.keys.openweather,
-          q: params,
-          lang: 'de',
-          units: 'metric'
-        }, json: true
-      }).then(body => {
-        this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
-      })
-    },
-    kinox: function(user, params, meta) {
-      this.fetch('https://kinox.su/', {
-        method: (params.length > 0) ? 'post' : 'get',
-        qs: (params.length > 0) ? {
-          do: 'search',
-          subaction: 'search',
-          story: params
-        } : {},
-        json: false,
-        match: (params.length > 0) ? /<span class="plovkaz"><a href="([^"]+)">([^<]+)/ :
-        /<div class="carousel_box"><a href="([^"]+)" class="thumbnail"  title="([^"]+)"/
-      }).then(match => {
-        this.fetch(match[1], {
-          json: false,
-          match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-        }).then(match => {
-          this.sendMessage(match[1] + '; ' + match[2])
-          this.commands.handlers.fikuinfo.call(this, user, match[1], meta)
-        })
-      })
-    },
     help: function(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
         (params === 'add' ? this.API.add.allowedHostsString : '') +
@@ -603,7 +331,215 @@ module.exports = {
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))
       }
     },
-    helpdata: require('./help.js')
+    helpdata: require('./help.js'),
+    meta: {
+      active: true,
+      type: 'giggle'
+    },
+    giggle: function(ponk){
+      return new Promise((resolve, reject) => {
+        Object.assign(ponk, {
+          checkMessageTrigger: function(user, message) {
+            if (![
+              ponk.name,
+              '[server]',
+              'Kommandant'
+            ].includes(user)) {
+              let match
+              let regex = /(?<=^|\s)(\/[a-zA-Z0-9ßäöüÄÖÜ]+)(?=\s|$)/g
+              const emotes = {}
+              while (match = regex.exec(message)) {
+                const emote = ponk.emotes.find(emote => emote.name == match[1])
+                if (!emote) continue
+                if (!emotes[emote.name]) emotes[emote.name] = 1
+                else emotes[emote.name]++
+              }
+              Object.keys(emotes).forEach(emote => {
+                const count = emotes[emote]
+                ponk.db.knex('emotes').insert({ emote, count, lastuser: user}).catch(() => {
+                  return ponk.db.knex('emotes').where({ emote }).increment({ count }).update({ lastuser: user })
+                }).then(() => {
+                  //ponk.logger.log('Emote used: ' + emote + ' ' + count + ' times by ' + user)
+                })
+              })
+              regex = /<img class="image-embed-small" src="(https?:\/\/[^"]+)" \/>/g
+              while (match = regex.exec(message)) {
+                ponk.addLastImage(match[1])
+              }
+              if (message.match(new RegExp('^' + ponk.name + '|[^!.$/]' + ponk.name))) {
+                const quotes = [
+                  'Hiiiiiiii',
+                  'jaaaah?',
+                  'ja morgen',
+                  'w-was?',
+                  'lass mich',
+                  'hihi',
+                  'iiich?'
+                ]
+                if (user === 'melli17') ponk.sendMessage('/knuddeln')
+                else ponk.sendMessage(quotes[Math.floor(Math.random() * quotes.length)])
+              }
+            }
+          },
+          pushToGit: function(filename, content, encoding) {
+            if (count > 0) return waiting.push(arguments)
+            count++
+            const gitObj = { commit_message: 'updated' }
+            if (encoding) gitObj.encoding = encoding
+            const gitArr = [gitrepo, filename, 'master', content, gitObj.commit_message, gitObj]
+            return new Promise((resolve, reject) => {
+              gitclient.RepositoryFiles.edit(...gitArr).then(result => {
+                count--
+                if (waiting.length) ponk.pushToGit(...waiting.shift())
+                resolve()
+              }).catch(err => {
+                if (err.response && err.response.status == 400 && err.description === 'A file with ponk name doesn\'t exist') {
+                  const gitArr = [gitrepo, filename, 'master', content, 'created', gitObj]
+                  gitObj.commit_message = 'created'
+                  gitclient.RepositoryFiles.create(...gitArr).then(result => {
+                    count--
+                    if (waiting.length) ponk.pushToGit(...waiting.shift())
+                    resolve()
+                  }).catch(err => {
+                    console.error(err)
+                  })
+                }
+                else console.error(err)
+              })
+            })
+          },
+          createEmoteCSS: function() {
+            return new Promise((resolve, reject) => ponk.db.knex('emotes').whereNotNull('width').orWhereNotNull('height').select('emote', 'width', 'height').then(sizes => {
+              ponk.emoteCSS = sizes.filter(size => (((size.width > 0) && (size.width != 100)) || ((size.height > 0) && (size.height != 100)))).map(size => {
+                return '.channel-emote[title="' + size.emote + '"] {\r\n' +
+                ((size.width > 0) && (size.width != 100) ? ('  max-width: ' + ((size.width < 999) ? (size.width + 'px') : '100%') + ' !important;\r\n') : '') +
+                ((size.height > 0) && (size.height != 100) ? ('  max-height: ' + ((size.height < 999) ? (size.height + 'px') : '100%') + ' !important;\r\n') : '') +
+                '}'
+              }).join('\r\n')
+              resolve()
+            }))
+          },
+          addLastImage: function(image) {
+            return new Promise((resolve, reject) => {
+              if (image === lastImages[0]) return resolve(image)
+              lastImages.unshift(image)
+              ponk.db.knex('lastimage').insert({ image }).then(() => {
+                //ponk.logger.log('Image posted: ' + image)
+                resolve(image)
+              }, error => {
+                ponk.logger.error('Unexpected error', '\n', error);
+                resolve(image)
+              })
+            })
+          },
+          getLastImage: function(back) {
+            if (!back) back = 0
+            return new Promise(resolve => {
+              if (lastImages.length > back + 1) return resolve(lastImages[back])
+              ponk.db.knex('lastimage')
+              .select('image').limit(back + 1).orderBy('id', 'desc').then(result => {
+                if (result.length > back) {
+                  lastImages = result.map(row => row.image)
+                  resolve(lastImages[back])
+                }
+              }, err => resolve(ponk.sendMessage('fehler')))
+            })
+          },
+          rehostUrl: function(url, host = ponk.API.keys.imagehost) {
+            return new Promise((resolve, reject) => {
+              request({
+                url,
+                encoding: null
+              }, (err, res, body) => {
+                if (err || res.statusCode !== 200) return reject(err, 'download failed')
+                const contentType = res.headers['content-type'] || 'image/jpeg'
+                let ext = contentType.split('/').pop()
+                if (ext === 'jpeg') ext = 'jpg'
+                request.post({
+                  url: host,
+                  formData: {
+                    file: {
+                      value: body,
+                      options: {
+                        filename: 'image.' + ext,
+                        contentType
+                      }
+                    },
+                    format: 'json'
+                  }, json: true
+                }, (err, res, body) => {
+                  if (err || res.statusCode !== 200) return reject(err, 'upload failed')
+                  if (!body.msg || !body.msg.short) return reject(body, 'parsing error')
+                  const image = host + body.msg.short
+                  ponk.addLastImage(image).then(image => {
+                    resolve(image)
+                  })
+                })
+              })
+            })
+          },
+          sendByFilter: function(message, force) {
+            if (!ponk.meeseeks('filteredit')) {
+              if (force) return ponk.sendMessage('Für diese Funktion muss ich Filter erstellen dürfen')
+              return ponk.sendMessage(message)
+            }
+            if (message.length < 320 && !force) return ponk.sendMessage(message)
+            const limit = 1000
+            const count = Math.ceil(message.length / limit)
+            for (let i = 0; i < count; i++) {
+              const filterstring = '###' + Math.random().toString(36).slice(2) + '###'
+              ponk.client.socket.emit('updateFilter', {
+                name: 'Bot filter',
+                source: filterstring,
+                replace: message.substr(i * limit, limit),
+                flags: '',
+                active: true
+              })
+              ponk.sendMessage(filterstring)
+              ponk.client.socket.emit('updateFilter', {
+                name: 'Bot filter',
+                source: '',
+                replace: '',
+                flags: ''
+              })
+            }
+          },
+          pollAction: function(poll, callback) {
+            if(!ponk.meeseeks('pollctl')){
+              return ponk.sendPrivate(`I lack ponk capability due to channel permission settings.`, user)
+            }
+            ponk.client.createPoll(poll)
+            ponk.client.once('newPoll', () => {
+              let timeout = false
+              if (poll.timeout && poll.timeout > 10) {
+                timeout = setTimeout(() => {
+                  ponk.sendMessage('Noch 10 Sekunden Zeit abzustimmen.', { ignoremute: true })
+                }, (poll.timeout - 10) * 1000)
+              }
+              ponk.client.once('closePoll', () => {
+                timeout && clearTimeout(timeout)
+                if (callback && typeof(callback) === 'function') {
+                  callback(ponk.pollvotes)
+                }
+              })
+            })
+          },
+          addNetzm: function(id, willkür, user, type = 'fi', title, url) {
+            let pos = 'end'
+            if (ponk.getUserRank(user) < 3 ) {
+              if (ponk.chanopts.playlist_max_per_user && ponk.playlist.filter(item => item.queueby == user).length > ponk.chanopts.playlist_max_per_user) {
+                return ponk.sendMessage('Addierlimit erreicht')
+              }
+            }
+            else if (willkür) pos = 'next'
+            ponk.mediaSend({ type, id, pos, title })
+          }
+        })
+        ponk.createEmoteCSS()
+        ponk.logger.log('Registering custom handlers');
+        resolve();
+      })
+    }
   }
   function cssReplace(command, addCSS) {
     let css = this.channelCSS

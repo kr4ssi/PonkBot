@@ -69,16 +69,7 @@ class addCustom {
           'archive.org': {},
           'ccc.de': {},
           'bitchute.com': {},
-          'kinox.su': {
-            custom(url, title, meta) {
-              this.bot.fetch(url, {
-                json: false,
-                match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-              }).then(match => {
-                this.add(match[2], title || match[1], meta)
-              })
-            }
-          },
+          ...needManifest,
           'nxload.com': {
             custom(url, title, meta) {
               this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
@@ -90,7 +81,23 @@ class addCustom {
               })
             }
           },
-          ...needManifest
+          'kinox.su': {
+            custom(url, title, meta) {
+              this.bot.fetch(url, {
+                json: false,
+                match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+              }).then(match => {
+                this.add(match[2], title || match[1], meta)
+              })
+            }
+          },
+          '.m3u8-links': {
+            regex: /.*\.m3u8$/,
+            custom(url, title, meta) {
+              const manifest = this.manifest(title, url)
+              this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
+            }
+          }
         }).map(([name, rules]) => Object.assign({
           name,
           regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
@@ -308,10 +315,7 @@ class addCustom {
   }
 
   add (url, title, meta) {
-    let host = {}
-    const manifest = this.manifest(title, url)
-    if (/.*\.m3u8$/.test(url)) return this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
-    host = this.hostAllowed(url)
+    const host = this.hostAllowed(url)
     if (host) return (typeof host.custom === 'function') ? host.custom.call(this, ...arguments) :
     execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
@@ -320,6 +324,7 @@ class addCustom {
         this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
         return console.error(err)
       }
+      const manifest = this.manifest(title, url)
       let data = stdout.trim().split(/\r?\n/)
       let info
       try {
