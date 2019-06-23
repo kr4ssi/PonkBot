@@ -111,7 +111,7 @@ module.exports = {
             if (winner[0] === 'Partei') return this.sendMessage('Partei!')
             this.API.fiku.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
               this.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
-              this.API.add.add(url, title + ' (ID: ' + id + ')', { user, willkür: true, fiku: true })
+              this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
             })
           })
         }
@@ -151,7 +151,7 @@ module.exports = {
     },
     fikuadd: function(user, params, meta) {
       this.API.fiku.getFiku(params).then(({ url, title, id, user }) => {
-        this.API.add.add(url, title + ' (ID: ' + id + ')', { user, willkür: true, fiku: true })
+        this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
       })
     },
     fikuelfe: function(user, params, meta) {
