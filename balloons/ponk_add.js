@@ -98,8 +98,13 @@ class addCustom {
       const Watcher = require('rss-watcher')
       const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
       watcher.on('new article', article => {
-        this.bot.sendMessage(article.title + ' addiert')
-        this.add(article.link, undefined, {fiku: true})
+        this.bot.db.getKeyValue('newfeed').then(newfeed => {
+          console.log(newfeed, article, article.pubdate, article.title)
+          if (article.pubdate === newfeed) return
+          this.bot.sendMessage(article.title + ' addiert')
+          this.add(article.link, undefined, {fiku: true})
+          this.bot.db.setKeyValue('newfeed', article.pubdate)
+        })
       }).on('error', err => {
         console.error(err)
       }).run((err, articles) => {
@@ -289,19 +294,19 @@ class addCustom {
 
   kinoX(url, title, meta) {
     this.bot.fetch(url, {
+      json: false,
       match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
     }).then(match => {
       this.add(match[2], title || match[1], meta)
     })
   }
-  
+
   nxLoad(url, title, meta) {
     this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
       json: false,
       match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
     }).then(match => {
       const manifest = this.manifest(title || match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
-      manifest.sources[0].contentType = 'video/mp4'
       this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
     })
   }
@@ -311,8 +316,8 @@ class addCustom {
     const manifest = this.manifest(title, url)
     if (/.*\.m3u8$/.test(url)) return this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
     host = this.hostAllowed(url)
-    if (host && typeof host.exec === 'function') return host.exec.call(this, ...arguments)
-    if (host) return execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+    if (host) return (typeof host.exec === 'function') ? host.exec.call(this, ...arguments) :
+    execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
       maxBuffer: 10485760
     }, (err, stdout, stderr) => {
       if (err) {
