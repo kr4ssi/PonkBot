@@ -32,14 +32,14 @@ module.exports = {
               url, qs, form, method, json: match ? false : json
             }, (err, res, body) => {
               if (err) {
-                this.bot.sendMessage(err.message)
+                ponk.sendMessage(err.message)
                 console.error(err)
                 return
               }
               console.log(res.request.headers['User-Agent'])
               if (res.statusCode != 200) {
                 if (customerr.includes(res.statusCode)) return resolve(res.statusCode)
-                this.bot.sendMessage('Status: ' + res.statusCode)
+                ponk.sendMessage('Status: ' + res.statusCode)
                 console.error(body)
                 return
               }
@@ -47,15 +47,15 @@ module.exports = {
                 const regmatch = body.match(match)
                 if (regmatch) return resolve(regmatch)
                 console.error(body)
-                this.bot.sendMessage('Keine Ergebnisse /elo')
+                ponk.sendMessage('Keine Ergebnisse /elo')
                 return
               }
               if (getprop) {
-                if (!body[getprop]) return this.bot.sendMessage('Keine Ergebnisse /elo')
+                if (!body[getprop]) return ponk.sendMessage('Keine Ergebnisse /elo')
                 body = body[getprop]
               }
               if (getlist) {
-                if (!body[getlist] || body[getlist].length < 1) return this.bot.sendMessage('Keine Ergebnisse /elo')
+                if (!body[getlist] || body[getlist].length < 1) return ponk.sendMessage('Keine Ergebnisse /elo')
                 body = body[getlist]
                 if (getrandom) body = body[Math.floor(Math.random() * body.length)]
               }
