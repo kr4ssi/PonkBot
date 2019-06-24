@@ -333,7 +333,7 @@ module.exports = {
           units: 'metric'
         }, json: true
       }).then(body => {
-        this.sendByFilter(imageHtml('http://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
+        this.sendByFilter(imageHtml('https://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
       })
     },
     kinox: function(user, params, meta) {
