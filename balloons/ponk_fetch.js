@@ -46,7 +46,7 @@ module.exports = {
               if (match) {
                 const regmatch = body.match(match)
                 if (regmatch) return resolve(regmatch)
-                console.error(body)
+                //console.error(body)
                 ponk.sendMessage('Keine Ergebnisse /elo')
                 return
               }
