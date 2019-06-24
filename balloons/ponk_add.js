@@ -42,11 +42,29 @@ class addCustom {
         'openload.co': ydlRegEx['OpenloadIE'],
         'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
         'rapidvideo.com': {
-          regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/v\/([^/?#&])+/
+          regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/[ve]\/([^/?#&])+/,
+          custom: url => this.bot.fetch(url, {
+            match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
+          }).then(match => ({
+            manifest: this.manifest(match[1], match[2])
+          }))
         },
         'verystream.com': ydlRegEx['VerystreamIE']
       }
       const needManifest = {
+        '.m3u8-links': {
+          regex: /.*\.m3u8$/,
+          custom: url => ({
+            manifest: this.manifest('Kein Livestream', url)
+          })
+        },
+        'nxload.com': {
+          custom: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+          }).then(match => ({
+            manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
+          }))
+        },
         'twitter.com': {},
         'daserste.de': {},
         'zdf.de': {},
@@ -70,33 +88,13 @@ class addCustom {
           'ccc.de': {},
           'bitchute.com': {},
           ...needManifest,
-          'nxload.com': {
-            custom(url, title, meta) {
-              this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-                json: false,
-                match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
-              }).then(match => {
-                const manifest = this.manifest(title || match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
-                this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
-              })
-            }
-          },
           'kinox.su': {
-            custom(url, title, meta) {
-              this.bot.fetch(url, {
-                json: false,
-                match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-              }).then(match => {
-                this.add(match[2], title || match[1], meta)
-              })
-            }
-          },
-          '.m3u8-links': {
-            regex: /.*\.m3u8$/,
-            custom(url, title, meta) {
-              const manifest = this.manifest(title, url)
-              this.getDuration(manifest).then(manifest => this.sendManifest(manifest, url, meta))
-            }
+            custom: url => this.bot.fetch(url, {
+              match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+            }).then(match => ({
+              title: match[1],
+              add: match[2]
+            }))
           }
         }).map(([name, rules]) => Object.assign({
           name,
@@ -277,9 +275,8 @@ class addCustom {
     }
   }
 
-  getDuration(manifest, info = {}) {
+  getDuration({ manifest, info = {} }) {
     return new Promise((resolve, reject) => {
-      if (manifest.live || manifest.duration) return resolve(manifest)
       let tries = 0
       const tryToGetDuration = err => {
         if (err) {
@@ -306,7 +303,7 @@ class addCustom {
             return console.error(err)
           }
           console.log(info.format)
-          if (info.format && info.format.duration) resolve(Object.assign(manifest, { duration: parseFloat(info.format.duration) }))
+          if (info.format && info.format.duration) resolve(parseFloat(info.format.duration))
           else tryToGetDuration(info)
         })
       }
@@ -314,61 +311,83 @@ class addCustom {
     })
   }
 
-  add (url, title, meta) {
-    const host = this.hostAllowed(url)
-    if (host) return (typeof host.custom === 'function') ? host.custom.call(this, ...arguments) :
-    execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
-      maxBuffer: 10485760
-    }, (err, stdout, stderr) => {
-      if (err) {
-        this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
-        return console.error(err)
-      }
-      const manifest = this.manifest(title, url)
-      let data = stdout.trim().split(/\r?\n/)
-      let info
-      try {
-        info = data.map((rawData) => JSON.parse(rawData))
-      }
-      catch(err) {
-        return console.error(err)
-      }
-      if (!info.title) info = info[0];
-      console.log(info)
-      title = title || ((new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title))
-      if (!host.needManifest) return this.bot.addNetzm(info.url.replace(/^http:\/\//i, 'https://'), meta.addnext, meta.user, 'fi', title, url)
-      manifest.title = title
-      if (info.manifest_url) manifest.sources[0].url = info.manifest_url
-      else {
-        manifest.sources[0].url = info.url
-        manifest.sources[0].contentType = ([
-          {type: 'video/mp4', ext: ['.mp4']},
-          {type: 'video/webm', ext: ['.webm']},
-          {type: 'application/x-mpegURL', ext: ['.m3u8']},
-          {type: 'video/ogg', ext: ['.ogv']},
-          {type: 'application/dash+xml', ext: ['.mpd']},
-          {type: 'audio/aac', ext: ['.aac']},
-          {type: 'audio/ogg', ext: ['.ogg']},
-          {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-        ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
-      }
-      if (host.name === 'rapidvideo.com') {
-        manifest.title = manifest.title.replace(/^Generic/, 'Rapidvideo')
-        url = url.replace(/rapidvideo\.com\/e\//, 'rapidvideo.com/v/')
-      }
-      if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
-      if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
-      manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
-      manifest.duration = info.duration
-      this.getDuration(manifest, info).then(manifest => this.sendManifest(manifest, url, {
-        needUserScript: host.needUserScript,
-        ...meta
-      }))
+  ytdl(url, host) {
+    return new Promise((resolve, reject) => {
+      execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+        maxBuffer: 10485760
+      }, (err, stdout, stderr) => {
+        if (err) {
+          this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
+          return console.error(err)
+        }
+        let data = stdout.trim().split(/\r?\n/)
+        let info
+        try {
+          info = data.map((rawData) => JSON.parse(rawData))
+        }
+        catch(err) {
+          return console.error(err)
+        }
+        if (!info.title) info = info[0];
+        console.log(info)
+        const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
+        if (!host.needManifest) return resolve({
+          title,
+          url: info.url.replace(/^http:\/\//i, 'https://')
+        })
+        const manifest = this.manifest(title, url)
+        if (info.manifest_url) manifest.sources[0].url = info.manifest_url
+        else {
+          manifest.sources[0].url = info.url
+          manifest.sources[0].contentType = ([
+            {type: 'video/mp4', ext: ['.mp4']},
+            {type: 'video/webm', ext: ['.webm']},
+            {type: 'application/x-mpegURL', ext: ['.m3u8']},
+            {type: 'video/ogg', ext: ['.ogv']},
+            {type: 'application/dash+xml', ext: ['.mpd']},
+            {type: 'audio/aac', ext: ['.aac']},
+            {type: 'audio/ogg', ext: ['.ogg']},
+            {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+          ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
+        }
+        if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
+        if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
+        manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
+        manifest.duration = info.duration
+        return resolve({
+          manifest,
+          info
+        })
+      })
     })
-    if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
-    const media = parseLink(url)
-    if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
-    if (media.msg) this.bot.sendMessage(media.msg)
+  }
+
+  async add(url, title, meta) {
+    const host = this.hostAllowed(url)
+    if (host) {
+      let result
+      if (typeof host.custom === 'function') result = await host.custom.call(this, url)
+      else result = await this.ytdl(url, host)
+      if (result.add) this.add(result.add, title || result.title, meta)
+      else if (result.manifest) {
+        const manifest = result.manifest
+        if (!manifest.duration && !manifest.live) {
+          manifest.duration = await this.getDuration(result)
+        }
+        if (title) manifest.title = title
+        this.sendManifest(manifest, url, {
+          needUserScript: host.needUserScript,
+          ...meta
+        })
+      }
+      else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
+    }
+    else {
+      if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
+      const media = parseLink(url)
+      if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
+      if (media.msg) this.bot.sendMessage(media.msg)
+    }
   }
 
   hostAllowed(url) {

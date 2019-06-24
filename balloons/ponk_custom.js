@@ -520,16 +520,6 @@ module.exports = {
                 }
               })
             })
-          },
-          addNetzm: function(id, willkür, user, type = 'fi', title, url) {
-            let pos = 'end'
-            if (ponk.getUserRank(user) < 3 ) {
-              if (ponk.chanopts.playlist_max_per_user && ponk.playlist.filter(item => item.queueby == user).length > ponk.chanopts.playlist_max_per_user) {
-                return ponk.sendMessage('Addierlimit erreicht')
-              }
-            }
-            else if (willkür) pos = 'next'
-            ponk.mediaSend({ type, id, pos, title })
           }
         })
         ponk.createEmoteCSS()

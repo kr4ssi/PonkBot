@@ -19,7 +19,8 @@ module.exports = {
   },
   giggle: function(ponk){
     return new Promise((resolve, reject) => {
-      ponk.fetch = function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [] } = {}) {
+      Object.assign(ponk, {
+        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [] } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr)
             if ((getlist || getprop) && !json) return console.error('json must set to true')
@@ -28,7 +29,7 @@ module.exports = {
               headers: {
                 'User-Agent': (new UserAgent()).toString()
               },
-              url, qs, form, method, json
+              url, qs, form, method, json: match ? false : json
             }, (err, res, body) => {
               if (err) {
                 this.bot.sendMessage(err.message)
@@ -61,7 +62,18 @@ module.exports = {
               resolve(body)
             })
           })
+        },
+        addNetzm: function(id, willkür, user, type = 'fi', title, url) {
+          let pos = 'end'
+          if (ponk.getUserRank(user) < 3 ) {
+            if (ponk.chanopts.playlist_max_per_user && ponk.playlist.filter(item => item.queueby == user).length > ponk.chanopts.playlist_max_per_user) {
+              return ponk.sendMessage('Addierlimit erreicht')
+            }
+          }
+          else if (willkür) pos = 'next'
+          ponk.mediaSend({ type, id, pos, title })
         }
+      })
       ponk.logger.log('Registering fetch-handlers');
       resolve();
     })
