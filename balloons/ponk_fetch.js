@@ -325,7 +325,12 @@ module.exports = {
       })
     },
     wetter: function(user, params, meta) {
-      this.fetch('http://api.openweathermap.org/data/2.5/weather', {
+      let day = 0
+      params = params.replace(/ (morgen)|(übermorgen)$/, function() {
+        day = 1 + Array.from(arguments).slice(1).findIndex(arg => !!arg)
+        return ''
+      }).trim()
+      this.fetch('http://api.openweathermap.org/data/2.5/' + (day > 0 ? 'forecast' : 'weather'), {
         qs: {
           APPID: this.API.keys.openweather,
           q: params,
@@ -333,6 +338,7 @@ module.exports = {
           units: 'metric'
         }, json: true
       }).then(body => {
+        if (day > 0) body = body.list[day * 8]
         this.sendByFilter(imageHtml('https://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
       })
     },

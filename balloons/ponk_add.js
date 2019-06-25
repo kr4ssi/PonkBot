@@ -119,34 +119,53 @@ class addCustom {
   }
 
   setupUserScript() {
+    const allowedHosts = this.allowedHosts.filter(host => host.needUserScript)
     const userscript = require('fs').readFileSync('ks.user.js', {
       encoding: "utf-8"
     }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
     if (!userscript) throw new Error('Userscript broken');
 
     const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
-      include: this.allowedHosts.filter(host => host.needUserScript).map(host => host.regex).concat(header.include || [])
+      include: allowedHosts.map(host => host.regex).concat(header.include || [])
     }));
     const getScript = (config = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
       weblink: this.bot.server.weblink,
-    }, config)) + '\')' + userscript[2];
+      allowedHosts: allowedHosts.map(({ name, regex, groups }) => ({
+        name,
+        regex: regex.source,
+        groups
+      }))
+    }, config), undefined, 2) + '\')' + userscript[2];
 
-    this.userScripts.default = getHeader() + getScript();
-    this.userScripts.dontask = getHeader() + getScript({
-      dontAsk: true
-    });
-    this.userScripts.new = getHeader({
-      include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
-      grant: [
-        'GM_setValue', 'GM_getValue', 'unsafeWindow'
-      ]
-    }) + getScript({
-      useGetValue: true
-    });
-    this.userScripts.auto = getHeader() + getScript({
-      useSendMessage: true,
-      chan: this.bot.client.chan
-    })
+    this.userScripts = [{
+      filename: 'ks.user.js',
+      userscript: getHeader() + getScript(),
+      descr: ''
+    }, {
+      filename: 'ks.user.dontask.js',
+      userscript: getHeader() + getScript({
+        dontAsk: true
+      }),
+      descr: '(ODER ohne Abfrage)'
+    }, {
+      filename: 'ks.user.new.js',
+      userscript: getHeader({
+        include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
+        grant: [
+          'GM_setValue', 'GM_getValue', 'unsafeWindow'
+        ]
+      }) + getScript({
+        useGetValue: true
+      }),
+      descr: '(ODER neue Methode, ohne Umweg über den Server, aber mit zusätzlichen Berechtigungen, nach Installation muss der Synch neu ladiert werden)'
+    }, {
+      filename: 'ks.user.auto.js',
+      userscript: getHeader() + getScript({
+        useSendMessage: true,
+        chan: this.bot.client.chan
+      }),
+      descr: ''
+    }];
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
@@ -159,10 +178,8 @@ class addCustom {
       this.userscriptdate = parseDate(this.bot.started);
       this.bot.db.setKeyValue('userscriptts', this.bot.started);
       this.bot.db.setKeyValue('userscripthash', newuserscripthash);
-      Object.keys(this.userScripts).forEach((key) => {
-        let filename = 'ks.user.js';
-        if (key != 'default') filename = 'ks' + '.' + key + '.user.js';
-        this.bot.pushToGit(filename, this.userScripts[key])
+      this.userScripts.forEach(({ filename, userscript }) => {
+        this.bot.pushToGit(filename, userscript)
       })
     });
   }
@@ -172,13 +189,11 @@ class addCustom {
     const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
     watcher.on('new article', article => {
       this.bot.db.getKeyValue('newfeed').then(newfeed => {
-        newfeed = new Date(newfeed)
-        article.pubdate = new Date(article.pubdate)
-        console.log(newfeed, article, article.pubdate, article.title)
-        if (article.pubdate === newfeed) return
+        console.log(newfeed, article, article.link, article.title)
+        if (article.link === newfeed) return
         this.bot.sendMessage(article.title + ' addiert')
         this.add(article.link, undefined, {fiku: true})
-        this.bot.db.setKeyValue('newfeed', article.pubdate)
+        this.bot.db.setKeyValue('newfeed', article.link)
       })
     }).on('error', err => {
       console.error(err)
@@ -229,37 +244,11 @@ class addCustom {
       else res.redirect(empty);
     });
 
-    Object.keys(this.userScripts).forEach((key) => {
-      let filename = 'ks.user.js';
-      if (key != 'default') filename = 'ks' + '.' + key + '.user.js';
+    this.userScripts.forEach(({ filename, userscript }) => {
       this.bot.server.host.get('/' + filename, (req, res) => {
-        res.end(this.userScripts[key]);
-      })
-    })
-  }
-
-  sendManifest(manifest, url, {cache, addnext, user, needUserScript}) {
-    if (!cache) this.cmManifests[url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/').replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/')] = {
-      manifest,
-      //timestamp,
-      user: {}
-    }
-    if (needUserScript) {
-      manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
-      this.bot.client.createPoll({
-        title: manifest.title,
-        opts: [
-          'Geht nur mit Userscript',
-          this.bot.server.weblink + '/ks.user.js (update vom ' + this.userscriptdate + ')',
-          this.bot.server.weblink + '/ks.dontask.user.js (ODER ohne Abfrage)',
-          this.bot.server.weblink + '/ks.new.user.js (ODER neue Methode, ohne Umweg über den Server, aber mit zusätzlichen Berechtigungen, nach Installation muss der Synch neu ladiert werden)',
-          'dann ' + url + ' öffnen',
-          '(Ok klicken) und falls es schon läuft player neu laden'
-        ],
-        obscured: false
-      })
-    }
-    this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (needUserScript ? 'userscript&' : '') + 'url=' + url, addnext, user, 'cm', manifest.title)
+        res.end(userscript);
+      });
+    });
   }
 
   manifest(title = '', url = '') {
@@ -377,10 +366,25 @@ class addCustom {
           manifest.duration = await this.getDuration(result)
         }
         if (title) manifest.title = title
-        this.sendManifest(manifest, url, {
-          needUserScript: host.needUserScript,
-          ...meta
-        })
+        this.cmManifests[url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/').replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/')] = {
+          manifest,
+          //timestamp,
+          user: {}
+        }
+        if (host.needUserScript) {
+          manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
+          this.bot.client.createPoll({
+            title: manifest.title,
+            opts: [
+              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+              ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
+              'dann ' + url + ' öffnen',
+              '(Ok klicken) und falls es schon läuft player neu laden'
+            ],
+            obscured: false
+          })
+        }
+        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (host.needUserScript ? 'userscript&' : '') + 'url=' + url, meta.addnext, meta.user, 'cm', manifest.title)
       }
       else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
     }
