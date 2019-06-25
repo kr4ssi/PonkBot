@@ -142,13 +142,13 @@ class addCustom {
       userscript: getHeader() + getScript(),
       descr: ''
     }, {
-      filename: 'ks.user.dontask.js',
+      filename: 'ks.dontask.user.js',
       userscript: getHeader() + getScript({
         dontAsk: true
       }),
       descr: '(ODER ohne Abfrage)'
     }, {
-      filename: 'ks.user.new.js',
+      filename: 'ks.new.user.js',
       userscript: getHeader({
         include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
         grant: [
@@ -159,7 +159,7 @@ class addCustom {
       }),
       descr: '(ODER neue Methode, ohne Umweg über den Server, aber mit zusätzlichen Berechtigungen, nach Installation muss der Synch neu ladiert werden)'
     }, {
-      filename: 'ks.user.auto.js',
+      filename: 'ks.auto.user.js',
       userscript: getHeader() + getScript({
         useSendMessage: true,
         chan: this.bot.client.chan
@@ -171,7 +171,7 @@ class addCustom {
 
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
     else return this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-      const newuserscripthash = crypto.createHash('md5').update(this.userScripts.default).digest('hex');
+      const newuserscripthash = crypto.createHash('md5').update(this.userScripts).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
       });
