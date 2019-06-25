@@ -325,12 +325,13 @@ module.exports = {
       })
     },
     wetter: function(user, params, meta) {
-      let day = 0
-      params = params.replace(/ (morgen)|(übermorgen)$/, function() {
-        day = 1 + Array.from(arguments).slice(1).findIndex(arg => !!arg)
+      let day = -1
+      let min
+      params = params.replace(/ (heute)|(morgen)|(übermorgen)$/, function() {
+        day = Array.from(arguments).slice(1).findIndex(arg => !!arg)
         return ''
       }).trim()
-      this.fetch('http://api.openweathermap.org/data/2.5/' + (day > 0 ? 'forecast' : 'weather'), {
+      this.fetch('http://api.openweathermap.org/data/2.5/' + (day > -1 ? 'forecast' : 'weather'), {
         qs: {
           APPID: this.API.keys.openweather,
           q: params,
@@ -338,8 +339,19 @@ module.exports = {
           units: 'metric'
         }, json: true
       }).then(body => {
-        if (day > 0) body = body.list[day * 8]
+        if (day > -1) {
+          let rows = []
+          let curr = 0
+          body.list.forEach((row, i) => {
+            if (Number.isInteger(row.dt / 60 / 60 / 24) && i > 0) curr++
+            if (curr === day) rows.push(row)
+          })
+          console.log(rows)
+          body = rows.find(row => row.main.temp === Math.max(...rows.map(row => row.main.temp)))
+          min = rows.find(row => row.main.temp === Math.min(...rows.map(row => row.main.temp)))
+        }
         this.sendByFilter(imageHtml('https://openweathermap.org/img/w/' + body.weather[0].icon + '.png') + ' ' + body.weather[0].description + ' ' + body.main.temp + '°C', true)
+        if (min) this.sendByFilter(imageHtml('https://openweathermap.org/img/w/' + min.weather[0].icon + '.png') + ' ' + min.weather[0].description + ' ' + min.main.temp + '°C', true)
       })
     },
     kinox: function(user, params, meta) {
