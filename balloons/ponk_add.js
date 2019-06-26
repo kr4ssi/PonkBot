@@ -87,6 +87,7 @@ class addCustom {
           'archive.org': {},
           'ccc.de': {},
           'bitchute.com': {},
+          'prosieben.de': {},
           ...needManifest,
           'kinox.su': {
             custom: url => this.bot.fetch(url, {
