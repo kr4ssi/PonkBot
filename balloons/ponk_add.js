@@ -87,7 +87,7 @@ class addCustom {
           'archive.org': {},
           'ccc.de': {},
           'bitchute.com': {},
-          'prosieben.de': {},
+          'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
           ...needManifest,
           'kinox.su': {
             custom: url => this.bot.fetch(url, {
