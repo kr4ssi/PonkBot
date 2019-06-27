@@ -5,6 +5,7 @@
 
 'use strict';
 
+const request = require('request')
 const validUrl = require('valid-url')
 
 const Gitlab = require('gitlab').Gitlab
