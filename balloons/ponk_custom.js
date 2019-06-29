@@ -64,7 +64,7 @@ const lastCSS = {
 }
 
 function sendquote(user, params, meta) {
-  ponk.sendByFilter(quote(meta.command))
+  this.sendByFilter(quote(meta.command))
 }
 module.exports = {
   handlers: {
