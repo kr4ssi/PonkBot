@@ -130,13 +130,13 @@ class addCustom {
       include: allowedHosts.map(host => host.regex).concat(header.include || [])
     }));
     const getScript = (config = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
-      weblink: this.bot.server.weblink,
-      allowedHosts: allowedHosts.map(({ name, regex, groups }) => ({
-        name,
-        regex: regex.source,
-        groups
-      }))
-    }, config), undefined, 2) + '\')' + userscript[2];
+      weblink: this.bot.server.weblink//,
+      //allowedHosts: allowedHosts.map(({ name, regex, groups }) => ({
+      //  name,
+      //  regex: regex.source,
+      //  groups
+      //}))
+    }, config)) + '\')' + userscript[2];
 
     this.userScripts = [{
       filename: 'ks.user.js',
