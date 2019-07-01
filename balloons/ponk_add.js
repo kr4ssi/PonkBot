@@ -402,7 +402,7 @@ class addCustom {
     else {
       if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
       const media = parseLink(url)
-      if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: 'next', title })
+      if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: meta.addnext ? 'next' : 'end', title })
       if (media.msg) this.bot.sendMessage(media.msg)
     }
   }
