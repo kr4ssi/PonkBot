@@ -56,6 +56,7 @@ class addCustom {
           }).then(match => {
             const manifest = this.manifest(match[3], match[1])
             manifest.duration = parseInt(match[2])
+            manifest.sources[0].contentType = 'video/mp4'
             return {manifest}
           })
         },
