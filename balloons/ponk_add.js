@@ -49,7 +49,16 @@ class addCustom {
             manifest: this.manifest(match[1], match[2])
           }))
         },
-        'verystream.com': ydlRegEx['VerystreamIE']
+        'verystream.com': ydlRegEx['VerystreamIE'],
+        'vidoza.net': {
+          custom: url => this.bot.fetch(url, {
+            match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
+          }).then(match => {
+            const manifest = this.manifest(match[3], match[1])
+            manifest.duration = parseInt(match[2])
+            return {manifest}
+          })
+        },
       }
       const needManifest = {
         '.m3u8-links': {

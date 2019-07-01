@@ -7,7 +7,7 @@
 
 const config = {}
 
-const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
+const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?userscript&url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
 
 const includesRegExArr = GM_info.script.includes.map(include => new RegExp(include.replace(/^\/(.*)\/$/, '$1')))
 
@@ -41,6 +41,12 @@ const matchInclude = {
     return true
   },
   [GM_info.script.includes[4]]: () => {
+    const e = window.pData
+    if (!e) return
+    link = window.pData.sourcesCode[0].src
+    return true
+  },
+  [GM_info.script.includes[5]]: () => {
     const socket = unsafeWindow.socket
     if (!socket) return
     if (typeof socket.on !== 'function') return
