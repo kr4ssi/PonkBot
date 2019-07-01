@@ -41,8 +41,8 @@ class addCustom {
       const needUserScript = {
         'openload.co': ydlRegEx['OpenloadIE'],
         'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
-        'rapidvideo.com': {
-          regex: /https?:\/\/(?:www\.)?rapidvideo\.com\/[ve]\/([^/?#&])+/,
+        'rapidvideo.com, bitporno.com': {
+          regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
           custom: url => this.bot.fetch(url, {
             match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
           }).then(match => ({
