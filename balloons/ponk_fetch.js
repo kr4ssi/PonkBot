@@ -20,15 +20,15 @@ module.exports = {
   giggle: function(ponk){
     return new Promise((resolve, reject) => {
       Object.assign(ponk, {
-        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [] } = {}) {
+        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {} } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr)
             if ((getlist || getprop) && !json) return console.error('json must set to true')
             if (getrandom && !getlist) return console.error('getrandom from where')
             request({
-              headers: {
+              headers: Object.assign({
                 'User-Agent': (new UserAgent()).toString()
-              },
+              }, headers),
               url, qs, form, method, json: match ? false : json
             }, (err, res, body) => {
               if (err) {
@@ -373,6 +373,38 @@ module.exports = {
           this.sendMessage(match[1] + '; ' + match[2])
           this.commands.handlers.fikuinfo.call(this, user, match[1], meta)
         })
+      })
+    },
+    urban: function(user, params, meta) {
+      console.log(this.API.keys.rapidapi)
+
+      this.fetch('https://mashape-community-urban-dictionary.p.rapidapi.com/define', {
+        headers: {
+          'X-RapidAPI-Key' : this.API.keys.rapidapi,
+          'X-RapidAPI-Host': 'mashape-community-urban-dictionary.p.rapidapi.com'
+        },
+        qs: {
+          term: params
+        }, json: true,
+        getlist: 'list'
+      }).then(body => {
+        this.sendMessage(body[0].definition)
+      })
+    },
+    dict: function(user, params, meta) {
+      this.fetch('https://systran-systran-platform-for-language-processing-v1.p.rapidapi.com/translation/text/translate', {
+        headers: {
+          'X-RapidAPI-Key' : this.API.keys.rapidapi,
+          'X-RapidAPI-Host': 'systran-systran-platform-for-language-processing-v1.p.rapidapi.com'
+        },
+        qs: {
+          source: 'auto',
+          target: 'de',
+          input: params
+        }, json: true,
+        getlist: 'outputs'
+      }).then(body => {
+        this.sendMessage(body[0].output)
       })
     }
   }

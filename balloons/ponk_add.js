@@ -182,7 +182,7 @@ class addCustom {
 
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
     else return this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-      const newuserscripthash = crypto.createHash('md5').update(this.userScripts).digest('hex');
+      const newuserscripthash = crypto.createHash('md5').update(this.userScripts.toString()).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
       });
@@ -196,25 +196,6 @@ class addCustom {
   }
 
   setupServer() {
-    const Watcher = require('rss-watcher')
-    const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
-    watcher.on('new article', article => {
-      this.bot.db.getKeyValue('newfeed').then(newfeed => {
-        console.log(newfeed, article, article.link, article.title)
-        if (article.link === newfeed) return
-        this.bot.sendMessage(article.title + ' addiert')
-        this.add(article.link, undefined, {fiku: true})
-        this.bot.db.setKeyValue('newfeed', article.link)
-      })
-    }).on('error', err => {
-      console.error(err)
-    }).run((err, articles) => {
-      if (err) return console.error(err)
-      articles.forEach(article => {
-        //console.log(article)
-      })
-    })
-
     const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
 
     const fixurl = url => {

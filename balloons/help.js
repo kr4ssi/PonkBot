@@ -292,5 +292,13 @@ module.exports = {
   kinox: {
     synop: '',
     rank: 1
+  },
+  urban: {
+    synop: '',
+    rank: 1
+  },
+  dict: {
+    synop: '',
+    rank: 1
   }
 }

@@ -51,6 +51,7 @@ module.exports = {
     tmdb         : process.env.api_tmdb,
     gitlab       : process.env.api_gitlab,
     openweather  : process.env.api_openweather,
+    rapidapi     : process.env.api_rapidapi,
     gitrepo      : process.env.gitrepo,
     imagehost    : process.env.imagehost
   }
