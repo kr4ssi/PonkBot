@@ -109,7 +109,7 @@ class addCustom {
             }))
           },
           'kinox': {
-            regex: /https:\/\/kinox\..+\/Stream\/.+\.html/,
+            regex: /https:\/\/kinox\..+\/(?:Tipp|Stream\/.+)\.html/,
             custom: url => {
               const headers = {
                 'User-Agent': (new UserAgent()).toString()
