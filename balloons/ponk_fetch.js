@@ -7,6 +7,7 @@
 
 const request = require('request')
 const UserAgent = require('user-agents')
+const cloudscraper = require('cloudscraper')
 
 let w0bm = ''
 let pr0=''
@@ -20,12 +21,13 @@ module.exports = {
   giggle: function(ponk){
     return new Promise((resolve, reject) => {
       Object.assign(ponk, {
-        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {} } = {}) {
+        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false } = {}) {
           return new Promise((resolve, reject) => {
-            console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr)
+            console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr, headers, cloud)
             if ((getlist || getprop) && !json) return console.error('json must set to true')
             if (getrandom && !getlist) return console.error('getrandom from where')
-            request({
+            const r = cloud ? cloudscraper : request
+            r({
               headers: Object.assign({
                 'User-Agent': (new UserAgent()).toString()
               }, headers),
@@ -388,7 +390,7 @@ module.exports = {
         }, json: true,
         getlist: 'list'
       }).then(body => {
-        this.sendMessage(body[0].definition)
+        this.sendByFilter('<div class="wikiinfo">' + body[0].definition + '</div>', true)
       })
     },
     dict: function(user, params, meta) {

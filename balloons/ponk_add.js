@@ -17,6 +17,7 @@ const path = require('path')
 const crypto = require('crypto')
 const { execFile } = require('child_process')
 const { PythonShell } = require('python-shell')
+const UserAgent = require('user-agents')
 
 class addCustom {
   constructor(ponk){
@@ -106,6 +107,32 @@ class addCustom {
               title: match[1],
               add: match[2]
             }))
+          },
+          'kinox': {
+            regex: /https:\/\/kinox\..+\/Stream\/.+\.html/,
+            custom: url => {
+              const headers = {
+                'User-Agent': (new UserAgent()).toString()
+              }
+              return this.bot.fetch(url, {
+                headers,
+                cloud: true
+              }).then(body => {
+                const cheerio = require('cheerio')
+                const $ = cheerio.load(body)
+                const getmirror = 'https://' + URL.parse(url).hostname + '/aGET/Mirror/'
+                return Promise.all($('#HosterList').children().map(function() {
+                  return ponk.fetch(getmirror + this.attribs.rel, {
+                    headers,
+                    cloud: true,
+                    json: true
+                  }).then(host => 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1])
+                }).toArray()).then(hosts => ({
+                  add: hosts.find(host => this.hostAllowed(host)),
+                  title: (body.match(/<title>(.*) Stream/) || [])[1]
+                }))
+              })
+            }
           }
         }).map(([name, rules]) => Object.assign({
           name,

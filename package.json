@@ -23,6 +23,8 @@
   "homepage": "https://github.com/Xaekai/PonkBot#readme",
   "dependencies": {
     "chalk": "github:chalk/chalk",
+    "cheerio": "1.0.0-rc.3",
+    "cloudscraper": "4.1.2",
     "date-and-time": "latest",
     "dotenv": "latest",
     "express": "latest",
