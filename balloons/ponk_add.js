@@ -222,20 +222,20 @@ class addCustom {
     });
   }
 
+  fixurl(url) {
+    if (typeof url === 'undefined') return false;
+    url = decodeURIComponent(url).replace(/^http:\/\//i, 'https://');
+    url = validUrl.isHttpsUri(url);
+    if (!url) return false;
+    url = url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/');
+    return url.replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/');
+  }
+
   setupServer() {
     const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
-
-    const fixurl = url => {
-      if (typeof url === 'undefined') return false;
-      url = decodeURIComponent(url).replace(/^http:\/\//i, 'https://');
-      url = validUrl.isHttpsUri(url);
-      if (!url) return false;
-      url = url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/');
-      return url.replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/');
-    }
-
+    
     const userlink = (req, res) => {
-      const url = fixurl(req.query.url);
+      const url = this.fixurl(req.query.url);
       if (!url) return res.send('invalid url');
       if (!req.query.userlink) return res.send('invalid userlink');
       if (!this.userLinks[url]) this.userLinks[url] = {};
@@ -247,7 +247,7 @@ class addCustom {
 
     this.bot.server.host.get('/add.json', (req, res) => {
       if (req.query.userlink) return userlink(req, res);
-      const url = fixurl(req.query.url)
+      const url = this.fixurl(req.query.url)
       if (!url) return res.send('invalid url');
       const cmManifest = this.cmManifests[url];
       if (!cmManifest) return res.sendStatus(404);
@@ -256,7 +256,7 @@ class addCustom {
 
     this.bot.server.host.get('/redir', (req, res) => {
       const empty = 'https://ia801501.us.archive.org/0/items/youtube-yUUjeindT5U/VHS_simple_static_noise_-_Motion_background_loop_1-yUUjeindT5U.mp4';
-      const url = fixurl(req.query.url);
+      const url = this.fixurl(req.query.url);
       if (!url) return res.redirect(empty);
       const userLinks = this.userLinks[url];
       if (userLinks && userLinks[md5ip(req)]) res.redirect(userLinks[md5ip(req)]);
@@ -385,7 +385,7 @@ class addCustom {
           manifest.duration = await this.getDuration(result)
         }
         if (title) manifest.title = title
-        this.cmManifests[url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/').replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/')] = {
+        this.cmManifests[this.fixurl(url)] = {
           manifest,
           //timestamp,
           user: {}
