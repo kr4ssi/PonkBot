@@ -564,7 +564,7 @@ module.exports = {
       options = {
         Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
         Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
-        Sternenhintergrund: 'https://tinyimg.io/i/Z48nCKm.gif',
+        Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
         KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
         Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
         Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',

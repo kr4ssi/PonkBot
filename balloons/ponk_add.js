@@ -38,108 +38,8 @@ class addCustom {
       }
     }, (err, result) => {
       if (err) throw err.message
-      const ydlRegEx = Object.assign(...result)
-      const needUserScript = {
-        'openload.co': ydlRegEx['OpenloadIE'],
-        'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
-        'rapidvideo.com, bitporno.com': {
-          regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
-          custom: url => this.bot.fetch(url, {
-            match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-          }).then(match => ({
-            manifest: this.manifest(match[1], match[2])
-          }))
-        },
-        'verystream.com': ydlRegEx['VerystreamIE'],
-        'vidoza.net': {
-          custom: url => this.bot.fetch(url, {
-            match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
-          }).then(match => {
-            const manifest = this.manifest(match[3], match[1])
-            manifest.duration = parseInt(match[2])
-            manifest.sources[0].contentType = 'video/mp4';
-            return {manifest}
-          })
-        },
-      }
-      const needManifest = {
-        '.m3u8-links': {
-          regex: /.*\.m3u8$/,
-          custom: url => ({
-            manifest: this.manifest('Kein Livestream', url)
-          })
-        },
-        'nxload.com': {
-          custom: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
-          }).then(match => ({
-            manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
-          }))
-        },
-        'twitter.com': {},
-        'daserste.de': {},
-        'zdf.de': {},
-        'wdr.de': {},
-        'mdr.de': {},
-        'br.de': {},
-        'bild.de': {},
-        'watchbox.de': {},
-        ...needUserScript
-      }
       Object.assign(this, {
-        allowedHosts : Object.entries({
-          'liveleak.com': {},
-          'imgur.com': {},
-          'instagram.com': {},
-          'ndr.de': {},
-          'arte.tv': {},
-          'bandcamp.com': {},
-          'mixcloud.com': {},
-          'archive.org': {},
-          'ccc.de': {},
-          'bitchute.com': {},
-          'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
-          ...needManifest,
-          'kinox.su': {
-            custom: url => this.bot.fetch(url, {
-              match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-            }).then(match => ({
-              title: match[1],
-              add: match[2]
-            }))
-          },
-          'kinox.to': {
-            regex: /https:\/\/kino(?:s\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
-            custom: url => {
-              const headers = {
-                'User-Agent': (new UserAgent()).toString()
-              }
-              return this.bot.fetch(url, {
-                headers,
-                cloud: true
-              }).then(body => {
-                const cheerio = require('cheerio')
-                const $ = cheerio.load(body)
-                const getmirror = 'https://' + URL.parse(url).hostname + '/aGET/Mirror/'
-                return Promise.all($('#HosterList').children().map(function() {
-                  return ponk.fetch(getmirror + this.attribs.rel, {
-                    headers,
-                    cloud: true,
-                    json: true
-                  }).then(host => 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1])
-                }).toArray()).then(hosts => ({
-                  add: hosts.find(host => this.hostAllowed(host)),
-                  title: (body.match(/<title>(.*) Stream/) || [])[1]
-                }))
-              })
-            }
-          }
-        }).map(([name, rules]) => Object.assign({
-          name,
-          regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
-          needManifest: Object.keys(needManifest).includes(name),
-          needUserScript: Object.keys(needUserScript).includes(name)
-        }, rules || {})),
+        allowedHosts : this.setupRegex(Object.assign(...result)),
         //userMedia   : [],    // A list of added media
         cmManifests : {},    // Custom-json-manifests
         userLinks   : {},    // Userlinks for IP-Bound hosters
@@ -154,6 +54,110 @@ class addCustom {
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
       });
     });
+  }
+
+  setupRegex(ydlRegEx) {
+    const needUserScript = {
+      'openload.co': ydlRegEx['OpenloadIE'],
+      'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
+      'rapidvideo.com, bitporno.com': {
+        regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
+        custom: url => this.bot.fetch(url, {
+          match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
+        }).then(match => ({
+          manifest: this.manifest(match[1], match[2])
+        }))
+      },
+      'verystream.com': ydlRegEx['VerystreamIE'],
+      'vidoza.net': {
+        custom: url => this.bot.fetch(url, {
+          match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
+        }).then(match => {
+          const manifest = this.manifest(match[3], match[1])
+          manifest.duration = parseInt(match[2])
+          manifest.sources[0].contentType = 'video/mp4';
+          return {manifest}
+        })
+      },
+    }
+    const needManifest = {
+      '.m3u8-links': {
+        regex: /.*\.m3u8$/,
+        custom: url => ({
+          manifest: this.manifest('Kein Livestream', url)
+        })
+      },
+      'nxload.com': {
+        custom: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+          match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+        }).then(match => ({
+          manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
+        }))
+      },
+      'twitter.com': {},
+      'daserste.de': {},
+      'zdf.de': {},
+      'wdr.de': {},
+      'mdr.de': {},
+      'br.de': {},
+      'bild.de': {},
+      'watchbox.de': {},
+      ...needUserScript
+    }
+    return Object.entries({
+      'liveleak.com': {},
+      'imgur.com': {},
+      'instagram.com': {},
+      'ndr.de': {},
+      'arte.tv': {},
+      'bandcamp.com': {},
+      'mixcloud.com': {},
+      'archive.org': {},
+      'ccc.de': {},
+      'bitchute.com': {},
+      'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
+      'peertube': ydlRegEx['PeerTubeIE'],
+      ...needManifest,
+      'kinox.su': {
+        custom: url => this.bot.fetch(url, {
+          match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
+        }).then(match => ({
+          title: match[1],
+          add: match[2]
+        }))
+      },
+      'kinox.to': {
+        regex: /https:\/\/kino(?:s\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
+        custom: url => {
+          const headers = {
+            'User-Agent': (new UserAgent()).toString()
+          }
+          return this.bot.fetch(url, {
+            headers,
+            cloud: true
+          }).then(body => {
+            const cheerio = require('cheerio')
+            const $ = cheerio.load(body)
+            const getmirror = 'https://' + URL.parse(url).hostname + '/aGET/Mirror/'
+            return Promise.all($('#HosterList').children().map((i, e) => {
+              return this.bot.fetch(getmirror + e.attribs.rel, {
+                headers,
+                cloud: true,
+                json: true
+              }).then(host => 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1])
+            }).toArray()).then(hosts => ({
+              add: hosts.find(host => this.hostAllowed(host)),
+              title: (body.match(/<title>(.*) Stream/) || [])[1]
+            }))
+          })
+        }
+      }
+    }).map(([name, rules]) => Object.assign({
+      name,
+      regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
+      needManifest: Object.keys(needManifest).includes(name),
+      needUserScript: Object.keys(needUserScript).includes(name)
+    }, rules || {}))
   }
 
   setupUserScript() {
@@ -233,7 +237,7 @@ class addCustom {
 
   setupServer() {
     const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
-    
+
     const userlink = (req, res) => {
       const url = this.fixurl(req.query.url);
       if (!url) return res.send('invalid url');
@@ -440,7 +444,7 @@ module.exports = {
       if (url === 'regex') {
         const host = this.API.add.allowedHosts.find(host => host.name.includes(title))
         console.log(host)
-        if (host) this.sendMessage(JSON.stringify({
+        if (host) this.sendByFilter(JSON.stringify({
           ...host,
           regex: host.regex.source
         }))
