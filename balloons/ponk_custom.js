@@ -319,6 +319,39 @@ module.exports = {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
     },
+    aip: function(user, params, meta) {
+      const url = validUrl.isHttpsUri(params)
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      request({
+        url,
+        encoding: null
+      }, (err, res, body) => {
+        if (err || res.statusCode !== 200) {
+          console.error(err || statusCode)
+          return this.sendMessage('download failed')
+        }
+        const contentType = res.headers['content-type'] || 'image/jpeg'
+        let ext = contentType.split('/').pop()
+        if (ext === 'jpeg') ext = 'jpg'
+        request.post({
+          url: 'https://aiportraits.com/art-api/aiportrait/',
+          formData: {
+            file: {
+              value: body,
+              options: {
+                filename: 'image.' + ext,
+                contentType
+              }
+            }
+          }, json: true
+        }, (err, res, body) => {
+          if (err || res.statusCode !== 200) return reject(err, 'upload failed')
+          if (!body.filename) return this.sendMessage('parsing error')
+          console.log(body)
+          this.sendMessage('https://aiportraits.com/portraits/' + body.filename + '.pic')
+        })
+      })
+    },
     hintergrund: logoHintergrund,
     logo: logoHintergrund,
     help: function(user, params, meta) {

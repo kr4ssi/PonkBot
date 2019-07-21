@@ -300,5 +300,9 @@ module.exports = {
   dict: {
     synop: '',
     rank: 1
+  },
+  aip: {
+    synop: '',
+    rank: 1
   }
 }
