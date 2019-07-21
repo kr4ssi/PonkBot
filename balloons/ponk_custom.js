@@ -353,7 +353,9 @@ module.exports = {
           console.log(body)
           if (body.ERROR) return this.sendMessage(body.ERROR)
           if (!body.filename) return this.sendMessage('parsing error')
-          this.sendMessage('https://aiportraits.com/portraits/' + body.filename + '.pic')
+          this.addLastImage(body.filename).then(image => {
+            this.sendMessage('https://aiportraits.com/portraits/' + body.filename + '.pic')
+          })
         })
       })
     },
