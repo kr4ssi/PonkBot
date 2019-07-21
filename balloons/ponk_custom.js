@@ -319,9 +319,13 @@ module.exports = {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
     },
-    aip: function(user, params, meta) {
+    aip: async function(user, params, meta) {
+      if (!params || params.match(/^[1-9]$/)) params = await this.getLastImage(Number(params))
+      const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
+      if (emote) params = emote.image
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      console.log(params)
       request({
         url,
         encoding: null
@@ -346,8 +350,9 @@ module.exports = {
           }, json: true
         }, (err, res, body) => {
           if (err || res.statusCode !== 200) return reject(err, 'upload failed')
-          if (!body.filename) return this.sendMessage('parsing error')
           console.log(body)
+          if (body.ERROR) return this.sendMessage(body.ERROR)
+          if (!body.filename) return this.sendMessage('parsing error')
           this.sendMessage('https://aiportraits.com/portraits/' + body.filename + '.pic')
         })
       })
