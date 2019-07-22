@@ -349,7 +349,10 @@ module.exports = {
             }
           }, json: true
         }, (err, res, body) => {
-          if (err || res.statusCode !== 200) return reject(err, 'upload failed')
+          if (err || res.statusCode !== 200) {
+            console.error(err || res.statusCode)
+            return this.sendMessage('upload failed')
+          }
           console.log(body)
           if (body.ERROR) return this.sendMessage(body.ERROR)
           if (!body.filename) return this.sendMessage('parsing error')
