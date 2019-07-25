@@ -21,7 +21,7 @@ const UserAgent = require('user-agents')
 
 class addCustom {
   constructor(ponk){
-    PythonShell.run('../youtube-dl/youtube-dl_get-regex.py', {
+    PythonShell.run('./youtube-dl_get-regex.py', {
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
         regex = new RegExp(regex.replace(/^(?:\(\?\w+\))/, '').replace(/(?:\(\?P\<(\w+)\>)|(?:\(\?\((\w+)\))|(?:\(\?P=(\w+)\))/g, (match, p1, p2, p3) => {
@@ -327,7 +327,7 @@ class addCustom {
 
   ytdl(url, host) {
     return new Promise((resolve, reject) => {
-      execFile('../youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+      execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
         maxBuffer: 10485760
       }, (err, stdout, stderr) => {
         if (err) {
