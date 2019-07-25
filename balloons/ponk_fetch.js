@@ -8,6 +8,7 @@
 const request = require('request')
 const UserAgent = require('user-agents')
 const cloudscraper = require('cloudscraper')
+const validUrl = require('valid-url')
 
 let w0bm = ''
 let pr0=''
