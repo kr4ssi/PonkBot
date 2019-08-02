@@ -43,7 +43,7 @@
     "userscript-meta": "latest",
     "valid-url": "latest",
     "phantomjs-prebuilt": "latest",
-    "ffmpeg-static": "latest"
+    "ffprobe-static": "latest"
   },
   "optionalDependencies": {
     "mysql2": "latest",
