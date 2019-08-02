@@ -143,8 +143,9 @@ class addCustom {
               return this.bot.fetch(getmirror + e.attribs.rel, {
                 headers,
                 cloud: true,
-                json: true
-              }).then(host => 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1])
+                json: true,
+                getprop: 'Stream'
+              }).then(host => 'https://' + (host.match(/\/\/([^"]+?)"/) || [])[1])
             }).toArray()).then(hosts => ({
               add: hosts.find(host => this.hostAllowed(host)),
               title: (body.match(/<title>(.*) Stream/) || [])[1]
