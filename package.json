@@ -45,7 +45,8 @@
   },
   "optionalDependencies": {
     "mysql2": "latest",
-    "sqlite3": "latest"
+    "sqlite3": "latest",
+    "pg": "latest"
   },
   "scripts" : {
     "prestart" : "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || cd youtube-dl && git pull",
