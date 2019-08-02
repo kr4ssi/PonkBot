@@ -41,7 +41,9 @@
     "socket.io-client": "latest",
     "user-agents": "1.0.295",
     "userscript-meta": "latest",
-    "valid-url": "latest"
+    "valid-url": "latest",
+    "phantomjs-prebuilt": "latest",
+    "ffmpeg-static": "latest"
   },
   "optionalDependencies": {
     "mysql2": "latest",
