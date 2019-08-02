@@ -48,7 +48,7 @@
     "sqlite3": "latest"
   },
   "scripts" : {
-    "prestart" : "git clone https://github.com/ytdl-org/youtube-dl.git && make || cd youtube-dl && git pull",
+    "prestart" : "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || cd youtube-dl && git pull",
     "start" : "node service.js"
   }
 }
