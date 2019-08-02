@@ -41,7 +41,8 @@
     "socket.io-client": "latest",
     "user-agents": "1.0.295",
     "userscript-meta": "latest",
-    "valid-url": "latest"
+    "valid-url": "latest",
+    "phantomjs-prebuilt": "latest"
   },
   "optionalDependencies": {
     "mysql2": "latest",
@@ -49,7 +50,7 @@
     "pg": "latest"
   },
   "scripts" : {
-    "postinstall" : "git clone https://github.com/ytdl-org/youtube-dl.git && wget -qO- https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 | tar --strip=2 -xjvf - phantomjs-2.1.1-linux-x86_64/bin/phantomjs -C /app/bin/ && make --directory youtube-dl || echo",
+    "postinstall" : "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || echo",
     "prestart": "cd youtube-dl && git pull",
     "start" : "node service.js"
   }
