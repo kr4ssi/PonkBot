@@ -49,7 +49,7 @@
     "pg": "latest"
   },
   "scripts" : {
-    "postinstall" : "git clone https://github.com/ytdl-org/youtube-dl.git && cd youtube-dl && wget -qO- https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 | tar --strip=2 -xjvf - phantomjs-2.1.1-linux-x86_64/bin/phantomjs && make || echo",
+    "postinstall" : "git clone https://github.com/ytdl-org/youtube-dl.git && wget -qO- https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2 | tar --strip=2 -xjvf - phantomjs-2.1.1-linux-x86_64/bin/phantomjs -C /usr/local/share/ && make --directory youtube-dl || echo",
     "prestart": "cd youtube-dl && git pull",
     "start" : "node service.js"
   }
