@@ -67,3 +67,6 @@ dev-*
 # Not needed Files
 /_bak
 ponkbot.db
+
+# youtube-dl
+/youtube-dl

@@ -46,5 +46,9 @@
   "optionalDependencies": {
     "mysql2": "latest",
     "sqlite3": "latest"
+  },
+  "scripts" : {
+    "prestart" : "git clone https://github.com/ytdl-org/youtube-dl.git && make || cd youtube-dl && git pull",
+    "start" : "node service.js"
   }
 }
