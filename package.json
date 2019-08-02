@@ -42,8 +42,7 @@
     "user-agents": "1.0.295",
     "userscript-meta": "latest",
     "valid-url": "latest",
-    "phantomjs-prebuilt": "latest",
-    "ffprobe-static": "latest"
+    "phantomjs-prebuilt": "latest"
   },
   "optionalDependencies": {
     "mysql2": "latest",
