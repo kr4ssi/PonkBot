@@ -95,7 +95,7 @@ class addCustom {
         }))
       },
       'twitter.com': {},
-      'daserste.de': {},
+      'ARDMediathek': ydlRegEx['ARDMediathekIE'],
       'zdf.de': {},
       'wdr.de': {},
       'mdr.de': {},
