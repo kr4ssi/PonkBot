@@ -15,7 +15,7 @@ class autoAdd {
     const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=UCNqljVvVXoMv9T7dPTvg0JA')
     watcher.on('new article', article => {
       this.bot.db.getKeyValue('newfeed').then(newfeed => {
-        console.log(newfeed, article, article.link, article.title)
+        //console.log(newfeed, article, article.link, article.title)
         if (article.link === newfeed) return
         this.bot.sendMessage(article.title + ' addiert')
         this.bot.API.add.add(article.link, undefined, {fiku: true})

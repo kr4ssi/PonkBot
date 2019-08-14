@@ -8,6 +8,7 @@
 const request = require('request')
 const UserAgent = require('user-agents')
 const cloudscraper = require('cloudscraper')
+const cheerio = require('cheerio')
 const validUrl = require('valid-url')
 
 let w0bm = ''
@@ -22,9 +23,9 @@ module.exports = {
   giggle: function(ponk){
     return new Promise((resolve, reject) => {
       Object.assign(ponk, {
-        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false } = {}) {
+        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false, $ = false } = {}) {
           return new Promise((resolve, reject) => {
-            console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr, headers, cloud)
+            console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr, headers, cloud, $)
             if ((getlist || getprop) && !json) return console.error('json must set to true')
             if (getrandom && !getlist) return console.error('getrandom from where')
             const r = cloud ? cloudscraper : request
@@ -39,13 +40,14 @@ module.exports = {
                 console.error(err)
                 return
               }
-              console.log(res.request.headers['User-Agent'])
+              //console.log(res.request.headers['User-Agent'])
               if (res.statusCode != 200) {
                 if (customerr.includes(res.statusCode)) return resolve(res.statusCode)
                 ponk.sendMessage('Status: ' + res.statusCode)
                 console.error(body)
                 return
               }
+              if ($) return resolve(cheerio.load(body))
               if (match) {
                 const regmatch = body.match(match)
                 if (regmatch) return resolve(regmatch)

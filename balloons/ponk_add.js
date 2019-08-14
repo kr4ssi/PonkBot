@@ -80,6 +80,7 @@ class addCustom {
         })
       },
     }
+    let hosters = []
     const needManifest = {
       '.m3u8-links': {
         regex: /.*\.m3u8$/,
@@ -134,24 +135,34 @@ class addCustom {
           }
           return this.bot.fetch(url, {
             headers,
-            cloud: true
-          }).then(body => {
-            const cheerio = require('cheerio')
-            const $ = cheerio.load(body)
-            const getmirror = 'https://' + URL.parse(url).hostname + '/aGET/Mirror/'
-            return Promise.all($('#HosterList').children().map((i, e) => {
-              return this.bot.fetch(getmirror + e.attribs.rel, {
-                headers,
-                cloud: true,
-                json: true
-              }).then(host => {
-                if (!host.Stream) return console.error(host)
-                return 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+            cloud: true,
+            $: true
+          }).then($ => {
+            const mirror = Object.values({
+              'VeryStream': 'Hoster_85',
+              'OpenLoad.co': 'Hoster_67',
+              'Vidoza': 'Hoster_80',
+              'RapidVideo.com': 'Hoster_71',
+              'BitP': 'Hoster_75',
+              'StreamCherry': 'Hoster_82',
+              'Streamango.com': 'Hoster_72'
+            }).find(id => $('#' + id).length > 0)
+            if (!mirror) {
+              this.bot.sendMessage('Kein addierbarer Mirror gefunden')
+              return console.error($('#HosterList').children().toArray())
+            }
+            console.log($('#' + mirror).first())
+            return this.bot.fetch('https://' + URL.parse(url).hostname + '/aGET/Mirror/' + $('#' + mirror).attr('rel'), {
+              headers,
+              cloud: true,
+              json: true
+            }).then(host => {
+              if (!host.Stream) return console.error(host)
+              return ({
+                add: 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1],
+                title: ($('title').html().match(/^(.*) Stream/) || [])[1]
               })
-            }).toArray()).then(hosts => ({
-              add: hosts.find(host => this.hostAllowed(host)),
-              title: (body.match(/<title>(.*) Stream/) || [])[1]
-            }))
+            })
           })
         }
       }
@@ -306,7 +317,7 @@ class addCustom {
         let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
         if (info.http_headers) {
           const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
-          console.log(headers)
+          //console.log(headers)
           params = [...params, '-headers', headers]
         }
         execFile('ffprobe', [...params, manifest.sources[0].url], (err, stdout, stderr) => {
@@ -319,7 +330,7 @@ class addCustom {
           catch(err) {
             return console.error(err)
           }
-          console.log(info.format)
+          //console.log(info.format)
           if (info.format && info.format.duration) resolve(parseFloat(info.format.duration))
           else tryToGetDuration(info)
         })
@@ -346,7 +357,7 @@ class addCustom {
           return console.error(err)
         }
         if (!info.title) info = info[0];
-        console.log(info)
+        //console.log(info)
         const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
         if (!host.needManifest) return resolve({
           title,
@@ -385,6 +396,7 @@ class addCustom {
       let result
       if (typeof host.custom === 'function') result = await host.custom.call(this, url)
       else result = await this.ytdl(url, host)
+      if (!result) return
       if (result.add) this.add(result.add, title || result.title, meta)
       else if (result.manifest) {
         const manifest = result.manifest
