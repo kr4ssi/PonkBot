@@ -80,7 +80,6 @@ class addCustom {
         })
       },
     }
-    let hosters = []
     const needManifest = {
       '.m3u8-links': {
         regex: /.*\.m3u8$/,
@@ -390,12 +389,15 @@ class addCustom {
     })
   }
 
+  async getInfo(url, host) {
+    if (typeof host.custom === 'function') return host.custom.call(this, url)
+    else return this.ytdl(url, host)
+  }
+
   async add(url, title, meta) {
     const host = this.hostAllowed(url)
     if (host) {
-      let result
-      if (typeof host.custom === 'function') result = await host.custom.call(this, url)
-      else result = await this.ytdl(url, host)
+      const result = await this.getInfo(url, host)
       if (!result) return
       if (result.add) this.add(result.add, title || result.title, meta)
       else if (result.manifest) {

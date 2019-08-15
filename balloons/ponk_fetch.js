@@ -143,11 +143,11 @@ module.exports = {
       if (!w0bm) return [...Array(meta.repeat)].forEach((c, i) => this.fetch('https://w0bm.com/api/video/random', {
         json: true
       }).then(body => {
-        this.addNetzm('https://b.w0bm.com/' + body.file, meta.addnext, user)
+        this.addNetzm('https://w0bm.com/b/' + body.file, meta.addnext, user)
         if (meta.repeat === 1) this.sendMessage('Zufälliges netzm von w0bm.com addiert')
         else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige netzms von w0bm.com addiert')
       }))
-      this.addNetzm('https://b.w0bm.com/' + w0bm + '.webm', meta.addnext, user)
+      this.addNetzm('https://w0bm.com/b/' + w0bm + '.webm', meta.addnext, user)
       this.sendMessage('Letztes gif als netzm addiert')
       w0bm = false
     },
