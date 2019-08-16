@@ -289,10 +289,6 @@ module.exports = {
     synop: '',
     rank: 0
   },
-  kinox: {
-    synop: '',
-    rank: 1
-  },
   urban: {
     synop: '',
     rank: 1

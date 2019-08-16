@@ -39,14 +39,18 @@ class addCustom {
     }, (err, result) => {
       if (err) throw err.message
       Object.assign(this, {
-        allowedHosts : this.setupRegex(Object.assign(...result)),
+        allowedHosts : {},   // Addable Hosts
         //userMedia   : [],    // A list of added media
         cmManifests : {},    // Custom-json-manifests
         userLinks   : {},    // Userlinks for IP-Bound hosters
         userScripts : {},    // Different userscripts
         bot         : ponk   // The bot
       })
+      this.allowedHosts = this.setupRegex(Object.assign(...result))
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
+      this.kinoxHosts = Object.values(this.allowedHosts).filter((host) => {
+        return !!host.kinoxid
+      }).sort((a, b) => a.priority - b.priority)
       this.setupUserScript();
       this.setupServer();
       this.bot.client.on('queueFail', data => {
@@ -57,41 +61,77 @@ class addCustom {
   }
 
   setupRegex(ydlRegEx) {
-    const needUserScript = {
-      'openload.co': ydlRegEx['OpenloadIE'],
-      'streamango.com, fruithosts.net, streamcherry.com': ydlRegEx['StreamangoIE'],
-      'rapidvideo.com, bitporno.com': {
+    const custom = {
+      'rapidvideo.com': {
         regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
-        custom: url => this.bot.fetch(url, {
+        getInfo: url => this.bot.fetch(url, {
           match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
         }).then(match => ({
-          manifest: this.manifest(match[1], match[2])
-        }))
-      },
-      'verystream.com': ydlRegEx['VerystreamIE'],
+          manifest: this.manifest(match[1], match[2]),
+          info: {
+            webpage_url: url
+          },
+          host
+        })),
+        priority: 4
+      }
+    }
+    const needUserScript = {
+      'openload.co': Object.assign(ydlRegEx['OpenloadIE'], {
+        kinoxid: 'Hoster_67',
+        priority: 2
+      }),
+      'streamango.com, fruithosts.net': Object.assign(ydlRegEx['StreamangoIE'], {
+        kinoxid: 'Hoster_72',
+        priority: 5
+      }),
+      'streamcherry.com': Object.assign(ydlRegEx['StreamangoIE'], {
+        kinoxid: 'Hoster_82',
+        priority: 5
+      }),
+      'rapidvideo.com': Object.assign(custom['rapidvideo.com'], {
+        kinoxid: 'Hoster_71'
+      }),
+      'bitporno.com': Object.assign(custom['rapidvideo.com'], {
+        kinoxid: 'Hoster_75',
+      }),
+      'verystream.com': Object.assign(ydlRegEx['VerystreamIE'], {
+        kinoxid: 'Hoster_85',
+        priority: 1
+      }),
       'vidoza.net': {
-        custom: url => this.bot.fetch(url, {
+        getInfo: url => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
         }).then(match => {
           const manifest = this.manifest(match[3], match[1])
           manifest.duration = parseInt(match[2])
           manifest.sources[0].contentType = 'video/mp4';
-          return {manifest}
-        })
+          return {
+            manifest,
+            info: {
+              webpage_url: url
+            },
+            host
+          }
+        }),
+        kinoxid: 'Hoster_80',
+        priority: 3
       },
     }
     const needManifest = {
       '.m3u8-links': {
         regex: /.*\.m3u8$/,
-        custom: url => ({
-          manifest: this.manifest('Kein Livestream', url)
+        getInfo: url => ({
+          manifest: this.manifest('Kein Livestream', url),
+          host,
         })
       },
       'nxload.com': {
-        custom: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+        getInfo: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
           match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
         }).then(match => ({
-          manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8')
+          manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
+          host,
         }))
       },
       'twitter.com': {},
@@ -118,17 +158,9 @@ class addCustom {
       'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
       'peertube': ydlRegEx['PeerTubeIE'],
       ...needManifest,
-      'kinox.su': {
-        custom: url => this.bot.fetch(url, {
-          match: /<title>(.*) deutsch stream online anschauen KinoX[\s\S]+<iframe src="([^"]+)"/
-        }).then(match => ({
-          title: match[1],
-          add: match[2]
-        }))
-      },
       'kinox.to': {
         regex: /https:\/\/kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
-        custom: url => {
+        getInfo: url => {
           const headers = {
             'User-Agent': (new UserAgent()).toString()
           }
@@ -137,29 +169,26 @@ class addCustom {
             cloud: true,
             $: true
           }).then($ => {
-            const mirror = Object.values({
-              'VeryStream': 'Hoster_85',
-              'OpenLoad.co': 'Hoster_67',
-              'Vidoza': 'Hoster_80',
-              'RapidVideo.com': 'Hoster_71',
-              'BitP': 'Hoster_75',
-              'StreamCherry': 'Hoster_82',
-              'Streamango.com': 'Hoster_72'
-            }).find(id => $('#' + id).length > 0)
-            if (!mirror) {
+            const host = this.kinoxHosts.find(host => $('#' + host.kinoxid).length > 0)
+            if (!host) {
               this.bot.sendMessage('Kein addierbarer Mirror gefunden')
               return console.error($('#HosterList').children().toArray())
             }
-            console.log($('#' + mirror).first())
-            return this.bot.fetch('https://' + URL.parse(url).hostname + '/aGET/Mirror/' + $('#' + mirror).attr('rel'), {
+            console.log($('#' + host.kinoxid).first())
+            return this.bot.fetch('https://' + URL.parse(url).hostname + '/aGET/Mirror/' + $('#' + host.kinoxid).attr('rel'), {
               headers,
               cloud: true,
               json: true
-            }).then(host => {
-              if (!host.Stream) return console.error(host)
-              return ({
-                add: 'https://' + (host.Stream.match(/\/\/([^"]+?)"/) || [])[1],
-                title: ($('title').html().match(/^(.*) Stream/) || [])[1]
+            }).then(mirror => {
+              if (!mirror.Stream) return console.error(host)
+              return host.getInfo.call(this, 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1], host).then(result => {
+                return {
+                  manifest: Object.assign(result.manifest, {
+                    title: ($('title').html().match(/^(.*) Stream/) || [])[1]
+                  }),
+                  info: result.info,
+                  host: result.host
+                }
               })
             })
           })
@@ -169,7 +198,8 @@ class addCustom {
       name,
       regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
       needManifest: Object.keys(needManifest).includes(name),
-      needUserScript: Object.keys(needUserScript).includes(name)
+      needUserScript: Object.keys(needUserScript).includes(name),
+      getInfo: this.ytdl
     }, rules || {}))
   }
 
@@ -383,36 +413,31 @@ class addCustom {
         manifest.duration = info.duration
         return resolve({
           manifest,
-          info
+          info,
+          host
         })
       })
     })
   }
 
-  async getInfo(url, host) {
-    if (typeof host.custom === 'function') return host.custom.call(this, url)
-    else return this.ytdl(url, host)
-  }
-
   async add(url, title, meta) {
     const host = this.hostAllowed(url)
     if (host) {
-      const result = await this.getInfo(url, host)
+      const result = await host.getInfo.call(this, url, host)
       if (!result) return
-      if (result.add) this.add(result.add, title || result.title, meta)
       else if (result.manifest) {
         const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
         }
         if (title) manifest.title = title
-        this.cmManifests[this.fixurl(url)] = {
+        this.cmManifests[this.fixurl(result.info.webpage_url)] = {
           manifest,
           //timestamp,
           user: {}
         }
-        if (host.needUserScript) {
-          manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
+        if (result.host.needUserScript) {
+          manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
           this.bot.client.createPoll({
             title: manifest.title,
             opts: [
@@ -424,7 +449,8 @@ class addCustom {
             obscured: false
           })
         }
-        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (host.needUserScript ? 'userscript&' : '') + 'url=' + url, meta.addnext, meta.user, 'cm', manifest.title)
+        console.log(result.info)
+        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + url), meta.addnext, meta.user, 'cm', manifest.title)
       }
       else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
     }
