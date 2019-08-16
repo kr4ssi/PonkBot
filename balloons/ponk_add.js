@@ -443,7 +443,7 @@ class addCustom {
             opts: [
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
               ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
-              'dann ' + url + ' öffnen',
+              'dann ' + result.info.webpage_url + ' öffnen',
               '(Ok klicken) und falls es schon läuft player neu laden'
             ],
             obscured: false
