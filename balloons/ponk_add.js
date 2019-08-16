@@ -442,7 +442,7 @@ class addCustom {
     const host = this.hostAllowed(url)
     if (host) {
       const result = await host.getInfo.call(this, url, host)
-      //if (!result) return
+      if (!result) return
       if (result.manifest) {
         const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
