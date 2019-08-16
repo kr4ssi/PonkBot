@@ -18,6 +18,8 @@ const crypto = require('crypto')
 const { execFile } = require('child_process')
 const { PythonShell } = require('python-shell')
 const UserAgent = require('user-agents')
+const Entities = require('html-entities').AllHtmlEntities;
+const entities = new Entities();
 
 class addCustom {
   constructor(ponk){
@@ -77,28 +79,34 @@ class addCustom {
       }
     }
     const needUserScript = {
-      'openload.co': Object.assign(ydlRegEx['OpenloadIE'], {
+      'openload.co': {
+        ...ydlRegEx['OpenloadIE'],
         kinoxid: 'Hoster_67',
         priority: 2
-      }),
-      'streamango.com, fruithosts.net': Object.assign(ydlRegEx['StreamangoIE'], {
+      },
+      'streamango.com, fruithosts.net': {
+        ...ydlRegEx['StreamangoIE'],
         kinoxid: 'Hoster_72',
         priority: 5
-      }),
-      'streamcherry.com': Object.assign(ydlRegEx['StreamangoIE'], {
+      },
+      'streamcherry.com': {
+        ...ydlRegEx['StreamangoIE'],
         kinoxid: 'Hoster_82',
         priority: 5
-      }),
-      'rapidvideo.com': Object.assign(custom['rapidvideo.com'], {
+      },
+      'rapidvideo.com': {
+        ...custom['rapidvideo.com'],
         kinoxid: 'Hoster_71'
-      }),
-      'bitporno.com': Object.assign(custom['rapidvideo.com'], {
+      },
+      'bitporno.com': {
+        ...custom['rapidvideo.com'],
         kinoxid: 'Hoster_75',
-      }),
-      'verystream.com': Object.assign(ydlRegEx['VerystreamIE'], {
+      },
+      'verystream.com': {
+        ...ydlRegEx['VerystreamIE'],
         kinoxid: 'Hoster_85',
         priority: 1
-      }),
+      },
       'vidoza.net': {
         getInfo: url => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
@@ -169,28 +177,38 @@ class addCustom {
             cloud: true,
             $: true
           }).then($ => {
-            const host = this.kinoxHosts.find(host => $('#' + host.kinoxid).length > 0)
-            if (!host) {
-              this.bot.sendMessage('Kein addierbarer Mirror gefunden')
-              return console.error($('#HosterList').children().toArray())
+            const hostname = 'https://' + URL.parse(url).hostname
+            //console.log($('.Grahpics'))
+            if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + hostname + $('.Grahpics a').attr('href'))
+            const mirrors = this.kinoxHosts.filter(host => $('#' + host.kinoxid).length > 0)
+            const title = entities.decode(($('title').html().match(/^(.*) Stream/) || [])[1])
+            const getInfo = () => {
+              const host = mirrors.shift()
+              if (!host) {
+                this.bot.sendMessage('Kein addierbarer Mirror gefunden')
+                return //console.error($('#HosterList').children().toArray())
+              }
+              //console.log($('#' + host.kinoxid).first())
+              return this.bot.fetch(hostname + '/aGET/Mirror/' + $('#' + host.kinoxid).attr('rel'), {
+                headers,
+                cloud: true,
+                json: true
+              }).then(mirror => {
+                if (!mirror.Stream) return console.error(host)
+                const mirrorurl = 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+                this.bot.sendMessage('Addiere Mirror: ' + mirrorurl)
+                return host.getInfo.call(this, mirrorurl, host).then(result => {
+                  return {
+                    manifest: Object.assign(result.manifest, {
+                      title
+                    }),
+                    info: result.info,
+                    host: result.host
+                  }
+                })
+              }).catch(getInfo)
             }
-            console.log($('#' + host.kinoxid).first())
-            return this.bot.fetch('https://' + URL.parse(url).hostname + '/aGET/Mirror/' + $('#' + host.kinoxid).attr('rel'), {
-              headers,
-              cloud: true,
-              json: true
-            }).then(mirror => {
-              if (!mirror.Stream) return console.error(host)
-              return host.getInfo.call(this, 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1], host).then(result => {
-                return {
-                  manifest: Object.assign(result.manifest, {
-                    title: ($('title').html().match(/^(.*) Stream/) || [])[1]
-                  }),
-                  info: result.info,
-                  host: result.host
-                }
-              })
-            })
+            return getInfo()
           })
         }
       }
@@ -375,7 +393,7 @@ class addCustom {
       }, (err, stdout, stderr) => {
         if (err) {
           this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
-          return console.error(err)
+          return reject(console.error(err))
         }
         let data = stdout.trim().split(/\r?\n/)
         let info
@@ -424,8 +442,8 @@ class addCustom {
     const host = this.hostAllowed(url)
     if (host) {
       const result = await host.getInfo.call(this, url, host)
-      if (!result) return
-      else if (result.manifest) {
+      //if (!result) return
+      if (result.manifest) {
         const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)

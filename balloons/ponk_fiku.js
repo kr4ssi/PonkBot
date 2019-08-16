@@ -118,11 +118,17 @@ module.exports = {
         fikuPoll(title, opts, timeout)
       })
     },
-    vorschlag: function(user, params, meta) {
+    vorschlag: async function(user, params, meta) {
       const split = params.trim().split(';')
       const url = validUrl.isHttpsUri(split.pop().trim())
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      const title = split.join().trim()
+      const host = this.API.add.hostAllowed(url)
+      let title
+      if (host && host.name === 'kinox.to') title = await this.fetch(url, {
+        cloud: true,
+        match: /<title>(.*) Stream/
+      }).then(body => body[1])
+      else title = split.join().trim()
       if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
       this.db.knex('fiku').insert({ title, url, user }).returning('id').then(result => {
         if (result.length > 0) {

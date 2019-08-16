@@ -4,7 +4,9 @@
   "description": "A chatbot for CyTube",
   "main": "service.js",
   "scripts": {
-    "test": "echo \"Notice: Tests coming soon.\" && exit 0"
+    "postinstall": "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || echo",
+    "prestart": "cd youtube-dl && git pull",
+    "start": "node service.js"
   },
   "repository": {
     "type": "git",
@@ -30,6 +32,7 @@
     "express": "latest",
     "forwarded": "latest",
     "gitlab": "latest",
+    "html-entities": "1.2.1",
     "i18n-iso-countries": "latest",
     "knex": "latest",
     "limiter": "latest",
@@ -47,10 +50,5 @@
     "mysql2": "latest",
     "sqlite3": "latest",
     "pg": "latest"
-  },
-  "scripts" : {
-    "postinstall" : "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || echo",
-    "prestart": "cd youtube-dl && git pull",
-    "start" : "node service.js"
   }
 }
