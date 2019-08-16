@@ -81,30 +81,30 @@ class addCustom {
     const needUserScript = {
       'openload.co': {
         ...ydlRegEx['OpenloadIE'],
-        kinoxid: 'Hoster_67',
+        kinoxid: '67',
         priority: 2
       },
       'streamango.com, fruithosts.net': {
         ...ydlRegEx['StreamangoIE'],
-        kinoxid: 'Hoster_72',
+        kinoxid: '72',
         priority: 5
       },
       'streamcherry.com': {
         ...ydlRegEx['StreamangoIE'],
-        kinoxid: 'Hoster_82',
+        kinoxid: '82',
         priority: 5
       },
       'rapidvideo.com': {
         ...custom['rapidvideo.com'],
-        kinoxid: 'Hoster_71'
+        kinoxid: '71'
       },
       'bitporno.com': {
         ...custom['rapidvideo.com'],
-        kinoxid: 'Hoster_75',
+        kinoxid: '75',
       },
       'verystream.com': {
         ...ydlRegEx['VerystreamIE'],
-        kinoxid: 'Hoster_85',
+        kinoxid: '85',
         priority: 1
       },
       'vidoza.net': {
@@ -122,7 +122,7 @@ class addCustom {
             host
           }
         }),
-        kinoxid: 'Hoster_80',
+        kinoxid: '80',
         priority: 3
       },
     }
@@ -180,35 +180,60 @@ class addCustom {
             const hostname = 'https://' + URL.parse(url).hostname
             //console.log($('.Grahpics'))
             if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + hostname + $('.Grahpics a').attr('href'))
-            const mirrors = this.kinoxHosts.filter(host => $('#' + host.kinoxid).length > 0)
+            const hosts = this.kinoxHosts.filter(host => $('#Hoster_' + host.kinoxid).length > 0)
             const title = entities.decode(($('title').html().match(/^(.*) Stream/) || [])[1])
-            const getInfo = () => {
-              const host = mirrors.shift()
+            const getHost = () => {
+              const host = hosts.shift()
               if (!host) {
-                this.bot.sendMessage('Kein addierbarer Mirror gefunden')
+                this.bot.sendMessage('Kein addierbarer Hoster gefunden')
                 return //console.error($('#HosterList').children().toArray())
               }
-              //console.log($('#' + host.kinoxid).first())
-              return this.bot.fetch(hostname + '/aGET/Mirror/' + $('#' + host.kinoxid).attr('rel'), {
+              //console.log($('#Hoster_' + host.kinoxid).first())
+              const hostdiv = $('#Hoster_' + host.kinoxid)
+              const data = hostdiv.children('.Data').text()
+              const match = data.match(/Mirror: (?:(\d+)\/(\d+))Vom: (\d\d\.\d\d\.\d{4})$/)
+              if (!match) return console.log(data)
+              let [, mirrorindex, mirrorcount, date] = match
+              console.log(mirrorindex, mirrorcount, date)
+              const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
+              console.log(filename)
+              const getMirror = mirrorindex => this.bot.fetch(hostname + '/aGET/Mirror/' + filename, {
                 headers,
                 cloud: true,
-                json: true
+                json: true,
+                qs: {
+                  Hoster: host.kinoxid,
+                  Mirror: mirrorindex
+                }
+                //getprop: 'Stream',
+                //match: /\/\/([^"]+?)"/
               }).then(mirror => {
                 if (!mirror.Stream) return console.error(host)
                 const mirrorurl = 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1]
-                this.bot.sendMessage('Addiere Mirror: ' + mirrorurl)
+                let match
+                if (mirror.Replacement) {
+                  match = mirror.Replacement.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br \/><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
+                  if (!match) return console.log(mirror.Replacement)
+                  mirrorindex = match[1]
+                  date = match[3]
+                  console.log(mirrorindex, mirrorcount, date)
+                }
+                //const mirrorurl = 'https://' + mirror[1]
+                this.bot.sendMessage('Addiere Mirror' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
+                mirrorcount--
                 return host.getInfo.call(this, mirrorurl, host).then(result => {
                   return {
-                    manifest: Object.assign(result.manifest, {
+                    ...result,
+                    manifest: {
+                      ...result.manifest,
                       title
-                    }),
-                    info: result.info,
-                    host: result.host
+                    }
                   }
-                })
-              }).catch(getInfo)
+                }, () => (mirrorcount > 0) ? getMirror(mirrorcount) : getHost())
+              })
+              return getMirror(mirrorcount)
             }
-            return getInfo()
+            return getHost()
           })
         }
       }

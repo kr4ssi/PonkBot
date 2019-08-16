@@ -25,7 +25,7 @@ module.exports = {
       Object.assign(ponk, {
         fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false, $ = false } = {}) {
           return new Promise((resolve, reject) => {
-            console.log('Fetch:', url, qs, form, method, json, getprop, getlist, getrandom, customerr, headers, cloud, $)
+            console.log('Fetch:', ...arguments)
             if ((getlist || getprop) && !json) return console.error('json must set to true')
             if (getrandom && !getlist) return console.error('getrandom from where')
             const r = cloud ? cloudscraper : request
@@ -33,7 +33,7 @@ module.exports = {
               headers: Object.assign({
                 'User-Agent': (new UserAgent()).toString()
               }, headers),
-              url, qs, form, method, json: match ? false : json
+              url, qs, form, method, json//: match ? false : json
             }, (err, res, body) => {
               if (err) {
                 ponk.sendMessage(err.message)
@@ -47,14 +47,6 @@ module.exports = {
                 console.error(body)
                 return
               }
-              if ($) return resolve(cheerio.load(body))
-              if (match) {
-                const regmatch = body.match(match)
-                if (regmatch) return resolve(regmatch)
-                //console.error(body)
-                ponk.sendMessage('Keine Ergebnisse /elo')
-                return
-              }
               if (getprop) {
                 if (!body[getprop]) return ponk.sendMessage('Keine Ergebnisse /elo')
                 body = body[getprop]
@@ -64,7 +56,14 @@ module.exports = {
                 body = body[getlist]
                 if (getrandom) body = body[Math.floor(Math.random() * body.length)]
               }
-              resolve(body)
+              if (match) {
+                const regmatch = body.toString().match(match)
+                if (regmatch) return resolve(regmatch)
+                //console.error(body)
+                ponk.sendMessage('Keine Ergebnisse /elo')
+                return
+              }
+              resolve($ ? cheerio.load(body) : body)
             })
           })
         },
