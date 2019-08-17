@@ -92,7 +92,8 @@ class addCustom {
       'streamcherry.com': {
         ...ydlRegEx['StreamangoIE'],
         kinoxid: '82',
-        priority: 5
+        priority: 5,
+        dub: true
       },
       'rapidvideo.com': {
         ...custom['rapidvideo.com'],
@@ -101,6 +102,7 @@ class addCustom {
       'bitporno.com': {
         ...custom['rapidvideo.com'],
         kinoxid: '75',
+        dub: true
       },
       'verystream.com': {
         ...ydlRegEx['VerystreamIE'],
@@ -247,7 +249,7 @@ class addCustom {
   }
 
   setupUserScript() {
-    const allowedHosts = this.allowedHosts.filter(host => host.needUserScript)
+    let allowedHosts = this.allowedHosts.filter(host => host.needUserScript && !host.dub)
     const userscript = require('fs').readFileSync('ks.user.js', {
       encoding: "utf-8"
     }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
@@ -484,6 +486,7 @@ class addCustom {
           this.bot.client.createPoll({
             title: manifest.title,
             opts: [
+              result.info.webpage_url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
               ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
               'dann ' + result.info.webpage_url + ' öffnen',

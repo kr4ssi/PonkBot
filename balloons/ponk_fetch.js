@@ -280,6 +280,12 @@ module.exports = {
           this.sendMessage(image + '.pic')
         })
       })
+      if (/https:\/\/prnt\.sc\/(\w{6})/i.test(url)) this.fetch(url, {
+        //cloud: true,
+        $: true
+      }).then($ => {
+        this.sendMessage($('.screenshot-image').attr('src') + '.pic')
+      })
     },
     anagramde: function(user, params, meta) {
       const text = params.toLowerCase().trim()
