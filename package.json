@@ -42,6 +42,7 @@
     "rss-watcher": "1.4.0",
     "socket.io": "latest",
     "socket.io-client": "latest",
+    "tosource": "1.0.0",
     "user-agents": "1.0.295",
     "userscript-meta": "latest",
     "valid-url": "latest"

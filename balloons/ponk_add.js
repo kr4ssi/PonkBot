@@ -20,6 +20,7 @@ const { PythonShell } = require('python-shell')
 const UserAgent = require('user-agents')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
+const toSource = require('tosource')
 
 class addCustom {
   constructor(ponk){
@@ -50,9 +51,6 @@ class addCustom {
       })
       this.allowedHosts = this.setupRegex(Object.assign(...result))
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
-      this.kinoxHosts = Object.values(this.allowedHosts).filter((host) => {
-        return !!host.kinoxid
-      }).sort((a, b) => a.priority - b.priority)
       this.setupUserScript();
       this.setupServer();
       this.bot.client.on('queueFail', data => {
@@ -63,51 +61,32 @@ class addCustom {
   }
 
   setupRegex(ydlRegEx) {
-    const custom = {
-      'rapidvideo.com': {
-        regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
-        getInfo: url => this.bot.fetch(url, {
-          match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-        }).then(match => ({
-          manifest: this.manifest(match[1], match[2]),
-          info: {
-            webpage_url: url
-          },
-          host
-        })),
-        priority: 4
-      }
-    }
     const needUserScript = {
-      'openload.co': {
-        ...ydlRegEx['OpenloadIE'],
-        kinoxid: '67',
-        priority: 2
-      },
-      'streamango.com, fruithosts.net': {
-        ...ydlRegEx['StreamangoIE'],
-        kinoxid: '72',
-        priority: 5
-      },
-      'streamcherry.com': {
-        ...ydlRegEx['StreamangoIE'],
-        kinoxid: '82',
-        priority: 5,
-        dub: true
-      },
-      'rapidvideo.com': {
-        ...custom['rapidvideo.com'],
-        kinoxid: '71'
-      },
-      'bitporno.com': {
-        ...custom['rapidvideo.com'],
-        kinoxid: '75',
-        dub: true
-      },
       'verystream.com': {
         ...ydlRegEx['VerystreamIE'],
-        kinoxid: '85',
-        priority: 1
+        kinoxids: ['85'],
+        priority: 1,
+        userScript: () => {
+          const e = document.querySelector("[id^=videolink]")
+          if (!e) return
+          link += `/gettoken/${e.textContent}?mime=true`
+          return true
+        }
+      },
+      'openload.co': {
+        ...ydlRegEx['OpenloadIE'],
+        kinoxids: ['67'],
+        priority: 2,
+        userScript: () => {
+          let e = document.querySelector("[id^=lqEH1]")
+          if (!e) e = document.querySelector("[id^=streamur]")
+          if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
+          if (!e) e = document.querySelector("#main p:last-child")
+          if (!e) return
+          if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
+          link += `/stream/${e.textContent}?mime=true`
+          return true
+        }
       },
       'vidoza.net': {
         getInfo: url => this.bot.fetch(url, {
@@ -124,9 +103,46 @@ class addCustom {
             host
           }
         }),
-        kinoxid: '80',
-        priority: 3
+        kinoxids: ['80'],
+        priority: 3,
+        userScript: () => {
+          const e = window.pData
+          if (!e) return
+          link = window.pData.sourcesCode[0].src
+          return true
+        }
       },
+      'rapidvideo.com, bitporno.com': {
+        regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
+        getInfo: url => this.bot.fetch(url, {
+          match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
+        }).then(match => ({
+          manifest: this.manifest(match[1], match[2]),
+          info: {
+            webpage_url: url
+          },
+          host
+        })),
+        kinoxids: ['71', '75'],
+        priority: 4,
+        userScript: () => {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          link = e.src
+          return true
+        }
+      },
+      'streamango.com, fruithosts.net, streamcherry.com': {
+        ...ydlRegEx['StreamangoIE'],
+        kinoxids: ['72', '82'],
+        priority: 5,
+        userScript: () => {
+          const e = document.querySelector("[id^=mgvideo_html5_api]")
+          if (!e) return
+          link = e.src
+          return true
+        }
+      }
     }
     const needManifest = {
       '.m3u8-links': {
@@ -182,16 +198,20 @@ class addCustom {
             const hostname = 'https://' + URL.parse(url).hostname
             //console.log($('.Grahpics'))
             if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + hostname + $('.Grahpics a').attr('href'))
-            const hosts = this.kinoxHosts.filter(host => $('#Hoster_' + host.kinoxid).length > 0)
+            const hosts = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
+            .map(id => ({ id, host: this.allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
+            .filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
+            //const hosts = this.kinoxHosts.filter(host => $('#Hoster_' + host.kinoxid).length > 0)
+            console.log(hosts)
             const title = entities.decode(($('title').html().match(/^(.*) Stream/) || [])[1])
             const getHost = () => {
-              const host = hosts.shift()
+              let host = hosts.shift()
               if (!host) {
                 this.bot.sendMessage('Kein addierbarer Hoster gefunden')
                 return //console.error($('#HosterList').children().toArray())
               }
               //console.log($('#Hoster_' + host.kinoxid).first())
-              const hostdiv = $('#Hoster_' + host.kinoxid)
+              const hostdiv = $('#Hoster_' + host.id)
               const data = hostdiv.children('.Data').text()
               const match = data.match(/Mirror: (?:(\d+)\/(\d+))Vom: (\d\d\.\d\d\.\d{4})$/)
               if (!match) return console.log(data)
@@ -204,13 +224,13 @@ class addCustom {
                 cloud: true,
                 json: true,
                 qs: {
-                  Hoster: host.kinoxid,
+                  Hoster: host.id,
                   Mirror: mirrorindex
                 }
                 //getprop: 'Stream',
                 //match: /\/\/([^"]+?)"/
               }).then(mirror => {
-                if (!mirror.Stream) return console.error(host)
+                if (!mirror.Stream) return console.error(host.host)
                 const mirrorurl = 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1]
                 let match
                 if (mirror.Replacement) {
@@ -221,9 +241,9 @@ class addCustom {
                   console.log(mirrorindex, mirrorcount, date)
                 }
                 //const mirrorurl = 'https://' + mirror[1]
-                this.bot.sendMessage('Addiere Mirror' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
+                this.bot.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
                 mirrorcount--
-                return host.getInfo.call(this, mirrorurl, host).then(result => {
+                return host.host.getInfo.call(this, mirrorurl, host.host).then(result => {
                   return {
                     ...result,
                     manifest: {
@@ -249,23 +269,25 @@ class addCustom {
   }
 
   setupUserScript() {
-    let allowedHosts = this.allowedHosts.filter(host => host.needUserScript && !host.dub)
     const userscript = require('fs').readFileSync('ks.user.js', {
       encoding: "utf-8"
-    }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
+    }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst allowedHosts[^\n\r]+\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
     if (!userscript) throw new Error('Userscript broken');
+    const userScriptHeader = userscriptmeta.parse(userscript[1])
+    const allowedHosts = this.allowedHosts.filter(host => host.needUserScript)
+    const includes = allowedHosts.map(host => host.regex)
+    const allowedHostsSource = toSource(allowedHosts.map(({ regex, groups, userScript }) => ({
+      regex,
+      groups,
+      getInfo: userScript
+    })))
 
-    const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userscriptmeta.parse(userscript[1]), header, {
-      include: allowedHosts.map(host => host.regex).concat(header.include || [])
+    const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userScriptHeader, header, {
+      include: includes.concat(header.include || [])
     }));
-    const getScript = (config = {}) => '\nconst config = JSON.parse(\'' + JSON.stringify(Object.assign({
-      weblink: this.bot.server.weblink//,
-      //allowedHosts: allowedHosts.map(({ name, regex, groups }) => ({
-      //  name,
-      //  regex: regex.source,
-      //  groups
-      //}))
-    }, config)) + '\')' + userscript[2];
+    const getScript = (config = {}) => '\nconst allowedHosts = ' + allowedHostsSource + '\n\nconst config = ' + toSource(Object.assign({
+      weblink: this.bot.server.weblink,
+    }, config)) + userscript[2];
 
     this.userScripts = [{
       filename: 'ks.user.js',

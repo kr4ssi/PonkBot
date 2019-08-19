@@ -5,60 +5,25 @@
 // @author kr4ssi
 // ==/UserScript==
 
+const allowedHosts = [{regex: /./}]
+
 const config = {}
 
 const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?userscript&url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
 
-const includesRegExArr = GM_info.script.includes.map(include => new RegExp(include.replace(/^\/(.*)\/$/, '$1')))
-
-const matchInclude = {
-  [GM_info.script.includes[0]]: () => {
-    let e = document.querySelector("[id^=lqEH1]")
-    if (!e) e = document.querySelector("[id^=streamur]")
-    if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
-    if (!e) e = document.querySelector("#main p:last-child")
-    if (!e) return
-    if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
-    link += `/stream/${e.textContent}?mime=true`
-    return true
-  },
-  [GM_info.script.includes[1]]: () => {
-    const e = document.querySelector("[id^=mgvideo_html5_api]")
-    if (!e) return
-    link = e.src
-    return true
-  },
-  [GM_info.script.includes[2]]: () => {
-    const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-    if (!e) return
-    link = e.src
-    return true
-  },
-  [GM_info.script.includes[3]]: () => {
-    const e = document.querySelector("[id^=videolink]")
-    if (!e) return
-    link += `/gettoken/${e.textContent}?mime=true`
-    return true
-  },
-  [GM_info.script.includes[4]]: () => {
-    const e = window.pData
-    if (!e) return
-    link = window.pData.sourcesCode[0].src
-    return true
-  },
-  [GM_info.script.includes[5]]: () => {
+const matchInclude = (allowedHosts.find(host => host.regex.test(window.location.href)) || {
+  getInfo: () => {
     const socket = unsafeWindow.socket
     if (!socket) return
     if (typeof socket.on !== 'function') return
     clearInterval(initTimer)
-    includesRegExArr.pop()
     let srcTimer
     socket.on('changeMedia', ({ id }) => {
       clearInterval(srcTimer)
       const match = id.match(matchLinkRegEx)
       if (!match) return
       const url = match[1]
-      if (!includesRegExArr.find(include => include.test(url))) return
+      if (!allowedHosts.find(host => host.regex.test(url))) return
       console.log(match)
       srcTimer = setInterval(() => {
         const e = document.getElementById('ytapiplayer_html5_api')
@@ -69,7 +34,7 @@ const matchInclude = {
       }, 1000)
     })
   }
-}[includesRegExArr.find(include => include.test(window.location.href))]
+}).getInfo
 
 const initTimer = setInterval(() => {
   if (typeof matchInclude === 'function' && !matchInclude()) return
