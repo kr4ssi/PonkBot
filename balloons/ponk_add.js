@@ -20,7 +20,10 @@ const { PythonShell } = require('python-shell')
 const UserAgent = require('user-agents')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
-const toSource = require('tosource')
+const toSource = source => require('js-beautify').js(require('tosource')(source), {
+  indent_size: 2,
+  keep_array_indentation: true
+})
 
 class addCustom {
   constructor(ponk){
@@ -42,14 +45,13 @@ class addCustom {
     }, (err, result) => {
       if (err) throw err.message
       Object.assign(this, {
-        allowedHosts : {},   // Addable Hosts
+        allowedHosts : this.setupRegex(Object.assign(...result)),
         //userMedia   : [],    // A list of added media
         cmManifests : {},    // Custom-json-manifests
         userLinks   : {},    // Userlinks for IP-Bound hosters
         userScripts : {},    // Different userscripts
         bot         : ponk   // The bot
       })
-      this.allowedHosts = this.setupRegex(Object.assign(...result))
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
@@ -61,7 +63,45 @@ class addCustom {
   }
 
   setupRegex(ydlRegEx) {
-    const needUserScript = {
+    const needManifest = {
+      'twitter.com': {},
+      'ARDMediathek': ydlRegEx['ARDMediathekIE'],
+      'zdf.de': {},
+      'wdr.de': {},
+      'mdr.de': {},
+      'br.de': {},
+      'bild.de': {},
+      'tvnow.de': {},
+      '.m3u8-links': {
+        regex: /.*\.m3u8$/,
+        getInfo: url => ({
+          manifest: this.manifest('Kein Livestream', url),
+          host,
+        })
+      },
+      'nxload.com': {
+        getInfo: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+          match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+        }).then(match => ({
+          manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
+          host,
+        }))
+      }
+    }
+    return Object.entries({
+      'liveleak.com': {},
+      'imgur.com': {},
+      'instagram.com': {},
+      'ndr.de': {},
+      'arte.tv': {},
+      'bandcamp.com': {},
+      'mixcloud.com': {},
+      'archive.org': {},
+      'ccc.de': {},
+      'bitchute.com': {},
+      'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
+      'peertube': ydlRegEx['PeerTubeIE'],
+      ...needManifest,
       'verystream.com': {
         ...ydlRegEx['VerystreamIE'],
         kinoxids: ['85'],
@@ -142,48 +182,7 @@ class addCustom {
           link = e.src
           return true
         }
-      }
-    }
-    const needManifest = {
-      '.m3u8-links': {
-        regex: /.*\.m3u8$/,
-        getInfo: url => ({
-          manifest: this.manifest('Kein Livestream', url),
-          host,
-        })
       },
-      'nxload.com': {
-        getInfo: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-          match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
-        }).then(match => ({
-          manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
-          host,
-        }))
-      },
-      'twitter.com': {},
-      'ARDMediathek': ydlRegEx['ARDMediathekIE'],
-      'zdf.de': {},
-      'wdr.de': {},
-      'mdr.de': {},
-      'br.de': {},
-      'bild.de': {},
-      'watchbox.de': {},
-      ...needUserScript
-    }
-    return Object.entries({
-      'liveleak.com': {},
-      'imgur.com': {},
-      'instagram.com': {},
-      'ndr.de': {},
-      'arte.tv': {},
-      'bandcamp.com': {},
-      'mixcloud.com': {},
-      'archive.org': {},
-      'ccc.de': {},
-      'bitchute.com': {},
-      'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
-      'peertube': ydlRegEx['PeerTubeIE'],
-      ...needManifest,
       'kinox.to': {
         regex: /https:\/\/kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
         getInfo: url => {
@@ -262,8 +261,8 @@ class addCustom {
     }).map(([name, rules]) => Object.assign({
       name,
       regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
-      needManifest: Object.keys(needManifest).includes(name),
-      needUserScript: Object.keys(needUserScript).includes(name),
+      needManifest: Object.keys(needManifest).includes(name) || typeof rules.userScript === 'function',
+      needUserScript: typeof rules.userScript === 'function',
       getInfo: this.ytdl
     }, rules || {}))
   }
@@ -438,7 +437,7 @@ class addCustom {
   ytdl(url, host) {
     return new Promise((resolve, reject) => {
       execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
-        maxBuffer: 10485760
+        maxBuffer: 104857600
       }, (err, stdout, stderr) => {
         if (err) {
           this.bot.sendMessage(err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
@@ -518,7 +517,7 @@ class addCustom {
           })
         }
         console.log(result.info)
-        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + url), meta.addnext, meta.user, 'cm', manifest.title)
+        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url), meta.addnext, meta.user, 'cm', manifest.title)
       }
       else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
     }

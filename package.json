@@ -34,6 +34,7 @@
     "gitlab": "latest",
     "html-entities": "1.2.1",
     "i18n-iso-countries": "latest",
+    "js-beautify": "1.10.2",
     "knex": "latest",
     "limiter": "latest",
     "mysql": "latest",
