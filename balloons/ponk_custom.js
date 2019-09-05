@@ -370,6 +370,9 @@ module.exports = {
         (this.commands.helpdata[params].rank > 1 ? '. Geht ab Level: ' + this.commands.helpdata[params].rank :
         (this.commands.helpdata[params].rank === 1 ? '. Geht nur für registrierte User' : '')))
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))
+      },
+      update: function(user, params, meta) {
+        this.server.update()
       }
     },
     helpdata: require('./help.js'),

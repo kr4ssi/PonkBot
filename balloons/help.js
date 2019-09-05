@@ -300,5 +300,9 @@ module.exports = {
   aip: {
     synop: '',
     rank: 1
+  },
+  update: {
+    synop: '',
+    rank: 4
   }
 }

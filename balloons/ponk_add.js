@@ -102,7 +102,7 @@ class addCustom {
       'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
       'peertube': ydlRegEx['PeerTubeIE'],
       ...needManifest,
-      'verystream.com': {
+      'verystream.com, woof.tube': {
         ...ydlRegEx['VerystreamIE'],
         kinoxids: ['85'],
         priority: 1,
