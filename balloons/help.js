@@ -301,6 +301,10 @@ module.exports = {
     synop: '',
     rank: 1
   },
+  inspire: {
+    synop: '',
+    rank: 1
+  },
   update: {
     synop: '',
     rank: 4

@@ -395,6 +395,11 @@ module.exports = {
       }).then(body => {
         this.sendMessage(body[0].output)
       })
+    },
+    inspire: function(user, params, meta) {
+      this.fetch('https://inspirobot.me/api?generate=true').then(body => {
+        this.sendMessage(body + '.pic')
+      })
     }
   }
 }
