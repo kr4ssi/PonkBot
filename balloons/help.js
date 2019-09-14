@@ -241,6 +241,10 @@ module.exports = {
     synop: 'Löscht einen Film von der Fikuliste mit .fikulöschen Film-ID',
     rank: 3
   },
+  fikuaktiv: {
+    synop: '',
+    rank: 3
+  },
   fikuadd: {
     synop: 'Addiert den Film wenn er mit .add addierbar ist als nächstes mit .fikuadd Film-ID',
     rank: 1
@@ -308,5 +312,9 @@ module.exports = {
   update: {
     synop: '',
     rank: 4
+  },
+  ts: {
+    synop: '',
+    rank: 2
   }
 }

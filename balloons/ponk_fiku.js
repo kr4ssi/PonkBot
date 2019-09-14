@@ -95,7 +95,7 @@ module.exports = {
         if (!title) title = 'Fiku'
         //const date = new Date()
         //const hour = date.getHours()
-        const opts = this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+        const opts = this.API.fiku.fikuList.filter(row => row.active).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
         const fikuPoll = (title, opts, timeout) => {
           const settings = {
             title,
@@ -135,14 +135,14 @@ module.exports = {
           const id = result.pop()
           this.API.fiku.getFikuList().then(push => {
             this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
-            if (push) this.API.fiku.fikuList.push({ title, url, id, user })
+            if (push) this.API.fiku.fikuList.push({ title, url, id, user, active: true })
           })
         }
       })
     },
     fikuliste: function(user, params, meta) {
       this.API.fiku.getFikuList().then(() => {
-        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')').join('\n'))
+        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')' + ' Aktiv: '+ (row.active ? 'j' : 'n')).join('\n'))
       })
     },
     fikulöschen: function(user, params, meta) {
@@ -163,6 +163,15 @@ module.exports = {
     fikuelfe: function(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         this.sendMessage('Elfe für "' + fiku.title + '": ' + fiku.url)
+      })
+    },
+    fikuaktiv: function(user, params, meta) {
+      this.API.fiku.getFiku(params).then(fiku => {
+        const active = !fiku.active
+        this.db.knex('fiku').where(fiku).update({ active }).then(() => {
+          this.API.fiku.fikuList.find(row => row === fiku).active = active
+          this.sendMessage('Eintrag ' + fiku.title + ' ' + (active ? '' : 'de') + 'aktiviert')
+        })
       })
     },
     fikuinfo: function(user, params, meta) {
