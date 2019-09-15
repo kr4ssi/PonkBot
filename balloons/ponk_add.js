@@ -67,7 +67,7 @@ class addCustom {
       'twitter.com': {},
       'ARDMediathek': ydlRegEx['ARDMediathekIE'],
       'zdf.de': {},
-      'wdr.de': {},
+      'wdr.de': ydlRegEx['WDRPageIE'],
       'mdr.de': {},
       'br.de': {},
       'bild.de': {},
