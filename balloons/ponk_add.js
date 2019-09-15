@@ -68,6 +68,7 @@ class addCustom {
       'ARDMediathek': ydlRegEx['ARDMediathekIE'],
       'zdf.de': {},
       'wdr.de': ydlRegEx['WDRPageIE'],
+      'WDRElefant': ydlRegEx['WDRElefantIE'],
       'mdr.de': {},
       'br.de': {},
       'bild.de': {},
