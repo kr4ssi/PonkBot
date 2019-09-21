@@ -130,7 +130,7 @@ class addCustom {
         }
       },
       'vidoza.net': {
-        getInfo: url => this.bot.fetch(url, {
+        getInfo: (url, host) => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
         }).then(match => {
           const manifest = this.manifest(match[3], match[1])
@@ -155,7 +155,7 @@ class addCustom {
       },
       'rapidvideo.com, bitporno.com': {
         regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
-        getInfo: url => this.bot.fetch(url, {
+        getInfo: (url, host) => this.bot.fetch(url, {
           match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
         }).then(match => ({
           manifest: this.manifest(match[1], match[2]),
