@@ -488,6 +488,7 @@ class addCustom {
   }
 
   async add(url, title, meta) {
+    url = url.split('#').shift()
     const host = this.hostAllowed(url)
     if (host) {
       const result = await host.getInfo.call(this, url, host)
