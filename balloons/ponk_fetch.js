@@ -6,6 +6,7 @@
 'use strict';
 
 const request = require('request')
+const URLObj = require('url')
 const UserAgent = require('user-agents')
 const cloudscraper = require('cloudscraper')
 const cheerio = require('cheerio')
@@ -203,6 +204,8 @@ module.exports = {
           if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => {
             this.sendMessage('Keine netzms in ' + faden + ' gefunden')
           })
+          const siteURLObj = URLObj.parse(faden)
+          const siteurl = siteURLObj.protocol + '//' + siteURLObj.hostname
           const addNetzm = (files = []) => {
             netzms.push(...files)
             count--
@@ -210,7 +213,7 @@ module.exports = {
             let added = {};
             [...Array(meta.repeat)].forEach((c, i) => {
               const netzm = netzms[Math.floor(Math.random() * netzms.length)]
-              this.addNetzm('https://kohlchan.net' + netzm.item, meta.addnext, user)
+              this.addNetzm(siteurl + netzm.item, meta.addnext, user)
               if (!added[netzm.faden]) added[netzm.faden] = 1
               else added[netzm.faden]++
             })
