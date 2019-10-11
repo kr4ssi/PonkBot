@@ -228,17 +228,17 @@ module.exports = {
         }))
       }
       this.db.knex('netzms').select('faden').then(result => {
-        const faden = (params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)\.)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
+        const faden = (params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
         getNetzm(faden ? [faden] : result.map(row => row.faden), !result.includes(faden))
       })
     },
     lauer: function(user, params, meta) {
-      const siteurl = 'https://kohlchan.net'
-      const url = params.match(/^https:\/\/(?:(?:www)|(?:nocsp)\.)|(?:backdoor)\.)?kohlchan\.net\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
+      const url = params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net)\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
       if (!url) return this.sendMessage('Lauere nur auf KC!')
-      const board = url[1]
-      const thread = url[2]
-      const postid = url[3] || thread
+      const siteurl = url[1]//'https://kohlchan.net'
+      const board = url[2]
+      const thread = url[3]
+      const postid = url[4] || thread
       this.fetch(siteurl + '/' + board + '/res/' + thread + '.json', {
         json: true
       }).then(body => {
