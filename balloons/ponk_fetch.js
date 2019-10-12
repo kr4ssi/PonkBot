@@ -209,7 +209,7 @@ module.exports = {
           const siteURLObj = URLObj.parse(faden)
           const siteurl = siteURLObj.protocol + '//' + siteURLObj.hostname
           let added = {};
-          [...Array(meta.repeat)].forEach((c, i) => {
+          [...Array(meta.repeat)].forEach(() => {
             const netzm = netzms.splice(Math.floor(Math.random() * netzms.length), 1).pop()
             this.addNetzm(siteurl + netzm.item, meta.addnext, user)
             added[netzm.faden] = (added[netzm.faden] || 0) + 1
@@ -218,6 +218,7 @@ module.exports = {
             this.sendMessage((count > 1 ? count + ' zufällige netzms' : 'Zufälliges netzm') + ' aus ' + faden + ' addiert')
           })
         }).catch(err => {
+          count--
           this.sendMessage(err === '404' ? 'Faden ' + faden + ' 404ed' : err === 'none' ? 'Keine netzms in ' + faden + ' gefunden' : err)
         }))
       })
