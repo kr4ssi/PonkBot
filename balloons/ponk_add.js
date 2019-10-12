@@ -26,7 +26,7 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
   keep_array_indentation: true
 })
 
-class addCustom extends EventEmitter {
+class AddCustom extends EventEmitter {
   constructor(ponk){
     super()
     PythonShell.run('./youtube-dl_get-regex.py', {
@@ -551,7 +551,7 @@ module.exports = {
   },
   giggle: function(ponk){
     return new Promise((resolve, reject)=>{
-      ponk.API.add = new addCustom(ponk);
+      ponk.API.add = new AddCustom(ponk);
       ponk.logger.log('Registering custom .add');
       resolve();
     })

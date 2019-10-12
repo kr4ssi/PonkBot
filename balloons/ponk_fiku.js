@@ -144,7 +144,9 @@ module.exports = {
     },
     fikuliste: function(user, params, meta) {
       this.API.fiku.getFikuList().then(() => {
-        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')' + ' Aktiv: '+ (row.active ? 'j' : 'n') + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()).join('\n'))
+        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')'
+        + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()
+        + ' Aktiv: ' + (row.active ? 'j' : 'n')).join('\n'))
       })
     },
     fikulöschen: function(user, params, meta) {
