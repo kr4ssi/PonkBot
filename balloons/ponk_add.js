@@ -52,7 +52,6 @@ class addCustom {
         userScripts : {},    // Different userscripts
         bot         : ponk   // The bot
       })
-      console.log(this.allowedHosts)
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();

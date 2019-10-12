@@ -180,18 +180,17 @@ module.exports = {
       })
     },
     netzm: function(user, params, meta) {
-      const netzms = []
-      const getNetzm = (faeden, initial) => {
+      this.db.knex('netzms').select('faden').then(result => {
+        const faden = (params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
+        const faeden = faden ? [faden] : result.map(row => row.faden)
         if (faeden.length < 1) return this.sendMessage('Kein Faden ladiert')
+        const netzms = []
         let count = faeden.length
         faeden.forEach(faden => this.fetch(faden.replace('.html', '.json'), {
           json: true,
           customerr: [404]
         }).then(body => {
-          if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => {
-            this.sendMessage('Faden ' + faden + ' 404ed')
-            addNetzm()
-          })
+          if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => Promise.reject('404'))
           const files = (body.files || []).concat(...(body.posts || []).map(post => post.files)).filter(file => [
             'video/mp4',
             'video/webm',
@@ -200,39 +199,27 @@ module.exports = {
             'audio/ogg',
             'audio/mpeg'
           ].includes(file.mime)).map(file => ({ faden, item: file.path}))
-          //body.match(/(\/\w+\/\.media\/[\w-\.]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a)\/[\w- ]+\.(mp4|flv|webm|og[gv]|mp3|mov|m4a))/g)
-          if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => {
-            this.sendMessage('Keine netzms in ' + faden + ' gefunden')
+          if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => Promise.reject('none'))
+          netzms.push(...files)
+          if (!result.some(row => row.faden === faden)) return this.db.knex('netzms').insert({ faden }).then(() => {
+            this.sendMessage(faden + ' ' + files.length + ' netzms ladiert')
           })
+        }).then(() => {
+          if (count-- > 1) return
           const siteURLObj = URLObj.parse(faden)
           const siteurl = siteURLObj.protocol + '//' + siteURLObj.hostname
-          const addNetzm = (files = []) => {
-            netzms.push(...files)
-            count--
-            if (count > 0) return
-            let added = {};
-            [...Array(meta.repeat)].forEach((c, i) => {
-              const netzm = netzms[Math.floor(Math.random() * netzms.length)]
-              this.addNetzm(siteurl + netzm.item, meta.addnext, user)
-              if (!added[netzm.faden]) added[netzm.faden] = 1
-              else added[netzm.faden]++
-            })
-            Object.keys(added).forEach(faden => {
-              const count = added[faden]
-              if (count > 1) this.sendMessage(count + ' zufällige netzms aus ' + faden + ' addiert')
-              else this.sendMessage('Zufälliges netzm aus ' + faden + ' addiert')
-            })
-          }
-          if (initial) return this.db.knex('netzms').insert({ faden }).then(() => {
-            this.sendMessage(faden + ' ' + files.length + ' netzms ladiert')
-            addNetzm(files)
+          let added = {};
+          [...Array(meta.repeat)].forEach((c, i) => {
+            const netzm = netzms.splice(Math.floor(Math.random() * netzms.length), 1).pop()
+            this.addNetzm(siteurl + netzm.item, meta.addnext, user)
+            added[netzm.faden] = (added[netzm.faden] || 0) + 1
           })
-          addNetzm(files)
+          Object.entries(added).forEach(([faden, count]) => {
+            this.sendMessage((count > 1 ? count + ' zufällige netzms' : 'Zufälliges netzm') + ' aus ' + faden + ' addiert')
+          })
+        }).catch(err => {
+          this.sendMessage(err === '404' ? 'Faden ' + faden + ' 404ed' : err === 'none' ? 'Keine netzms in ' + faden + ' gefunden' : err)
         }))
-      }
-      this.db.knex('netzms').select('faden').then(result => {
-        const faden = (params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
-        getNetzm(faden ? [faden] : result.map(row => row.faden), !result.includes(faden))
       })
     },
     lauer: function(user, params, meta) {
