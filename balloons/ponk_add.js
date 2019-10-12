@@ -12,6 +12,7 @@ const date = require('date-and-time')
 const forwarded = require('forwarded');
 const userscriptmeta = require('userscript-meta')
 
+const EventEmitter = require('events');
 const URL = require('url')
 const path = require('path')
 const crypto = require('crypto')
@@ -25,8 +26,9 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
   keep_array_indentation: true
 })
 
-class addCustom {
+class addCustom extends EventEmitter {
   constructor(ponk){
+    super()
     PythonShell.run('./youtube-dl_get-regex.py', {
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
@@ -58,7 +60,13 @@ class addCustom {
       this.bot.client.on('queueFail', data => {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
+        this.removeAllListeners(data.id)
       });
+      const handleVideoDelete = this.bot.handleVideoDelete
+      this.bot.handleVideoDelete = ({ uid }) => {
+        this.removeAllListeners(this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id)
+        handleVideoDelete.call(this.bot, { uid })
+      }
     });
   }
 

@@ -181,8 +181,8 @@ module.exports = {
     },
     netzm: function(user, params, meta) {
       this.db.knex('netzms').select('faden').then(result => {
-        const faden = (params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i) || [])[1]
-        const faeden = faden ? [faden] : result.map(row => row.faden)
+        const faden = params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i)
+        const faeden = faden ? [faden[1]] : result.map(row => row.faden)
         if (faeden.length < 1) return this.sendMessage('Kein Faden ladiert')
         const netzms = []
         let count = faeden.length

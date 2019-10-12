@@ -9,6 +9,7 @@ const validUrl = require('valid-url')
 const date = require('date-and-time')
 const countries = require("i18n-iso-countries")
 
+
 class FikuSystem {
   constructor(ponk){
     Object.assign(this, {
@@ -130,19 +131,20 @@ module.exports = {
       }).then(body => body[1])
       else title = split.join().trim()
       if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
-      this.db.knex('fiku').insert({ title, url, user }).returning('id').then(result => {
+      const fiku = { title, url, user, active: true, timestamp: Date.now() }
+      this.db.knex('fiku').insert(fiku).returning('id').then(result => {
         if (result.length > 0) {
           const id = result.pop()
           this.API.fiku.getFikuList().then(push => {
             this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
-            if (push) this.API.fiku.fikuList.push({ title, url, id, user, active: true })
+            if (push) this.API.fiku.fikuList.push(Object.assign(fiku, { id }))
           })
         }
       })
     },
     fikuliste: function(user, params, meta) {
       this.API.fiku.getFikuList().then(() => {
-        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')' + ' Aktiv: '+ (row.active ? 'j' : 'n')).join('\n'))
+        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')' + ' Aktiv: '+ (row.active ? 'j' : 'n') + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()).join('\n'))
       })
     },
     fikulöschen: function(user, params, meta) {
@@ -175,7 +177,7 @@ module.exports = {
       })
     },
     fikuinfo: function(user, params, meta) {
-      const getInfo = title => {
+      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) : Promise.resolve(params)).then(title => {
         this.API.fiku.getTmdbId(title).then(id => {
           this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(body => {
             const cast = body.cast.filter(row => row.order < 3).map(row => row.name).join(', ')
@@ -190,10 +192,6 @@ module.exports = {
             })
           })
         })
-      }
-      if (!/^\d+$/.test(params)) return getInfo(params)
-      this.API.fiku.getFiku(params).then(fiku => {
-        getInfo(fiku.title)
       })
     },
     trailer: function(user, params, meta) {
