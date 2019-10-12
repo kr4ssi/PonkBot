@@ -27,7 +27,7 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
 })
 
 class AddCustom extends EventEmitter {
-  constructor(ponk){
+  constructor(ponk) {
     super()
     PythonShell.run('./youtube-dl_get-regex.py', {
       parser: data => {
@@ -57,6 +57,10 @@ class AddCustom extends EventEmitter {
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
+      this.bot.client.on('changeMedia', data => {
+        console.log(data)
+        this.emit(data.id)
+      })
       this.bot.client.on('queueFail', data => {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
@@ -512,9 +516,10 @@ class AddCustom extends EventEmitter {
           //timestamp,
           user: {}
         }
+        const manifestUrl = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url)
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
-          this.bot.client.createPoll({
+          const userScriptPoll = () => this.bot.client.createPoll({
             title: manifest.title,
             opts: [
               result.info.webpage_url,
@@ -525,9 +530,11 @@ class AddCustom extends EventEmitter {
             ],
             obscured: false
           })
+          userScriptPoll()
+          this.on(manifestUrl, userScriptPoll)
         }
         console.log(result.info)
-        this.bot.addNetzm(this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url), meta.addnext, meta.user, 'cm', manifest.title)
+        this.bot.addNetzm(manifestUrl, meta.addnext, meta.user, 'cm', manifest.title)
       }
       else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
     }
@@ -550,7 +557,7 @@ module.exports = {
     type: 'giggle'
   },
   giggle: function(ponk){
-    return new Promise((resolve, reject)=>{
+    return new Promise((resolve, reject) => {
       ponk.API.add = new AddCustom(ponk);
       ponk.logger.log('Registering custom .add');
       resolve();
