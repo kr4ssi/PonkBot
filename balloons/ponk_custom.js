@@ -553,7 +553,7 @@ module.exports = {
               return ponk.sendPrivate(`I lack ponk capability due to channel permission settings.`, user)
             }
             ponk.client.createPoll(poll)
-            ponk.client.once('newPoll', poll => {
+            ponk.client.once('newPoll', () => {
               let timeout = false
               if (poll.timeout && poll.timeout > 10) {
                 timeout = setTimeout(() => {
