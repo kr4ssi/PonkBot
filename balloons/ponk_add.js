@@ -333,15 +333,14 @@ class AddCustom {
     }];
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
-    let userScriptDate
 
-    if (/localhost/.test(this.bot.server.weblink)) userScriptDate = parseDate(this.bot.started);
+    if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
     else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
       const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
-        userScriptDate = parseDate(userscriptts)
+        this.userscriptdate = parseDate(userscriptts)
       });
-      userScriptDate = parseDate(this.bot.started);
+      this.userscriptdate = parseDate(this.bot.started);
       this.bot.db.setKeyValue('userscriptts', this.bot.started);
       this.bot.db.setKeyValue('userscripthash', newuserscripthash);
       this.userScripts.forEach(({ filename, userscript }) => {
@@ -350,7 +349,6 @@ class AddCustom {
     });
 
     this.userScriptPollOpts = [
-      'Geht nur mit Userscript (Letztes update: ' + userScriptDate + ')',
       ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr)
     ]
   }
@@ -360,6 +358,7 @@ class AddCustom {
       title,
       opts: [
         url,
+        'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
         ...this.userScriptPollOpts,
         'dann ' + url + ' öffnen',
         '(Ok klicken) und falls es schon läuft player neu laden'
