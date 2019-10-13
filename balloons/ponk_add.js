@@ -56,20 +56,26 @@ class AddCustom {
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
-      this.playlist = new EventEmitter()
+      this.play = new EventEmitter()
+      this.del = new EventEmitter()
       this.bot.client.on('changeMedia', data => {
         console.log(data)
-        this.playlist.emit(data.id, data)
+        this.play.emit(data.id, data)
       })
       this.bot.client.on('queueFail', data => {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-        if (data.msg != 'This item is already on the playlist') this.playlist.removeAllListeners(data.id)
+        if (data.msg === 'This item is already on the playlist') return
+        this.del.emit(data.id)
+        this.del.removeAllListeners(data.id)
+        this.play.removeAllListeners(data.id)
       });
       const handleVideoDelete = this.bot.handleVideoDelete
       this.bot.handleVideoDelete = ({ uid }) => {
         const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
-        this.playlist.removeAllListeners(id)
+        this.del.emit(id)
+        this.del.removeAllListeners(id)
+        this.play.removeAllListeners(id)
         handleVideoDelete.call(this.bot, { uid })
       }
     });
@@ -538,7 +544,10 @@ class AddCustom {
             })
           }
           userScriptPoll()
-          this.playlist.once(manifestUrl, data => {
+          this.del.once(manifestUrl, () => {
+            if (this.bot.poll.timestamp === pollid) this.bot.client.closePoll()
+          })
+          this.play.once(manifestUrl, data => {
             if (!this.bot.pollactive || this.bot.poll.timestamp != pollid) userScriptPoll()
             this.bot.client.once('changeMedia', () => {
               if (this.bot.poll.timestamp === pollid) this.bot.client.closePoll()
