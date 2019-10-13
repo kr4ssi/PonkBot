@@ -229,6 +229,10 @@ module.exports = {
     synop: 'Erstellt den Fikupoll. Beenden des Fikupolls addiert den Film, wenn er mit .fikuadd addierbar ist, oder startet eine Stichwahl bei Gleichstand',
     rank: 3
   },
+  ausschussfiku: {
+    synop: '',
+    rank: 3
+  },
   vorschlag: {
     synop: 'Addiert einen Film zur Fikuliste mit .vorschlag NAME; ELFE. Bitte prüft Verfügbarkeit und Qualität des Films vor dem Addieren, um einen reibungslosen Fiku zu gewährleisten :);)',
     rank: 2

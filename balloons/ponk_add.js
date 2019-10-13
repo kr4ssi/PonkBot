@@ -341,7 +341,7 @@ class AddCustom {
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
-    else return this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
+    else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
       const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
@@ -353,6 +353,28 @@ class AddCustom {
         this.bot.pushToGit(filename, userscript)
       })
     });
+
+    this.userScriptPollOpts = [
+      'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+      ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr)
+    ]
+  }
+
+  userScriptPoll(title, url) {
+    console.log(this.userScriptPollOpts)
+    this.bot.client.createPoll({
+      title,
+      opts: [
+        url,
+        ...this.userScriptPollOpts,
+        'dann ' + url + ' öffnen',
+        '(Ok klicken) und falls es schon läuft player neu laden'
+      ],
+      obscured: false
+    })
+    this.bot.client.once('newPoll', poll => {
+      this.userScriptPollId = poll.timestamp
+    })
   }
 
   fixurl(url) {
@@ -526,31 +548,14 @@ class AddCustom {
         const manifestUrl = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url)
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
-          let pollid
-          const userScriptPoll = () => {
-            this.bot.client.createPoll({
-              title: manifest.title,
-              opts: [
-                result.info.webpage_url,
-                'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-                ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
-                'dann ' + result.info.webpage_url + ' öffnen',
-                '(Ok klicken) und falls es schon läuft player neu laden'
-              ],
-              obscured: false
-            })
-            this.bot.client.once('newPoll', poll => {
-              pollid = poll.timestamp
-            })
-          }
-          userScriptPoll()
+          this.userScriptPoll(manifest.title, result.info.webpage_url)
           this.del.once(manifestUrl, () => {
-            if (this.bot.poll.timestamp === pollid) this.bot.client.closePoll()
+            if (this.bot.poll.timestamp === this.userScriptPollId) this.bot.client.closePoll()
           })
           this.play.once(manifestUrl, data => {
-            if (!this.bot.pollactive || this.bot.poll.timestamp != pollid) userScriptPoll()
+            if (!this.bot.pollactive || this.bot.poll.timestamp != this.userScriptPollId) this.userScriptPoll(manifest.title, result.info.webpage_url)
             this.bot.client.once('changeMedia', () => {
-              if (this.bot.poll.timestamp === pollid) this.bot.client.closePoll()
+              if (this.bot.poll.timestamp === this.userScriptPollId) this.bot.client.closePoll()
             })
           })
         }

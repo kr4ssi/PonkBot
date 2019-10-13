@@ -563,7 +563,7 @@ module.exports = {
               ponk.client.once('closePoll', () => {
                 timeout && clearTimeout(timeout)
                 if (callback && typeof(callback) === 'function') {
-                  callback(ponk.pollvotes)
+                  callback(ponk.poll.counts)
                 }
               })
             })

@@ -68,6 +68,43 @@ class FikuSystem {
       })
     })
   }
+  fikupoll(user, params, meta) {
+    this.getFikuList().then(() => {
+      const split = params.split(' ')
+      let timeout = 0
+      let runoff = 0
+      if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0])) {
+        timeout = split.shift() * 60
+        runoff = timeout
+      }
+      if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0])) runoff = split.shift() * 60
+      let title = split.join(' ').trim()
+      if (!title) title = 'Fiku'
+      //const date = new Date()
+      //const hour = date.getHours()
+      const opts = this.fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < (arr.length - 20)) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+      const fikuPoll = (title, opts, timeout) => {
+        const settings = {
+          title,
+          opts,
+          obscured: false
+        }
+        if (timeout) Object.assign(settings, { timeout })
+        this.bot.pollAction(settings, pollvotes => {
+          const max = Math.max(...pollvotes)
+          if (max < 1 && title === 'Stichwahl') return this.bot.sendMessage('Niemand hat abgestimmt. Partei!')
+          const winner = opts.filter((opt, i) => pollvotes[i] === max)
+          if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
+          if (winner[0] === 'Partei') return this.sendMessage('Partei!')
+          this.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
+            this.bot.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
+            this.bot.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
+          })
+        })
+      }
+      fikuPoll(title, opts, timeout)
+    })
+  }
 }
 module.exports = {
   meta: {
@@ -83,41 +120,10 @@ module.exports = {
   },
   handlers: {
     fikupoll: function(user, params, meta) {
-      this.API.fiku.getFikuList().then(() => {
-        const split = params.split(' ')
-        let timeout = 0
-        let runoff = 0
-        if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0])) {
-          timeout = split.shift() * 60
-          runoff = timeout
-        }
-        if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0])) runoff = split.shift() * 60
-        let title = split.join(' ').trim()
-        if (!title) title = 'Fiku'
-        //const date = new Date()
-        //const hour = date.getHours()
-        const opts = this.API.fiku.fikuList.filter(row => row.active).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
-        const fikuPoll = (title, opts, timeout) => {
-          const settings = {
-            title,
-            opts,
-            obscured: false
-          }
-          if (timeout) Object.assign(settings, { timeout })
-          this.pollAction(settings, pollvotes => {
-            const max = Math.max(...pollvotes)
-            if (max < 1 && title === 'Stichwahl') return this.sendMessage('Niemand hat abgestimmt. Partei!')
-            const winner = opts.filter((opt, i) => pollvotes[i] === max)
-            if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
-            if (winner[0] === 'Partei') return this.sendMessage('Partei!')
-            this.API.fiku.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
-              this.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
-              this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
-            })
-          })
-        }
-        fikuPoll(title, opts, timeout)
-      })
+      this.API.fiku.fikupoll(user, params, meta)
+    },
+    ausschussfiku: function(user, params, meta) {
+      this.API.fiku.fikupoll(user, params, meta)
     },
     vorschlag: async function(user, params, meta) {
       const split = params.trim().split(';')
