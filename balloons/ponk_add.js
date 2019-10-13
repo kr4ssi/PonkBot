@@ -360,19 +360,21 @@ class AddCustom {
   }
 
   userScriptPoll(title, url) {
-    this.bot.client.createPoll({
-      title,
-      opts: [
-        url,
-        'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-        ...this.userScriptPollOpts,
-        'dann ' + url + ' öffnen',
-        '(Ok klicken) und falls es schon läuft player neu laden'
-      ],
-      obscured: false
-    })
-    this.bot.client.once('newPoll', poll => {
-      this.userScriptPollId = poll.timestamp
+    return new Promise(resolve => {
+      this.bot.client.createPoll({
+        title,
+        opts: [
+          url,
+          'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+          ...this.userScriptPollOpts,
+          'dann ' + url + ' öffnen',
+          '(Ok klicken) und falls es schon läuft player neu laden'
+        ],
+        obscured: false
+      })
+      this.bot.client.once('newPoll', poll => {
+        resolve(poll.timestamp)
+      })
     })
   }
 
@@ -546,14 +548,17 @@ class AddCustom {
         const manifestUrl = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url)
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
-          this.userScriptPoll(manifest.title, result.info.webpage_url)
+          let userScriptPollId
+          this.userScriptPoll(manifest.title, result.info.webpage_url).then(id => {
+            userScriptPollId = id
+          })
           this.del.once(manifestUrl, () => {
-            if (this.bot.poll.timestamp === this.userScriptPollId) this.bot.client.closePoll()
+            if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
           this.play.once(manifestUrl, data => {
-            if (!this.bot.pollactive || this.bot.poll.timestamp != this.userScriptPollId) this.userScriptPoll(manifest.title, result.info.webpage_url)
+            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) this.userScriptPoll(manifest.title, result.info.webpage_url)
             this.bot.client.once('changeMedia', () => {
-              if (this.bot.poll.timestamp === this.userScriptPollId) this.bot.client.closePoll()
+              if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
             })
           })
         }
@@ -562,7 +567,6 @@ class AddCustom {
         title = manifest.title
       }
       this.bot.addNetzm(id, meta.addnext, meta.user, type, title || result.title, url)
-      console.log(meta.onPlay, typeof meta.onPlay === 'function')
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
     }
@@ -618,7 +622,7 @@ module.exports = {
           this.mediaDelete(this.currUID)
         },
         onPlay: () => {
-          this.commands.handlers.settime(user, this.currMedia.currentTime.toString(), meta)
+          this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
         }
       })
     }
