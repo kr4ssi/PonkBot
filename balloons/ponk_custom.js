@@ -318,14 +318,13 @@ module.exports = {
     selbstsäge: function(user, params, meta) {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
-    },
+    }/*,
     aip: async function(user, params, meta) {
       if (!params || params.match(/^[1-9]$/)) params = await this.getLastImage(Number(params))
       const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
       if (emote) params = emote.image
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      console.log(params)
       request({
         url,
         encoding: null
@@ -353,7 +352,6 @@ module.exports = {
             console.error(err || res.statusCode)
             return this.sendMessage('upload failed')
           }
-          console.log(body)
           if (body.ERROR) return this.sendMessage(body.ERROR)
           if (!body.filename) return this.sendMessage('parsing error')
           this.addLastImage('https://aiportraits.com/portraits/' + body.filename).then(image => {
@@ -361,7 +359,7 @@ module.exports = {
           })
         })
       })
-    },
+    }*/,
     hintergrund: logoHintergrund,
     logo: logoHintergrund,
     help: function(user, params, meta) {

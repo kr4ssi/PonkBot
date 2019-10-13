@@ -347,7 +347,6 @@ module.exports = {
             if (Number.isInteger(row.dt / 60 / 60 / 24) && i > 0) curr++
             if (curr === day) rows.push(row)
           })
-          console.log(rows)
           body = rows.find(row => row.main.temp === Math.max(...rows.map(row => row.main.temp)))
           min = rows.find(row => row.main.temp === Math.min(...rows.map(row => row.main.temp)))
         }
@@ -356,8 +355,6 @@ module.exports = {
       })
     },
     urban: function(user, params, meta) {
-      console.log(this.API.keys.rapidapi)
-
       this.fetch('https://mashape-community-urban-dictionary.p.rapidapi.com/define', {
         headers: {
           'X-RapidAPI-Key' : this.API.keys.rapidapi,

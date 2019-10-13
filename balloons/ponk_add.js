@@ -59,11 +59,9 @@ class AddCustom {
       this.play = new EventEmitter()
       this.del = new EventEmitter()
       this.bot.client.on('changeMedia', data => {
-        console.log(data)
         this.play.emit(data.id, data)
       })
       this.bot.client.on('queueFail', data => {
-        console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
         if (data.msg === 'This item is already on the playlist') return
         this.del.emit(data.id)
@@ -215,21 +213,18 @@ class AddCustom {
             $: true
           }).then($ => {
             const hostname = 'https://' + URL.parse(url).hostname
-            //console.log($('.Grahpics'))
             if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + hostname + $('.Grahpics a').attr('href'))
             const hosts = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
             .map(id => ({ id, host: this.allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
             .filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
-            //const hosts = this.kinoxHosts.filter(host => $('#Hoster_' + host.kinoxid).length > 0)
             console.log(hosts)
             const title = entities.decode(($('title').html().match(/^(.*) Stream/) || [])[1])
             const getHost = () => {
               let host = hosts.shift()
               if (!host) {
                 this.bot.sendMessage('Kein addierbarer Hoster gefunden')
-                return //console.error($('#HosterList').children().toArray())
+                return
               }
-              //console.log($('#Hoster_' + host.kinoxid).first())
               const hostdiv = $('#Hoster_' + host.id)
               const data = hostdiv.children('.Data').text()
               const match = data.match(/Mirror: (?:(\d+)\/(\d+))Vom: (\d\d\.\d\d\.\d{4})$/)
@@ -259,7 +254,6 @@ class AddCustom {
                   date = match[3]
                   console.log(mirrorindex, mirrorcount, date)
                 }
-                //const mirrorurl = 'https://' + mirror[1]
                 this.bot.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
                 mirrorcount--
                 return host.host.getInfo.call(this, mirrorurl, host.host).then(result => {
@@ -339,14 +333,15 @@ class AddCustom {
     }];
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
+    let userScriptDate
 
-    if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
+    if (/localhost/.test(this.bot.server.weblink)) userScriptDate = parseDate(this.bot.started);
     else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
       const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex');
       if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
-        this.userscriptdate = parseDate(userscriptts)
+        userScriptDate = parseDate(userscriptts)
       });
-      this.userscriptdate = parseDate(this.bot.started);
+      userScriptDate = parseDate(this.bot.started);
       this.bot.db.setKeyValue('userscriptts', this.bot.started);
       this.bot.db.setKeyValue('userscripthash', newuserscripthash);
       this.userScripts.forEach(({ filename, userscript }) => {
@@ -355,13 +350,12 @@ class AddCustom {
     });
 
     this.userScriptPollOpts = [
-      'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+      'Geht nur mit Userscript (Letztes update: ' + userScriptDate + ')',
       ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr)
     ]
   }
 
   userScriptPoll(title, url) {
-    console.log(this.userScriptPollOpts)
     this.bot.client.createPoll({
       title,
       opts: [
@@ -454,7 +448,6 @@ class AddCustom {
         let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
         if (info.http_headers) {
           const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
-          //console.log(headers)
           params = [...params, '-headers', headers]
         }
         execFile('ffprobe', [...params, manifest.sources[0].url], (err, stdout, stderr) => {
@@ -467,7 +460,6 @@ class AddCustom {
           catch(err) {
             return console.error(err)
           }
-          //console.log(info.format)
           if (info.format && info.format.duration) resolve(parseFloat(info.format.duration))
           else tryToGetDuration(info)
         })
@@ -494,7 +486,6 @@ class AddCustom {
           return console.error(err)
         }
         if (!info.title) info = info[0];
-        //console.log(info)
         const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
         if (!host.needManifest) return resolve({
           title,
@@ -559,7 +550,6 @@ class AddCustom {
             })
           })
         }
-        console.log(result.info)
         this.bot.addNetzm(manifestUrl, meta.addnext, meta.user, 'cm', manifest.title)
       }
       else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
@@ -596,7 +586,6 @@ module.exports = {
       let title = split.join(' ').trim()
       if (url === 'regex') {
         const host = this.API.add.allowedHosts.find(host => host.name.includes(title))
-        console.log(host)
         if (host) this.sendByFilter(JSON.stringify({
           ...host,
           regex: host.regex.source

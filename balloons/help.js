@@ -304,11 +304,11 @@ module.exports = {
   dict: {
     synop: '',
     rank: 1
-  },
+  }/*,
   aip: {
     synop: '',
     rank: 1
-  },
+  }*/,
   inspire: {
     synop: '',
     rank: 1
@@ -316,9 +316,9 @@ module.exports = {
   update: {
     synop: '',
     rank: 4
-  },
+  }/*,
   ts: {
     synop: '',
     rank: 2
-  }
+  }*/
 }
