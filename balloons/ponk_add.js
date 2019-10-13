@@ -26,9 +26,8 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
   keep_array_indentation: true
 })
 
-class AddCustom extends EventEmitter {
+class AddCustom {
   constructor(ponk) {
-    super()
     PythonShell.run('./youtube-dl_get-regex.py', {
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
@@ -57,18 +56,20 @@ class AddCustom extends EventEmitter {
       this.allowedHostsString = this.allowedHosts.map(host => host.name).join(', ')
       this.setupUserScript();
       this.setupServer();
+      this.playlist = new EventEmitter()
       this.bot.client.on('changeMedia', data => {
         console.log(data)
-        this.emit(data.id)
+        this.playlist.emit(data.id, data)
       })
       this.bot.client.on('queueFail', data => {
         console.log(data)
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-        this.removeAllListeners(data.id)
+        if (data.msg != 'This item is already on the playlist') this.playlist.removeAllListeners(data.id)
       });
       const handleVideoDelete = this.bot.handleVideoDelete
       this.bot.handleVideoDelete = ({ uid }) => {
-        this.removeAllListeners(this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id)
+        const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
+        this.playlist.removeAllListeners(id)
         handleVideoDelete.call(this.bot, { uid })
       }
     });
@@ -519,19 +520,30 @@ class AddCustom extends EventEmitter {
         const manifestUrl = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url)
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
-          const userScriptPoll = () => this.bot.client.createPoll({
-            title: manifest.title,
-            opts: [
-              result.info.webpage_url,
-              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-              ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
-              'dann ' + result.info.webpage_url + ' öffnen',
-              '(Ok klicken) und falls es schon läuft player neu laden'
-            ],
-            obscured: false
-          })
+          let pollid
+          const userScriptPoll = () => {
+            this.bot.client.createPoll({
+              title: manifest.title,
+              opts: [
+                result.info.webpage_url,
+                'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+                ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr),
+                'dann ' + result.info.webpage_url + ' öffnen',
+                '(Ok klicken) und falls es schon läuft player neu laden'
+              ],
+              obscured: false
+            })
+            this.bot.client.once('newPoll', poll => {
+              pollid = poll.timestamp
+            })
+          }
           userScriptPoll()
-          this.on(manifestUrl, userScriptPoll)
+          this.playlist.once(manifestUrl, data => {
+            if (!this.bot.pollactive || this.bot.poll.timestamp != pollid) userScriptPoll()
+            this.bot.client.once('changeMedia', () => {
+              if (this.bot.poll.timestamp === pollid) this.bot.client.closePoll()
+            })
+          })
         }
         console.log(result.info)
         this.bot.addNetzm(manifestUrl, meta.addnext, meta.user, 'cm', manifest.title)
