@@ -58,6 +58,10 @@ class AddCustom {
       this.setupServer();
       this.play = new EventEmitter()
       this.del = new EventEmitter()
+      this.queue = new EventEmitter()
+      this.bot.client.on('queue', ({ item: { media } }) => {
+        this.queue.emit(media.id, media)
+      })
       this.bot.client.on('changeMedia', data => {
         this.play.emit(data.id, data)
       })
@@ -67,6 +71,7 @@ class AddCustom {
         this.del.emit(data.id)
         this.del.removeAllListeners(data.id)
         this.play.removeAllListeners(data.id)
+        this.queue.removeAllListeners(data.id)
       });
       const handleVideoDelete = this.bot.handleVideoDelete
       this.bot.handleVideoDelete = ({ uid }) => {
@@ -74,6 +79,7 @@ class AddCustom {
         this.del.emit(id)
         this.del.removeAllListeners(id)
         this.play.removeAllListeners(id)
+        this.queue.removeAllListeners(id)
         handleVideoDelete.call(this.bot, { uid })
       }
     });
@@ -524,6 +530,8 @@ class AddCustom {
     if (host) {
       const result = await host.getInfo.call(this, url, host)
       if (!result) return
+      let id = result.url
+      let type = 'fi'
       if (result.manifest) {
         const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
@@ -549,9 +557,14 @@ class AddCustom {
             })
           })
         }
-        this.bot.addNetzm(manifestUrl, meta.addnext, meta.user, 'cm', manifest.title)
+        id = manifestUrl
+        type = 'cm'
+        title = manifest.title
       }
-      else this.bot.addNetzm(result.url, meta.addnext, meta.user, 'fi', title || result.title, url)
+      this.bot.addNetzm(id, meta.addnext, meta.user, type, title || result.title, url)
+      console.log(meta.onPlay, typeof meta.onPlay === 'function')
+      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
+      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
     }
     else {
       if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
@@ -594,6 +607,20 @@ module.exports = {
       url = validUrl.isHttpsUri(url)
       if (url) this.API.add.add(url, title, { user, ...meta })
       else this.sendMessage('Ist keine https-Elfe /pfräh')
+    },
+    readd: function(user, params, meta) {
+      const url = validUrl.isHttpsUri(params)
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      this.API.add.add(url, this.currMedia.title, { user,
+        ...meta,
+        addnext: true,
+        onQueue: () => {
+          this.mediaDelete(this.currUID)
+        },
+        onPlay: () => {
+          this.commands.handlers.settime(user, this.currMedia.currentTime.toString(), meta)
+        }
+      })
     }
   }
 }

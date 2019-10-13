@@ -209,6 +209,9 @@ module.exports = {
     rank: 1,
     addnext: 'willkür'
   },
+  readd: {
+    rank: 3,
+  },
   lauer: {
     synop: 'Zeigt einen Kohlchanpost im Chat an. Beispiel: .lauer https://kohlchan.net/tu/res/536.html',
     rank: 0
