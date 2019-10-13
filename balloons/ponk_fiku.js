@@ -95,7 +95,7 @@ class FikuSystem {
           if (max < 1 && title === 'Stichwahl') return this.bot.sendMessage('Niemand hat abgestimmt. Partei!')
           const winner = opts.filter((opt, i) => pollvotes[i] === max)
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
-          if (winner[0] === 'Partei') return this.sendMessage('Partei!')
+          if (winner[0] === 'Partei') return this.bot.sendMessage('Partei!')
           this.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
             this.bot.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
             this.bot.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
