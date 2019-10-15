@@ -359,25 +359,6 @@ class AddCustom {
     ]
   }
 
-  userScriptPoll(title, url) {
-    return new Promise(resolve => {
-      this.bot.client.createPoll({
-        title,
-        opts: [
-          url,
-          'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-          ...this.userScriptPollOpts,
-          'dann ' + url + ' öffnen',
-          '(Ok klicken) und falls es schon läuft player neu laden'
-        ],
-        obscured: false
-      })
-      this.bot.client.once('newPoll', poll => {
-        resolve(poll.timestamp)
-      })
-    })
-  }
-
   fixurl(url) {
     if (typeof url === 'undefined') return false;
     url = decodeURIComponent(url).replace(/^http:\/\//i, 'https://');
@@ -549,14 +530,28 @@ class AddCustom {
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
           let userScriptPollId
-          this.userScriptPoll(manifest.title, result.info.webpage_url).then(id => {
-            userScriptPollId = id
-          })
+          const userScriptPoll = () => {
+            this.bot.client.createPoll({
+              title: manifest.title,
+              opts: [
+                result.info.webpage_url,
+                'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+                ...this.userScriptPollOpts,
+                'dann ' + result.info.webpage_url + ' öffnen',
+                '(Ok klicken) und falls es schon läuft player neu laden'
+              ],
+              obscured: false
+            })
+            this.bot.client.once('newPoll', poll => {
+              userScriptPollId = id
+            })
+          }
+          userScriptPoll()
           this.del.once(manifestUrl, () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
           this.play.once(manifestUrl, data => {
-            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) this.userScriptPoll(manifest.title, result.info.webpage_url)
+            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
             this.bot.client.once('changeMedia', () => {
               if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
             })
