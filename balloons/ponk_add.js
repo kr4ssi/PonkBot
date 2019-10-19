@@ -153,6 +153,8 @@ class AddCustom {
         }
       },
       'vidoza.net': {
+        regex: /https?:\/\/(?:www\.)vidoza\.net\/(?:embed-)([^\/?#&]+)/,
+        groups: ['id'],
         getInfo: (url, host) => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
         }).then(match => {
@@ -178,6 +180,7 @@ class AddCustom {
       },
       'rapidvideo.com, bitporno.com': {
         regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
+        groups: ['id'],
         getInfo: (url, host) => this.bot.fetch(url, {
           match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
         }).then(match => ({
@@ -511,6 +514,7 @@ class AddCustom {
     url = url.split('#').shift()
     const host = this.hostAllowed(url)
     if (host) {
+      url = url.match(host.regex)[0]
       const result = await host.getInfo.call(this, url, host)
       if (!result) return
       let id = result.url
