@@ -153,7 +153,7 @@ class AddCustom {
         }
       },
       'vidoza.net': {
-        regex: /https?:\/\/(?:www\.)vidoza\.net\/(?:embed-)([^\/?#&]+)/,
+        regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:embed-([^/?#&]+)\.html|([^/?#&]+))/,
         groups: ['id'],
         getInfo: (url, host) => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
