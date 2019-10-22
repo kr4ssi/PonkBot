@@ -520,6 +520,7 @@ class AddCustom {
       let id = result.url
       let type = 'fi'
       if (result.manifest) {
+        id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + result.info.webpage_url
         const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
@@ -530,7 +531,6 @@ class AddCustom {
           //timestamp,
           user: {}
         }
-        const manifestUrl = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&url=' + result.info.webpage_url : 'url=' + result.info.webpage_url)
         if (result.host.needUserScript) {
           manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
           let userScriptPollId
@@ -547,24 +547,24 @@ class AddCustom {
               obscured: false
             })
             this.bot.client.once('newPoll', poll => {
-              userScriptPollId = id
+              userScriptPollId = poll.timestamp
             })
           }
           userScriptPoll()
-          this.del.once(manifestUrl, () => {
+          this.del.once(id, () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
-          this.play.once(manifestUrl, data => {
+          this.play.once(id, data => {
             if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
             this.bot.client.once('changeMedia', () => {
               if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
             })
           })
         }
-        id = manifestUrl
         type = 'cm'
         title = manifest.title
       }
+      if (this.bot.playlist.some(item => item.media.id === id)) return this.bot.sendMessage('Ist schon in der playlist')
       this.bot.addNetzm(id, meta.addnext, meta.user, type, title || result.title, url)
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
