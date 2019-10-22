@@ -67,7 +67,7 @@ class AddCustom {
       })
       this.bot.client.on('queueFail', data => {
         this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-        if (data.msg === 'This item is already on the playlist') return
+        if (data.msg === 'This item is already on the playlist') return this.bot.sendMessage('Das darf garnicht passieren')
         this.del.emit(data.id)
         this.del.removeAllListeners(data.id)
         this.play.removeAllListeners(data.id)
@@ -531,40 +531,40 @@ class AddCustom {
           //timestamp,
           user: {}
         }
-        if (result.host.needUserScript) {
-          manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
-          let userScriptPollId
-          const userScriptPoll = () => {
-            this.bot.client.createPoll({
-              title: manifest.title,
-              opts: [
-                result.info.webpage_url,
-                'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-                ...this.userScriptPollOpts,
-                'dann ' + result.info.webpage_url + ' öffnen',
-                '(Ok klicken) und falls es schon läuft player neu laden'
-              ],
-              obscured: false
-            })
-            this.bot.client.once('newPoll', poll => {
-              userScriptPollId = poll.timestamp
-            })
-          }
-          userScriptPoll()
-          this.del.once(id, () => {
-            if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
-          })
-          this.play.once(id, data => {
-            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
-            this.bot.client.once('changeMedia', () => {
-              if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
-            })
-          })
-        }
         type = 'cm'
         title = manifest.title
       }
       if (this.bot.playlist.some(item => item.media.id === id)) return this.bot.sendMessage('Ist schon in der playlist')
+      if (result.host.needUserScript) {
+        manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
+        let userScriptPollId
+        const userScriptPoll = () => {
+          this.bot.client.createPoll({
+            title: manifest.title,
+            opts: [
+              result.info.webpage_url,
+              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+              ...this.userScriptPollOpts,
+              'dann ' + result.info.webpage_url + ' öffnen',
+              '(Ok klicken) und falls es schon läuft player neu laden'
+            ],
+            obscured: false
+          })
+          this.bot.client.once('newPoll', poll => {
+            userScriptPollId = poll.timestamp
+          })
+        }
+        userScriptPoll()
+        this.del.once(id, () => {
+          if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+        })
+        this.play.once(id, data => {
+          if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
+          this.bot.client.once('changeMedia', () => {
+            if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+          })
+        })
+      }
       this.bot.addNetzm(id, meta.addnext, meta.user, type, title || result.title, url)
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
