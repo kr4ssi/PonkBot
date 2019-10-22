@@ -519,9 +519,9 @@ class AddCustom {
       if (!result) return
       let id = result.url
       let type = 'fi'
-      if (result.manifest) {
+      const manifest = result.manifest
+      if (manifest) {
         id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + result.info.webpage_url
-        const manifest = result.manifest
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
         }
