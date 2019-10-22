@@ -265,7 +265,7 @@ class AddCustom {
                 }
                 this.bot.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
                 mirrorcount--
-                return host.host.getInfo.call(this, mirrorurl, host.host).then(result => {
+                return host.host.getInfo.call(this, mirrorurl.match(host.host.regex)[0], host.host).then(result => {
                   return {
                     ...result,
                     manifest: {
