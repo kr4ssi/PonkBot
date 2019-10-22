@@ -185,7 +185,7 @@ module.exports = {
       })
     },
     fikuinfo: function(user, params, meta) {
-      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) : Promise.resolve(params)).then(title => {
+      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) : Promise.resolve(params || this.currMedia.title)).then(title => {
         this.API.fiku.getTmdbId(title).then(id => {
           this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(body => {
             const cast = body.cast.filter(row => row.order < 3).map(row => row.name).join(', ')
