@@ -316,6 +316,12 @@ module.exports = {
     synop: '',
     rank: 1
   },
+  liveleak: {
+    synop: '',
+    rank: 0,
+    repeat: true,
+    addnext: 'willkür'
+  },
   update: {
     synop: '',
     rank: 4

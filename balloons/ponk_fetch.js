@@ -388,6 +388,18 @@ module.exports = {
       this.fetch('https://inspirobot.me/api?generate=true').then(body => {
         this.sendMessage(body + '.pic')
       })
+    },
+    liveleak: function(user, params, meta) {
+      const headers = {
+        'User-Agent': (new UserAgent()).toString()
+      }
+      this.fetch('https://www.liveleak.com/browse?page=9999', {
+        headers,
+        match: />(\d+)<\/a>\s+<\/li>\s+<\/ul>/
+      }).then(match => this.fetch('https://www.liveleak.com/browse?page=' + Math.ceil(Math.random() * match[1]), {
+        headers,
+        match: /view\?t=[^"]+/g
+      })).then(match => this.API.add.add('https://www.liveleak.com/' + match[Math.floor(Math.random() * match.length)], '', meta))
     }
   }
 }
