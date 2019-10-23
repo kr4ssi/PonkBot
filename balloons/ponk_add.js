@@ -481,7 +481,8 @@ class AddCustom {
         if (!host.needManifest) return resolve({
           title,
           url: info.url.replace(/^http:\/\//i, 'https://'),
-          host
+          host,
+          info
         })
         const manifest = this.manifest(title, url)
         if (info.manifest_url) manifest.sources[0].url = info.manifest_url
@@ -520,6 +521,10 @@ class AddCustom {
       if (!result) return
       let id = result.url
       let type = 'fi'
+      if (result.info.extractor === 'youtube') {
+        type = 'yt'
+        id = result.info.display_id
+      }
       const manifest = result.manifest
       if (manifest) {
         id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + result.info.webpage_url
