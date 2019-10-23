@@ -480,7 +480,8 @@ class AddCustom {
         const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
         if (!host.needManifest) return resolve({
           title,
-          url: info.url.replace(/^http:\/\//i, 'https://')
+          url: info.url.replace(/^http:\/\//i, 'https://'),
+          host
         })
         const manifest = this.manifest(title, url)
         if (info.manifest_url) manifest.sources[0].url = info.manifest_url
