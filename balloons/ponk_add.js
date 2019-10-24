@@ -465,7 +465,7 @@ class AddCustom {
         maxBuffer: 104857600
       }, (err, stdout, stderr) => {
         if (err) {
-          this.bot.sendMessage(url + ' ' + err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n'))
+          this.bot.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
           return reject(console.error(err))
         }
         let data = stdout.trim().split(/\r?\n/)
