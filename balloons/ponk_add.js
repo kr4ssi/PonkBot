@@ -435,7 +435,8 @@ class AddCustom {
         if (err) {
           console.error(err)
           if (tries > 1) {
-            return this.bot.sendMessage('Can\'t get duration')
+            this.bot.sendMessage('Can\'t get duration')
+            return reject()
           }
         }
         tries++
