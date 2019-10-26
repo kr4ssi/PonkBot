@@ -268,8 +268,8 @@ module.exports = {
       if (!image) return this.sendMessage('Ist keine https-Elfe /pfräh')
       if (/\.json$/.test(image)) return this.fetch(image, {
         json: true
-      }).then(emotes => {
-        const emote = emotes.find(emote => emote.name == name)
+      }).then(({ body }) => {
+        const emote = body.find(emote => emote.name == name)
         if (!emote) return this.sendMessage('Emote nicht gefunden')
         this.client.socket.emit('updateEmote', { name, image: emote.image })
       })

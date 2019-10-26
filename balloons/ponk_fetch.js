@@ -27,44 +27,48 @@ module.exports = {
         fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false, $ = false } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', ...arguments)
-            if ((getlist || getprop) && !json) return console.error('json must set to true')
-            if (getrandom && !getlist) return console.error('getrandom from where')
+            if ((getlist || getprop) && !json) throw new Error('json must set to true')
+            if (getrandom && !getlist) throw new Error('getrandom from where')
             const r = cloud ? cloudscraper : request
             r({
               headers: Object.assign({
                 'User-Agent': (new UserAgent()).toString()
               }, headers),
               url, qs, form, method, json//: match ? false : json
-            }, (err, res, body) => {
-              if (err) {
-                ponk.sendMessage(err.message)
-                console.error(err)
-                return
-              }
+            }, (err, { statusCode } = {}, body) => {
               //console.log(res.request.headers['User-Agent'])
-              if (res.statusCode != 200) {
-                if (customerr.includes(res.statusCode)) return resolve(res.statusCode)
-                ponk.sendMessage('Status: ' + res.statusCode)
-                console.error(body)
-                return
+              let result
+              try {
+                if (err) throw err
+                result = {
+                  body,
+                  statusCode,
+                  headers
+                }
+                if (statusCode != 200 && !customerr.includes(statusCode)) {
+                  //console.error(body)
+                  throw new Error(statusCode)
+                }
+                if (getprop && !body[getprop]) throw new Error()
+                result.prop = body[getprop] || body
+                if (getlist) {
+                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new Error()
+                  result.list = result.prop[getlist]
+                  if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
+                }
+                if (match) {
+                  result.match = body.toString().match(match)
+                  if (!result.match) {
+                    //console.error(body)
+                    throw new Error()
+                  }
+                }
+                if ($) result.$ = cheerio.load(body)
+                resolve(result)
               }
-              if (getprop) {
-                if (!body[getprop]) return ponk.sendMessage('Keine Ergebnisse /elo')
-                body = body[getprop]
+              catch (err) {
+                /\D/.test(err.message) ? console.error(err.message) : ponk.sendMessage(err.message ? ('Status: ' + res.statusCode) : 'Keine Ergebnisse /elo')
               }
-              if (getlist) {
-                if (!body[getlist] || body[getlist].length < 1) return ponk.sendMessage('Keine Ergebnisse /elo')
-                body = body[getlist]
-                if (getrandom) body = body[Math.floor(Math.random() * body.length)]
-              }
-              if (match) {
-                const regmatch = body.toString().match(match)
-                if (regmatch) return resolve(regmatch)
-                //console.error(body)
-                ponk.sendMessage('Keine Ergebnisse /elo')
-                return
-              }
-              resolve($ ? cheerio.load(body) : body)
             })
           })
         },
@@ -93,7 +97,7 @@ module.exports = {
         }, json: true,
         getlist: 'data',
         getrandom: true
-      }).then(body => this.addLastImage(body.images.fixed_height.url).then(image => {
+      }).then(({ random }) => this.addLastImage(random.images.fixed_height.url).then(image => {
         this.sendMessage(image + '.pic')
       }))
     },
@@ -106,7 +110,7 @@ module.exports = {
         }, json: true,
         getlist: 'results',
         getrandom: true
-      }).then(body => this.addLastImage(body.media[0].gif.url).then(image => {
+      }).then(({ random }) => this.addLastImage(random.media[0].gif.url).then(image => {
         this.sendMessage(image + '.pic')
       }))
     },
@@ -117,7 +121,7 @@ module.exports = {
             q: params,
             page
           }, json: false
-        }).then(body => {
+        }).then(({ body }) => {
           const getMatches = (string, regex, index = 1) => {
             let matches = []
             let match
@@ -142,7 +146,7 @@ module.exports = {
       if (params.length > 0) return getW0bm()
       if (!w0bm) return [...Array(meta.repeat)].forEach((c, i) => this.fetch('https://w0bm.com/api/video/random', {
         json: true
-      }).then(body => {
+      }).then(({ body }) => {
         this.addNetzm('https://w0bm.com/b/' + body.file, meta.addnext, user)
         if (meta.repeat === 1) this.sendMessage('Zufälliges netzm von w0bm.com addiert')
         else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige netzms von w0bm.com addiert')
@@ -164,13 +168,13 @@ module.exports = {
           tags: '!' + (!video ? '-' : '') + 'video ' + params,
         }, json: true,
         getlist: 'items'
-      }).then(body => {
-        let item = body[Math.floor(Math.random() * body.length)]
+      }).then(({ list }) => {
+        let item = list[Math.floor(Math.random() * list.length)]
         if (!video) return this.addLastImage('https://img.pr0gramm.com/' + item.image).then(image => {
           this.sendMessage(image + '.pic')
         })
         if (params.length < 1) return [...Array(meta.repeat)].forEach((c, i) => {
-          item = body[Math.floor(Math.random() * body.length)]
+          item = list[Math.floor(Math.random() * list.length)]
           this.addNetzm('https://img.pr0gramm.com/' + item.image, meta.addnext, user)
           if (meta.repeat === 1) this.sendMessage('Zufälliges Video von pr0gramm.com addiert')
           else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige Videos von pr0gramm.com addiert')
@@ -189,8 +193,8 @@ module.exports = {
         faeden.forEach(faden => this.fetch(faden.replace('.html', '.json'), {
           json: true,
           customerr: [404]
-        }).then(body => {
-          if (body === 404) return this.db.knex('netzms').where({ faden }).del().then(() => Promise.reject('404'))
+        }).then(({ statusCode, body }) => {
+          if (statusCode === 404) return this.db.knex('netzms').where({ faden }).del().then(() => Promise.reject('404'))
           const files = (body.files || []).concat(...(body.posts || []).map(post => post.files)).filter(file => [
             'video/mp4',
             'video/webm',
@@ -232,7 +236,7 @@ module.exports = {
       const postid = url[4] || thread
       this.fetch(siteurl + '/' + board + '/res/' + thread + '.json', {
         json: true
-      }).then(body => {
+      }).then(({ body }) => {
         const post = (body.threadId == postid) ? body : body.posts.find(posts => posts.postId == postid)
         if (!post) return this.sendMessage('Pfosten nicht gefunden')
         if (post.subject && !/ pics$/.test(params)) this.sendByFilter('<span class="lauersubject">' + post.subject + '<span>', true)
@@ -254,8 +258,8 @@ module.exports = {
       this.fetch('https://de.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(params), {
         json: true,
         customerr: [404]
-      }).then(body => {
-        if (body === 404) return this.sendMessage('Keine Ergebnisse /elo')
+      }).then(({ statusCode, body }) => {
+        if (statusCode === 404) return this.sendMessage('Keine Ergebnisse /elo')
         this.sendMessage(body.content_urls.desktop.page)
         this.sendByFilter('<div class="wikiinfo">' + (body.thumbnail ? `<img class="fikuimage" src="${body.thumbnail.source}" />` : '') + body.extract_html + '</div>', true)
       })
@@ -265,7 +269,7 @@ module.exports = {
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       if (/https:\/\/(?:www\.)?instagram\.com\/p\/[\w-]+\/?/i.test(url)) this.fetch(url + '?__a=1', {
         json: true
-      }).then(body => {
+      }).then(({ body }) => {
         const image = body.graphql && body.graphql.shortcode_media && body.graphql.shortcode_media.display_url
         if (image) this.addLastImage(image).then(image => {
           this.sendMessage(image + '.pic')
@@ -274,7 +278,7 @@ module.exports = {
       if (/https:\/\/prnt\.sc\/(\w{6})/i.test(url)) this.fetch(url, {
         //cloud: true,
         $: true
-      }).then($ => {
+      }).then(({ $ }) => {
         this.sendMessage($('.screenshot-image').attr('src') + '.pic')
       })
     },
@@ -290,7 +294,7 @@ module.exports = {
           min: 2,
           typ: 1
         }, json: false
-      }).then(body => {
+      }).then(({ body }) => {
         let regMatch = body.match(/     1\.  ([^\n]+)/i)
         if (!regMatch) return this.sendMessage('Keine Ergebnisse /elo')
         let anagram = regMatch[1].toLowerCase()
@@ -318,7 +322,7 @@ module.exports = {
         getprop: 'recipes',
         getlist: 'items',
         getrandom: true
-      }).then(body => {
+      }).then(({ random: body }) => {
         body = body._source
         this.sendMessage(body.url)
         this.sendByFilter('<div class="wikiinfo">' + ((body.images && body.images[0].url_external) ? `<img class="fikuimage" src="${body.images[0].url_external}" />` : '') +
@@ -339,7 +343,7 @@ module.exports = {
           lang: 'de',
           units: 'metric'
         }, json: true
-      }).then(body => {
+      }).then(({ body }) => {
         if (day > -1) {
           let rows = []
           let curr = 0
@@ -364,8 +368,8 @@ module.exports = {
           term: params
         }, json: true,
         getlist: 'list'
-      }).then(body => {
-        this.sendByFilter('<div class="wikiinfo">' + body[0].definition + '</div>', true)
+      }).then(({ list }) => {
+        this.sendByFilter('<div class="wikiinfo">' + list[0].definition + '</div>', true)
       })
     },
     dict: function(user, params, meta) {
@@ -380,12 +384,12 @@ module.exports = {
           input: params
         }, json: true,
         getlist: 'outputs'
-      }).then(body => {
-        this.sendMessage(body[0].output)
+      }).then(({ list }) => {
+        this.sendMessage(list[0].output)
       })
     },
     inspire: function(user, params, meta) {
-      this.fetch('https://inspirobot.me/api?generate=true').then(body => {
+      this.fetch('https://inspirobot.me/api?generate=true').then(({ body }) => {
         this.sendMessage(body + '.pic')
       })
     },
@@ -396,12 +400,12 @@ module.exports = {
       this.fetch('https://www.liveleak.com/browse?page=9999', {
         headers,
         match: />(\d+)<\/a>\s+<\/li>\s+<\/ul>/
-      }).then(match => {
+      }).then(({ match }) => {
         [...Array(meta.repeat)].forEach((c, i) => {
           this.fetch('https://www.liveleak.com/browse?page=' + Math.ceil(Math.random() * match[1]), {
             headers,
             match: /view\?t=[^"]+/g
-          }).then(match => {
+          }).then(({ match }) => {
             this.API.add.add('https://www.liveleak.com/' + match[Math.floor(Math.random() * match.length)], '', { user, ...meta })
             if (meta.repeat === 1) this.sendMessage('Zufälliges Video von liveleak.com addiert')
             else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige Videos von liveleak.com addiert')

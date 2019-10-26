@@ -106,7 +106,7 @@ class AddCustom {
       'nxload.com': {
         getInfo: url => this.bot.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
           match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
-        }).then(match => ({
+        }).then(({ match }) => ({
           manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
           host,
         }))
@@ -157,7 +157,7 @@ class AddCustom {
         groups: ['id'],
         getInfo: (url, host) => this.bot.fetch(url, {
           match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
-        }).then(match => {
+        }).then(({ match }) => {
           const manifest = this.manifest(match[3], match[1])
           manifest.duration = parseInt(match[2])
           manifest.sources[0].contentType = 'video/mp4';
@@ -183,7 +183,7 @@ class AddCustom {
         groups: ['id'],
         getInfo: (url, host) => this.bot.fetch(url, {
           match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-        }).then(match => ({
+        }).then(({ match }) => ({
           manifest: this.manifest(match[1], match[2]),
           info: {
             webpage_url: url
@@ -212,22 +212,25 @@ class AddCustom {
       },
       'kinox.to': {
         regex: /https?:\/\/(?:www\.)?kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
-        getInfo: url => {
+        getInfo: (url, host, gettitle) => {
           const headers = {
             'User-Agent': (new UserAgent()).toString()
           }
           return this.bot.fetch(url, {
             headers,
             cloud: true,
+            match: /<title>(.*) Stream/,
             $: true
-          }).then($ => {
+          }).then(({ match, $ }) => {
             const hostname = 'https://' + URL.parse(url).hostname
-            if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + hostname + $('.Grahpics a').attr('href'))
+            const location = hostname + $('.Grahpics a').attr('href')
+            if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + location)
+            const title = entities.decode(match[1])
+            if (gettitle) return { title, location }
             const hosts = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
             .map(id => ({ id, host: this.allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
             .filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
             console.log(hosts)
-            const title = entities.decode(($('title').html().match(/^(.*) Stream/) || [])[1])
             const getHost = () => {
               let host = hosts.shift()
               if (!host) {
@@ -252,13 +255,13 @@ class AddCustom {
                 }
                 //getprop: 'Stream',
                 //match: /\/\/([^"]+?)"/
-              }).then(mirror => {
-                if (!mirror.Stream) return console.error(host.host)
-                const mirrorurl = 'https://' + (mirror.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+              }).then(({ body }) => {
+                if (!body.Stream) return console.error(host.host)
+                const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
                 let match
-                if (mirror.Replacement) {
-                  match = mirror.Replacement.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br \/><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
-                  if (!match) return console.log(mirror.Replacement)
+                if (body.Replacement) {
+                  match = body.Replacement.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br \/><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
+                  if (!match) return console.log(body.Replacement)
                   mirrorindex = match[1]
                   date = match[3]
                   console.log(mirrorindex, mirrorcount, date)
@@ -521,7 +524,7 @@ class AddCustom {
       if (!result) return
       let id = result.url
       let type = 'fi'
-      if (result.info.extractor === 'youtube') {
+      if (result.info && result.info.extractor === 'youtube') {
         type = 'yt'
         id = result.info.display_id
       }
@@ -560,14 +563,16 @@ class AddCustom {
             userScriptPollId = poll.timestamp
           })
         }
-        userScriptPoll()
-        this.del.once(id, () => {
-          if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
-        })
-        this.play.once(id, data => {
-          if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
-          this.bot.client.once('changeMedia', () => {
+        this.queue.once(id, () => {
+          userScriptPoll()
+          this.del.once(id, () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+          })
+          this.play.on(id, data => {
+            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
+            this.bot.client.once('changeMedia', () => {
+              if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+            })
           })
         })
       }

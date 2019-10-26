@@ -30,7 +30,7 @@ class FikuSystem {
     })
   }
   getFiku(id) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       if (!/^\d+$/.test(id)) return this.bot.sendMessage('Muss 1 nr sein')
       this.getFikuList().then(() => {
         const fiku = this.fikuList.find(fiku => fiku.id == id)
@@ -51,8 +51,8 @@ class FikuSystem {
         },
         json: true,
         getlist: 'results'
-      }).then(body => {
-        resolve(body.shift().id)
+      }).then(({ list }) => {
+        resolve(list[0].id)
       })
     })
   }
@@ -63,7 +63,7 @@ class FikuSystem {
           api_key: this.bot.API.keys.tmdb,
           language,
         }, json: true
-      }).then(body => {
+      }).then(({ body }) => {
         resolve(body)
       })
     })
@@ -92,17 +92,24 @@ class FikuSystem {
         if (timeout) Object.assign(settings, { timeout })
         this.bot.pollAction(settings, pollvotes => {
           const max = Math.max(...pollvotes)
-          if (max < 1 && title === 'Stichwahl') return this.bot.sendMessage('Niemand hat abgestimmt. Partei!')
+          if (max < 1 && title === 'Stichwahl') return setFiku('Niemand hat abgestimmt. Partei!')
           const winner = opts.filter((opt, i) => pollvotes[i] === max)
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
-          if (winner[0] === 'Partei') return this.bot.sendMessage('Partei!')
+          if (winner[0] === 'Partei') return setFiku('Partei!')
           this.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
             this.bot.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
             this.bot.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
           })
         })
       }
+      const setFiku = (msg) => {
+        if (msg) this.bot.sendMessage(msg)
+        this.bot.commandDispatcher(user, '.hintergrund ' + (msg ? 'last' : 'KinoX'))
+        setTimeout(() => this.bot.commandDispatcher(user, '.logo ' + (msg ? 'last' : 'FIKU')), 1000)
+      }
       fikuPoll(title, opts, timeout)
+      console.log(meta)
+      setFiku()
     })
   }
 }
@@ -127,14 +134,11 @@ module.exports = {
     },
     vorschlag: async function(user, params, meta) {
       const split = params.trim().split(';')
-      const url = validUrl.isHttpsUri(split.pop().trim())
+      let url = validUrl.isHttpsUri(split.pop().trim())
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       const host = this.API.add.hostAllowed(url)
       let title
-      if (host && host.name === 'kinox.to') title = await this.fetch(url, {
-        cloud: true,
-        match: /<title>(.*) Stream/
-      }).then(body => body[1])
+      if (host && host.name === 'kinox.to') ({ title, location: url } = await host.getInfo(url, true))
       else title = split.join().trim()
       if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
       const fiku = { title, url, user, active: true, timestamp: Date.now() }
