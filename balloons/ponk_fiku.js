@@ -90,7 +90,7 @@ class FikuSystem {
           obscured: false
         }
         if (timeout) Object.assign(settings, { timeout })
-        this.bot.pollAction(settings, pollvotes => {
+        this.bot.pollAction(settings).then(pollvotes => {
           const max = Math.max(...pollvotes)
           if (max < 1 && title === 'Stichwahl') return setFiku('Niemand hat abgestimmt. Partei!')
           const winner = opts.filter((opt, i) => pollvotes[i] === max)

@@ -318,48 +318,7 @@ module.exports = {
     selbstsäge: function(user, params, meta) {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
-    }/*,
-    aip: async function(user, params, meta) {
-      if (!params || params.match(/^[1-9]$/)) params = await this.getLastImage(Number(params))
-      const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
-      if (emote) params = emote.image
-      const url = validUrl.isHttpsUri(params)
-      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      request({
-        url,
-        encoding: null
-      }, (err, res, body) => {
-        if (err || res.statusCode !== 200) {
-          console.error(err || statusCode)
-          return this.sendMessage('download failed')
-        }
-        const contentType = res.headers['content-type'] || 'image/jpeg'
-        let ext = contentType.split('/').pop()
-        if (ext === 'jpeg') ext = 'jpg'
-        request.post({
-          url: 'https://aiportraits.com/art-api/aiportrait/',
-          formData: {
-            file: {
-              value: body,
-              options: {
-                filename: 'image.' + ext,
-                contentType
-              }
-            }
-          }, json: true
-        }, (err, res, body) => {
-          if (err || res.statusCode !== 200) {
-            console.error(err || res.statusCode)
-            return this.sendMessage('upload failed')
-          }
-          if (body.ERROR) return this.sendMessage(body.ERROR)
-          if (!body.filename) return this.sendMessage('parsing error')
-          this.addLastImage('https://aiportraits.com/portraits/' + body.filename).then(image => {
-            this.sendMessage(image + '.pic')
-          })
-        })
-      })
-    }*/,
+    },
     hintergrund: logoHintergrund,
     logo: logoHintergrund,
     help: function(user, params, meta) {
@@ -547,22 +506,23 @@ module.exports = {
             }
           },
           pollAction: function(poll, callback) {
-            if(!ponk.meeseeks('pollctl')){
-              return ponk.sendPrivate(`I lack ponk capability due to channel permission settings.`, user)
-            }
-            ponk.client.createPoll(poll)
-            ponk.client.once('newPoll', () => {
-              let timeout = false
-              if (poll.timeout && poll.timeout > 10) {
-                timeout = setTimeout(() => {
-                  ponk.sendMessage('Noch 10 Sekunden Zeit abzustimmen.', { ignoremute: true })
-                }, (poll.timeout - 10) * 1000)
+            return new Promise((resolve, reject) => {
+              if (!ponk.meeseeks('pollctl')) {
+                return ponk.sendMessage('I lack this capability due to channel permission settings.')
               }
-              ponk.client.once('closePoll', () => {
-                timeout && clearTimeout(timeout)
-                if (callback && typeof(callback) === 'function') {
-                  callback(ponk.poll.counts)
+              if (callback && typeof callback  === 'function') resolve = callback
+              ponk.client.createPoll(poll)
+              ponk.client.once('newPoll', () => {
+                let timeout = false
+                if (poll.timeout && poll.timeout > 10) {
+                  timeout = setTimeout(() => {
+                    ponk.sendMessage('Noch 10 Sekunden Zeit abzustimmen.', { ignoremute: true })
+                  }, (poll.timeout - 10) * 1000)
                 }
+                ponk.client.once('closePoll', () => {
+                  timeout && clearTimeout(timeout)
+                  resolve(ponk.poll.counts)
+                })
               })
             })
           }

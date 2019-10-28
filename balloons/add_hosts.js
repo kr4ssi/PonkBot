@@ -1,0 +1,321 @@
+const { execFile } = require('child_process')
+const path = require('path')
+const URL = require('url')
+const Entities = require('html-entities').AllHtmlEntities;
+const entities = new Entities();
+
+module.exports = class HosterList {
+  constructor(ponk, ydlRegEx) {
+    class Hoster {
+      constructor(name, rules = {}) {
+        Object.assign(this, {
+          name,
+          regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
+          needManifest: rules.needManifest || typeof rules.userScript === 'function',
+          needUserScript: typeof rules.userScript === 'function',
+        }, rules)
+      }
+      getInfo(url, host) {
+        return new Promise((resolve, reject) => {
+          execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
+            maxBuffer: 104857600
+          }, (err, stdout, stderr) => {
+            let info
+            try {
+              if (err) {
+                ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
+                throw new Error(err)
+              }
+              let data = stdout.trim().split(/\r?\n/)
+              info = data.map((rawData) => JSON.parse(rawData))
+            }
+            catch (err) {
+              return console.error(err)
+            }
+            if (!info.title) info = info[0];
+            const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
+            if (!host.needManifest) return resolve({
+              title,
+              url: info.url.replace(/^http:\/\//i, 'https://'),
+              host,
+              info
+            })
+            const manifest = this.manifest(title, url)
+            if (info.manifest_url) manifest.sources[0].url = info.manifest_url
+            else {
+              manifest.sources[0].url = info.url
+              manifest.sources[0].contentType = ([
+                {type: 'video/mp4', ext: ['.mp4']},
+                {type: 'video/webm', ext: ['.webm']},
+                {type: 'application/x-mpegURL', ext: ['.m3u8']},
+                {type: 'video/ogg', ext: ['.ogv']},
+                {type: 'application/dash+xml', ext: ['.mpd']},
+                {type: 'audio/aac', ext: ['.aac']},
+                {type: 'audio/ogg', ext: ['.ogg']},
+                {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(info.url).pathname))) || {}).type || 'video/mp4'
+            }
+            if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
+            if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
+            manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
+            manifest.duration = info.duration
+            return resolve({
+              manifest,
+              info,
+              host
+            })
+          })
+        })
+      }
+    }
+    const allowedHosts = Object.entries({
+      'twitter.com': {},
+      'ARDMediathek': ydlRegEx['ARDMediathekIE'],
+      'zdf.de': {},
+      'wdr.de': ydlRegEx['WDRPageIE'],
+      'WDRElefant': ydlRegEx['WDRElefantIE'],
+      'mdr.de': {},
+      'br.de': {},
+      'bild.de': {},
+      'tvnow.de': {},
+      '.m3u8-links': {
+        regex: /.*\.m3u8$/,
+        getInfo(url) {
+          return {
+            manifest: this.manifest('Kein Livestream', url),
+            host,
+          }
+        }
+      },
+      'nxload.com': {
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /title: '([^']*)[\s\S]+https\|(.+)\|nxload\|com\|hls\|(.+)\|urlset/
+          }).then(({ match }) => ({
+            manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
+            host,
+          }))
+        }
+      }
+    }).map(([name, rules]) => ([
+      name, {
+        ...rules,
+        needManifest: true
+      }
+    ])).concat(Object.entries({
+      'liveleak.com': {},
+      'imgur.com': {},
+      'instagram.com': {},
+      'ndr.de': {},
+      'arte.tv': {},
+      'bandcamp.com': {},
+      'mixcloud.com': {},
+      'archive.org': {},
+      'ccc.de': {},
+      'bitchute.com': {},
+      'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
+      'peertube': ydlRegEx['PeerTubeIE'],
+      'verystream.com, woof.tube': {
+        ...ydlRegEx['VerystreamIE'],
+        kinoxids: ['85'],
+        priority: 1,
+        userScript: () => {
+          const e = document.querySelector("[id^=videolink]")
+          if (!e) return
+          link += `/gettoken/${e.textContent}?mime=true`
+          return true
+        }
+      },
+      'openload.co': {
+        ...ydlRegEx['OpenloadIE'],
+        kinoxids: ['67'],
+        priority: 2,
+        userScript: () => {
+          let e = document.querySelector("[id^=lqEH1]")
+          if (!e) e = document.querySelector("[id^=streamur]")
+          if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
+          if (!e) e = document.querySelector("#main p:last-child")
+          if (!e) return
+          if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
+          link += `/stream/${e.textContent}?mime=true`
+          return true
+        }
+      },
+      'vidoza.net': {
+        regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:embed-([^/?#&]+)\.html|([^/?#&]+))/,
+        groups: ['id'],
+        getInfo(url, host) {
+          return ponk.fetch(url, {
+            match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
+          }).then(({ match }) => {
+            const manifest = this.manifest(match[3], match[1])
+            manifest.duration = parseInt(match[2])
+            manifest.sources[0].contentType = 'video/mp4';
+            return {
+              manifest,
+              info: {
+                webpage_url: url
+              },
+              host
+            }
+          })
+        },
+        kinoxids: ['80'],
+        priority: 3,
+        userScript: () => {
+          const e = window.pData
+          if (!e) return
+          link = window.pData.sourcesCode[0].src
+          return true
+        }
+      },
+      'rapidvideo.com, bitporno.com': {
+        regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
+        groups: ['id'],
+        getInfo(url, host) {
+          return ponk.fetch(url, {
+            match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
+          }).then(({ match }) => ({
+            manifest: this.manifest(match[1], match[2]),
+            info: {
+              webpage_url: url
+            },
+            host
+          }))
+        },
+        kinoxids: ['71', '75'],
+        priority: 4,
+        userScript: () => {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          link = e.src
+          return true
+        }
+      },
+      'streamango.com, fruithosts.net, streamcherry.com': {
+        ...ydlRegEx['StreamangoIE'],
+        kinoxids: ['72', '82'],
+        priority: 5,
+        userScript: () => {
+          const e = document.querySelector("[id^=mgvideo_html5_api]")
+          if (!e) return
+          link = e.src
+          return true
+        }
+      },
+      'kinox.to': {
+        regex: /https?:\/\/(?:www\.)?kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
+        getInfo(url, host, gettitle) {
+          return ponk.fetch(url, {
+            cloud: true,
+            match: /<title>(.*) Stream/,
+            $: true
+          }).then(({ match, $, headers }) => {
+            const hostname = 'https://' + URL.parse(url).hostname
+            const location = hostname + $('.Grahpics a').attr('href')
+            if (/\/Tipp\.html$/.test(url)) ponk.sendMessage('Addiere: ' + location)
+            const title = entities.decode(match[1])
+            if (gettitle) return { title, location }
+            const hosts = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
+            .map(id => ({ id, host: allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
+            .filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
+            console.log(hosts)
+            const getHost = () => {
+              let host = hosts.shift()
+              if (!host) {
+                ponk.sendMessage('Kein addierbarer Hoster gefunden')
+                return
+              }
+              const hostdiv = $('#Hoster_' + host.id)
+              const data = hostdiv.children('.Data').text()
+              const match = data.match(/Mirror: (?:(\d+)\/(\d+))Vom: (\d\d\.\d\d\.\d{4})$/)
+              if (!match) return console.log(data)
+              let [, mirrorindex, mirrorcount, date] = match
+              console.log(mirrorindex, mirrorcount, date)
+              const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
+              console.log(filename)
+              const getMirror = mirrorindex => ponk.fetch(hostname + '/aGET/Mirror/' + filename, {
+                headers,
+                cloud: true,
+                json: true,
+                qs: {
+                  Hoster: host.id,
+                  Mirror: mirrorindex
+                }
+                //getprop: 'Stream',
+                //match: /\/\/([^"]+?)"/
+              }).then(({ body }) => {
+                if (!body.Stream) return console.error(host.host)
+                const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+                let match
+                if (body.Replacement) {
+                  match = body.Replacement.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br \/><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
+                  if (!match) return console.log(body.Replacement)
+                  mirrorindex = match[1]
+                  date = match[3]
+                  console.log(mirrorindex, mirrorcount, date)
+                }
+                ponk.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
+                mirrorcount--
+                return host.host.getInfo.call(this, mirrorurl.match(host.host.regex)[0], host.host).then(result => {
+                  return {
+                    ...result,
+                    manifest: {
+                      ...result.manifest,
+                      title
+                    }
+                  }
+                }, () => (mirrorcount > 0) ? getMirror(mirrorcount) : getHost())
+              })
+              return getMirror(mirrorcount)
+            }
+            return getHost()
+          })
+        }
+      }
+    })).map(([name, rules]) => {
+      return new Hoster(name, rules)
+    })
+    class FoundHost {
+      constructor(url) {
+        allowedHosts.find(host => {
+          this.match = url.match(host.regex)
+          if (this.match === null) return false
+          Object.assign(this, host, {
+            getInfo: host.getInfo.bind(this, this.match[0], this)
+          })
+          return true
+        })
+      }
+      manifest(title = '', url = '') {
+        return {
+          title,
+          live: false,
+          duration: 0,
+          sources: [
+            {
+              url,
+              quality: 720,
+              contentType: 'application/x-mpegURL'
+            }
+          ]
+        }
+      }
+    }
+    this.hostAllowed = url => new Promise((resolve, reject) => {
+      const host = new FoundHost(url)
+      if (host.match) return resolve(host)
+      reject()
+    })
+    this.allowedHostsString = allowedHosts.map(host => host.name).join(', ')
+    const userScriptHosts = allowedHosts.filter(host => host.needUserScript)
+    this.userScripts = {
+      includes: userScriptHosts.map(host => host.regex),
+      allowedHosts: userScriptHosts.map(({ regex, groups, userScript }) => ({
+        regex,
+        groups,
+        getInfo: userScript
+      }))
+    }
+  }
+}

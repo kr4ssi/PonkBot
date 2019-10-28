@@ -30,12 +30,14 @@ module.exports = {
             if ((getlist || getprop) && !json) throw new Error('json must set to true')
             if (getrandom && !getlist) throw new Error('getrandom from where')
             const r = cloud ? cloudscraper : request
+            headers = Object.assign({
+              'User-Agent': (new UserAgent()).toString()
+            }, headers)
             r({
-              headers: Object.assign({
-                'User-Agent': (new UserAgent()).toString()
-              }, headers),
+              headers,
               url, qs, form, method, json//: match ? false : json
-            }, (err, { statusCode } = {}, body) => {
+            }, (err, res, body) => {
+              const statusCode = res.statusCode
               //console.log(res.request.headers['User-Agent'])
               let result
               try {
@@ -394,13 +396,9 @@ module.exports = {
       })
     },
     liveleak: function(user, params, meta) {
-      const headers = {
-        'User-Agent': (new UserAgent()).toString()
-      }
       this.fetch('https://www.liveleak.com/browse?page=9999', {
-        headers,
         match: />(\d+)<\/a>\s+<\/li>\s+<\/ul>/
-      }).then(({ match }) => {
+      }).then(({ match, headers }) => {
         [...Array(meta.repeat)].forEach((c, i) => {
           this.fetch('https://www.liveleak.com/browse?page=' + Math.ceil(Math.random() * match[1]), {
             headers,
