@@ -235,7 +235,7 @@ class AddCustom {
 
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
-      let id// = result.url
+      let id = result.url
       let type = 'fi'
       if (result.info && result.info.extractor === 'youtube') {
         type = 'yt'
