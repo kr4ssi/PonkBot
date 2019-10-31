@@ -90,7 +90,7 @@ class AddCustom {
     const userScriptHeader = userscriptmeta.parse(userscript[1])
     const allowedHosts = this.allowedHosts
     const includes = allowedHosts.userScripts.includes
-    const allowedHostsSource = toSource(allowedHosts.userScripts.allowedHosts)
+    const allowedHostsSource = toSource(allowedHosts.userScripts.allowedHostsSource)
 
     const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userScriptHeader, header, {
       include: includes.concat(header.include || [])
