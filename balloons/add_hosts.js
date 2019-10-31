@@ -202,7 +202,7 @@ module.exports = class HosterList {
         }
       },
       'vidoza.net': {
-        regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:embed-([^/?#&]+)\.html|([^/?#&]+))/,
+        regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
         getInfo(url, host) {
           return ponk.fetch(url, {
@@ -324,11 +324,10 @@ module.exports = class HosterList {
     console.log(this.kinoxHosts, this.kinoxIds)
 
     this.hostAllowed = url => new Promise((resolve, reject) => {
-      allowedHosts.find(host => {
+      if (!allowedHosts.find(host => {
         const hostMatch = host.match(url)
         if (hostMatch) return resolve(hostMatch)
-        reject()
-      })
+      })) reject()
     })
 
     //this.kinoxhost = id => this.kinoxHosts.find
