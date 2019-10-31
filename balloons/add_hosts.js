@@ -299,7 +299,7 @@ module.exports = class HosterList {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/
           }).then(({ match }) => ({
-            manifest: this.manifest(match[1], 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
+            manifest: this.manifest(match[1] || 'NxLoad', 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
             host: this,
           }))
         }
