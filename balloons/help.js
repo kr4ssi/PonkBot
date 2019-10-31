@@ -322,6 +322,9 @@ module.exports = {
     repeat: true,
     addnext: 'willkür'
   },
+  mutter: {
+    rank: 0
+  },
   update: {
     synop: '',
     rank: 4

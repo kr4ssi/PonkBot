@@ -70,6 +70,7 @@ module.exports = {
               }
               catch (err) {
                 /\D/.test(err.message) ? console.error(err.message) : ponk.sendMessage(err.message ? ('Status: ' + res.statusCode) : 'Keine Ergebnisse /elo')
+                reject(err)
               }
             })
           })

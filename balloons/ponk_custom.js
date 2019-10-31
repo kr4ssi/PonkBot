@@ -5,6 +5,8 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const request = require('request')
 const validUrl = require('valid-url')
 
@@ -17,106 +19,14 @@ const gitrepo = process.env.gitrepo
 let count = 0
 const waiting = []
 let lastImages = []
-
-const quotes = {
-  zen: require('./quotes/zen.js'),
-  stoll: require('./quotes/stoll.js'),
-  hitler: require('./quotes/hitler.js'),
-  breifick: require('./quotes/breifick.js'),
-  ratschlag: require('./quotes/ratschlag.js'),
-  tourette: require('./quotes/tourette.js'),
-  frage: require('./quotes/frage.js'),
-  fut: [
-    'Fut',
-    'Doppelfut',
-    'Labbrige Doppelfut',
-    'Futschlecker',
-    'Garstiger Futlappen'
-  ],
-  armbernd: [
-    '/tarm',
-    '/armmoderiert',
-    '/armbernd',
-    '/sarm',
-    '/fritt'
-  ],
-  saufen: [
-    '/lahey',
-    '/stoss',
-    '/saufi',
-    '/saufen',
-    '/wein',
-    '/lüning',
-    '/stollschluck',
-    '/schluck',
-    '/tschluck',
-    '/tadler',
-    '/schunkel',
-    '/bebe',
-    '/kirk'
-  ]
-}
-const quote = command => quotes[command][Math.floor(Math.random() * quotes[command].length)]
 const cleanban = []
 const lastCSS = {
   logo: '',
   hintergrund: ''
 }
 
-function sendquote(user, params, meta) {
-  this.sendByFilter(quote(meta.command))
-}
 module.exports = {
   handlers: {
-    zen       : sendquote,
-    stoll     : sendquote,
-    hitler    : sendquote,
-    breifick  : sendquote,
-    ratschlag : sendquote,
-    fut       : sendquote,
-    frage: function(user, params, meta) {
-      const randuser = this.userlist[Math.floor(Math.random() * this.userlist.length)].name
-      this.sendMessage(quote(meta.command).replace(/\${randuser}/, randuser))
-    },
-    armbernd: function(user, params, meta) {
-      const regex = /armbernd/g
-      let tempstr = quote(meta.command)
-      while (regex.exec(params)) {
-        tempstr += ' ' + quote(meta.command)
-      }
-      this.sendMessage(tempstr)
-    },
-    saufen: function(user, params, meta) {
-      const notafk = this.userlist.filter(user => ![this.name, 'kr4ssi'].includes(user.name) && !user.meta.afk)
-      const randuser = notafk[Math.floor(Math.random() * notafk.length)].name
-      const messages = [
-        `Ich sage: ${randuser} muss saufen.`,
-        `${randuser} wurde aus allen zum saufen ausgewählt.`,
-        `Heute wird sich totgesoffen, ${randuser}.`,
-        `Verabschiede dich von deine Leber, ${randuser}.`,
-        `${randuser}! Kanalisiere deinen inneren kr4ssi.`,
-        `Lass den Rosé stehen ${randuser} und pack den Männerschnappes aus.`,
-        `Mr. ${randuser}, lassen sie den Schnaps aus Ihnen sprechen.`
-      ]
-      this.sendMessage(messages[Math.floor(Math.random() * messages.length)] + ' ' + quote(meta.command))
-    },
-    tourette: function(user, params, meta) {
-      if (Math.random() < 0.7) return this.sendMessage(quote(meta.command))
-      const tourette1 = ['RAH', 'BRU', 'WAH', 'PAM', 'GNA']
-      const tourette2 = ['A', 'H', 'G', 'W', 'R']
-      const rand = (min, max) => Math.floor(Math.random() * (max - min)) + min
-      const rahs = rand(3, 6)
-      const ahs = rand(5, 11)
-      let tourette = ''
-      for (let i = 0; i < rahs; i++) {
-        tourette += tourette1[rand(0, tourette1.length)]
-      }
-      for (let i = 0; i < ahs; i++) {
-        const intpos = rand(0, tourette.length)
-        tourette = tourette.slice(0, intpos) + tourette2[rand(0, tourette2.length)] + tourette.slice(intpos)
-      }
-      this.sendMessage(tourette)
-    },
     pizza: function(user, params, meta) {
       if (!/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(params)) return this.sendMessage('Du musst eine Zeit unter 100 Minuten angeben /ööäähh')
       this.sendPrivate('Werde dich nach ' +  params + ' Minuten erinnern.', user)
@@ -529,6 +439,101 @@ module.exports = {
         })
         ponk.createEmoteCSS()
         ponk.logger.log('Registering custom handlers');
+        Object.assign(module.exports.handlers, ...fs.readdirSync(path.join(__dirname, 'quotes')).map(file => {
+          const ext = path.extname(file)
+          const command = path.basename(file, ext)
+          let quotes
+          switch (ext) {
+            case '.js': quotes = require(path.join(__dirname, 'quotes', file))
+            break
+            case '.txt': quotes = fs.readFileSync(path.join(__dirname, 'quotes', file)).toString().split("\n")
+            break
+          }
+          return [
+            command,
+            quotes
+          ]
+        }).filter(obj => !!obj[1]).concat(Object.entries({
+          fut: [
+            'Fut',
+            'Doppelfut',
+            'Labbrige Doppelfut',
+            'Futschlecker',
+            'Garstiger Futlappen'
+          ],
+          armbernd: [
+            '/tarm',
+            '/armmoderiert',
+            '/armbernd',
+            '/sarm',
+            '/fritt'
+          ],
+          saufen: [
+            '/lahey',
+            '/stoss',
+            '/saufi',
+            '/saufen',
+            '/wein',
+            '/lüning',
+            '/stollschluck',
+            '/schluck',
+            '/tschluck',
+            '/tadler',
+            '/schunkel',
+            '/bebe',
+            '/kirk'
+          ]
+        })).map(([command, quotes]) => {
+          module.exports.helpdata[command] = module.exports.helpdata[command] || {
+            synop: 'Zeigt ein Zitat',
+            rank: 0
+          }
+          const quote = () => quotes[Math.floor(Math.random() * quotes.length)]
+          return {
+            [command]: {
+              frage: function(user, params, meta) {
+                const randuser = this.userlist[Math.floor(Math.random() * this.userlist.length)].name
+                this.sendMessage(quote(meta.command).replace(/\${randuser}/, randuser))
+              },
+              armbernd: function(user, params, meta) {
+                this.sendMessage(meta.message.match(/armbernd/g).map(() => quote()).join(' '))
+              },
+              saufen: function(user, params, meta) {
+                const notafk = this.userlist.filter(user => ![this.name, 'kr4ssi'].includes(user.name) && !user.meta.afk)
+                const randuser = notafk[Math.floor(Math.random() * notafk.length)].name
+                const messages = [
+                  `Ich sage: ${randuser} muss saufen.`,
+                  `${randuser} wurde aus allen zum saufen ausgewählt.`,
+                  `Heute wird sich totgesoffen, ${randuser}.`,
+                  `Verabschiede dich von deine Leber, ${randuser}.`,
+                  `${randuser}! Kanalisiere deinen inneren kr4ssi.`,
+                  `Lass den Rosé stehen ${randuser} und pack den Männerschnappes aus.`,
+                  `Mr. ${randuser}, lassen sie den Schnaps aus Ihnen sprechen.`
+                ]
+                this.sendMessage(messages[Math.floor(Math.random() * messages.length)] + ' ' + quote(meta.command))
+              },
+              tourette: function(user, params, meta) {
+                if (Math.random() < 0.7) return this.sendMessage(quote(meta.command))
+                const tourette1 = ['RAH', 'BRU', 'WAH', 'PAM', 'GNA']
+                const tourette2 = ['A', 'H', 'G', 'W', 'R']
+                const rand = (min, max) => Math.floor(Math.random() * (max - min)) + min
+                const rahs = rand(3, 6)
+                const ahs = rand(5, 11)
+                let tourette = ''
+                for (let i = 0; i < rahs; i++) {
+                  tourette += tourette1[rand(0, tourette1.length)]
+                }
+                for (let i = 0; i < ahs; i++) {
+                  const intpos = rand(0, tourette.length)
+                  tourette = tourette.slice(0, intpos) + tourette2[rand(0, tourette2.length)] + tourette.slice(intpos)
+                }
+                this.sendMessage(tourette)
+              }
+            }[command] || function sendquote(user, params, meta) {
+              this.sendByFilter(quotes[Math.floor(Math.random() * quotes.length)])
+            }
+          }
+        }))
         resolve();
       })
     }

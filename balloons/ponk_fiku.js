@@ -136,10 +136,17 @@ module.exports = {
       const split = params.trim().split(';')
       let url = validUrl.isHttpsUri(split.pop().trim())
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      const host = this.API.add.hostAllowed(url)
       let title
-      if (host && host.name === 'kinox.to') ({ title, location: url } = await host.getInfo(url, true))
-      else title = split.join().trim()
+      try {
+        ({ title, location: url } = await this.API.add.allowedHosts.hostAllowed(url).then(host => {
+          if (host.name != 'kinox.to') reject()
+          else return host
+        }).then(host => host.getInfo(url, true)))
+      }
+      catch (err) {
+        console.error(err)
+        title = split.join().trim()
+      }
       if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
       const fiku = { title, url, user, active: true, timestamp: Date.now() }
       this.db.knex('fiku').insert(fiku).returning('id').then(result => {
