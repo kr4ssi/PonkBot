@@ -243,12 +243,13 @@ class AddCustom {
       }
       const manifest = result.manifest
       if (manifest) {
-        id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + result.info.webpage_url
+        url = result.info && result.info.webpage_url || url
+        id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + url
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
         }
         if (title) manifest.title = title
-        this.cmManifests[this.fixurl(result.info.webpage_url)] = {
+        this.cmManifests[this.fixurl(url)] = {
           manifest,
           //timestamp,
           user: {}
@@ -258,16 +259,16 @@ class AddCustom {
       }
       if (this.bot.playlist.some(item => item.media.id === id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (result.host.needUserScript) {
-        manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + result.info.webpage_url
+        manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
         let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.createPoll({
             title: manifest.title,
             opts: [
-              result.info.webpage_url,
+              url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
               ...this.userScriptPollOpts,
-              'dann ' + result.info.webpage_url + ' öffnen',
+              'dann ' + url + ' öffnen',
               '(Ok klicken) und falls es schon läuft player neu laden'
             ],
             obscured: false
