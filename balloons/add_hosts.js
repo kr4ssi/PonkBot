@@ -270,11 +270,13 @@ module.exports = class HosterList {
           }).then(({ match }) => ({
             title: match[1],
             url: 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4',
+            manifest: this.manifest(match[1] || 'GoUnlimited', 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'),
             host: this,
           }))
         },
         kinoxids: ['84'],
-        priority: 1
+        priority: 1,
+        needManifest: true
       },
       'liveleak.com': {},
       'imgur.com': {},
