@@ -237,9 +237,30 @@ module.exports = class HosterList {
           return true
         }
       },
-      'rapidvideo.com, bitporno.com': {
-        regex: /https?:\/\/(?:www\.)?(?:rapidvideo|bitporno)\.com\/[ve]\/([^/?#&])+/,
+      'clipwatching.com': {
+        regex: /https?:\/\/(?:www\.)?clipwatching\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
+        getInfo(url, host) {
+          return ponk.fetch(url, {
+            match: /Watch ([^<]*)[\s\S]+\|label\|mp4\|(.*)\|sources/
+          }).then(({ match }) => {
+            this.title = match[1]
+            this.fileurl = 'https://s360.clipwatching.com/' + match[2] + '/v.mp4'
+            return this
+          })
+        },
+        kinoxids: ['87'],
+        priority: 3,
+        userScript: () => {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          link = e.src
+          return true
+        },
+      },
+      'rapidvideo.com, bitporno.com': {
+        regex: /https?:\/\/(?:www\.)?((?:rapidvideo|bitporno)\.com)\/[ve]\/([^/?#&])+/,
+        groups: ['host', 'id'],
         getInfo(url, host) {
           return ponk.fetch(url, {
             match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
@@ -271,7 +292,9 @@ module.exports = class HosterList {
         },
         down: true
       },
-      'gounlimited.to': {
+      'gounlimited.to, tazmovies.com': {
+        regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['host', 'id'],
         getInfo(url) {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
@@ -318,6 +341,8 @@ module.exports = class HosterList {
         }
       },
       'nxload.com': {
+        regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/

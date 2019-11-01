@@ -210,7 +210,7 @@ module.exports = {
     addnext: 'willkür'
   },
   readd: {
-   synop: 'Addiert einen anderen Link für den gerade laufenden Film. Beispiel: es läuft ein Film von einem Hoster der stockt: .readd Elfe des Alternativströms ersetzt den laufenden Film und spult automatisch vor',
+    synop: 'Addiert einen anderen Link für den gerade laufenden Film. Beispiel: es läuft ein Film von einem Hoster der stockt: .readd Elfe des Alternativströms ersetzt den laufenden Film und spult automatisch vor',
     rank: 3,
   },
   lauer: {
@@ -251,6 +251,10 @@ module.exports = {
   },
   fikuaktiv: {
     synop: 'Stellt einen Film auf inaktiv oder aktiv, z.B. wenn die Elfe dood ist, dann taucht der Film nicht in dem Fikupoll auf',
+    rank: 3
+  },
+  fikuändern: {
+    synop: '',
     rank: 3
   },
   fikuadd: {
@@ -310,29 +314,29 @@ module.exports = {
     rank: 1
   }/*,
   aip: {
-    synop: 'ist kaputt /tja',
-    rank: 1
-  }*/,
-  inspire: {
-    synop: 'Zeigt einem ein hilfreiches Motivationsbild und Spruch',
-    rank: 1
-  },
-  liveleak: {
-    synop: 'addiert was von Liveleak. .liveleak willkür addiert etwas als Nächstes',
-    rank: 0,
-    repeat: true,
-    addnext: 'willkür'
-  },
-  mutter: {
-    synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
-    rank: 0
-  },
-  update: {
-    synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
-    rank: 4
-  }/*,
-  ts: {
-    synop: '',
-    rank: 2
-  }*/
+  synop: 'ist kaputt /tja',
+  rank: 1
+}*/,
+inspire: {
+  synop: 'Zeigt einem ein hilfreiches Motivationsbild und Spruch',
+  rank: 1
+},
+liveleak: {
+  synop: 'addiert was von Liveleak. .liveleak willkür addiert etwas als Nächstes',
+  rank: 0,
+  repeat: true,
+  addnext: 'willkür'
+},
+mutter: {
+  synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
+  rank: 0
+},
+update: {
+  synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
+  rank: 4
+}/*,
+ts: {
+synop: '',
+rank: 2
+}*/
 }
