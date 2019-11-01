@@ -200,6 +200,29 @@ module.exports = {
         this.API.fiku.getTmdbId(title).then(id => {
           this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(body => {
             const cast = body.cast.filter(row => row.order < 3).map(row => row.name).join(', ')
+            let crew = body.crew.reduce((jobs, item) => {
+              const itemstring = `${item.name}: ${item.job}`
+              if (!jobs.department[item.department]) jobs.department[item.department] = []
+              jobs.department[item.department].push(itemstring)
+              if (!jobs.jobs[item.job]) jobs.jobs[item.job] = []
+              jobs.jobs[item.job].push(itemstring)
+              return jobs
+            }, {
+              department: {},
+              jobs: {},
+            })
+            console.log(crew.department)
+            crew = [...[...new Set([
+              'Executive Producer',
+              'Writer',
+              'Screenplay',
+              'Director',
+              'First Assistant Director'
+            ].reduce((list, job) => list.concat(body.crew.filter(crew => crew.job === job)), [])
+            .concat(body.crew.filter(crew => crew.department === 'Production'))
+            .map(item => item.name))]].slice(0, 3).join(', ')
+            console.log(crew)
+            //crew = ''
             this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
               const rlsdate = new Date(body.release_date)
               this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" /> ${body.original_title} ` +
@@ -207,7 +230,7 @@ module.exports = {
               `${body.production_countries.map(country => country.iso_3166_1 === 'US' ? 'VSA' : ((country.iso_3166_1 === 'UK' | country.iso_3166_1 === 'GB') ? 'England' :
               ( country.iso_3166_1 === 'RU' ? 'Russland' : countries.getName(country.iso_3166_1, 'de')))).join(' / ')} ${body.runtime} Minuten`, true)
               this.sendByFilter('<div class="fikuinfo">' + body.overview + '</div>', true)
-              this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ${cast}. Ratierung: ${body.vote_average}/10`)
+              this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ${cast}.\nVon ${crew}. Ratierung: ${body.vote_average}/10`)
             })
           })
         })

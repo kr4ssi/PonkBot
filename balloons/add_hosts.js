@@ -125,15 +125,15 @@ module.exports = class HosterList {
               let host = hosts.shift()
               if (!host) {
                 ponk.sendMessage('Kein addierbarer Hoster gefunden')
-                return
+                return Promise.reject()
               }
               const hostdiv = $('#Hoster_' + host.id)
               const data = hostdiv.children('.Data').html()
               console.log(host, hostdiv, data)
               const match = data.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
               if (!match) return console.log(data)
-              let [, mirrorindex, mirrorcount, date] = match
-              console.log(mirrorindex, mirrorcount, date)
+              let [, initialindex, mirrorcount, date] = match
+              console.log(initialindex, mirrorcount, date)
               const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
               console.log(filename)
               const getMirror = mirrorindex => ponk.fetch(hostname + '/aGET/Mirror/' + filename, {
@@ -167,9 +167,9 @@ module.exports = class HosterList {
                       title
                     }
                   }
-                }, () => (mirrorindex > 1) ? getMirror(mirrorindex - 1) : getHost())
+                }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
               })
-              return getMirror(mirrorcount)
+              return getMirror(initialindex)
             }
             return getHost()
           })
@@ -263,6 +263,19 @@ module.exports = class HosterList {
           return true
         }
       },
+      'gounlimited.to': {
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
+          }).then(({ match }) => ({
+            title: match[1],
+            url: 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4',
+            host: this,
+          }))
+        },
+        kinoxids: ['84'],
+        priority: 1
+      },
       'liveleak.com': {},
       'imgur.com': {},
       'instagram.com': {},
@@ -326,7 +339,7 @@ module.exports = class HosterList {
     this.hostAllowed = url => new Promise((resolve, reject) => {
       if (!allowedHosts.find(host => {
         const hostMatch = host.match(url)
-        if (hostMatch) return resolve(hostMatch)
+        return hostMatch && resolve(hostMatch) && true
       })) reject()
     })
 

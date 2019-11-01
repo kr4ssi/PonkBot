@@ -37,11 +37,11 @@ module.exports = {
               headers,
               url, qs, form, method, json//: match ? false : json
             }, (err, res, body) => {
-              const statusCode = res.statusCode
               //console.log(res.request.headers['User-Agent'])
               let result
               try {
                 if (err) throw err
+                const statusCode = res.statusCode
                 result = {
                   body,
                   statusCode,
