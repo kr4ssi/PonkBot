@@ -267,12 +267,18 @@ module.exports = class HosterList {
         getInfo(url) {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
-          }).then(({ match }) => ({
-            title: match[1],
-            url: 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4',
-            manifest: this.manifest(match[1] || 'GoUnlimited', 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'),
+          }).then(({ match }) => {
+            const title = match[1]
+            const url = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
+            const manifest = this.manifest(match[1] || 'GoUnlimited', url)
+            manifest.sources[0].contentType = 'video/mp4';
+            return {
+            title,
+            url,
+            manifest,
             host: this,
-          }))
+          }
+        })
         },
         kinoxids: ['84'],
         priority: 1,
