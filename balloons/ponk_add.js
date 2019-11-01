@@ -243,9 +243,9 @@ class AddCustom {
         id = result.info.display_id
       }
       const manifest = result.manifest
-      if (result.host.needManifest && manifest) {
+      if (result.needManifest && manifest) {
         url = result.info && result.info.webpage_url || url
-        id = this.bot.server.weblink + '/add.json?' + (result.host.needUserScript ? 'userscript&' : '') + 'url=' + url
+        id = this.bot.server.weblink + '/add.json?' + (result.needUserScript ? 'userscript&' : '') + 'url=' + url
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
         }
@@ -259,7 +259,7 @@ class AddCustom {
         title = manifest.title
       }
       if (this.bot.playlist.some(item => item.media.id === id)) return this.bot.sendMessage('Ist schon in der playlist')
-      if (result.host.needUserScript) {
+      if (result.needUserScript) {
         manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
         let userScriptPollId
         const userScriptPoll = () => {

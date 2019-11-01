@@ -19,19 +19,26 @@ module.exports = class HosterList {
             const host = this
             class HostMatch {
               constructor(match) {
+                this.url = match[0]
                 Object.assign(this, host, {
                   match,
-                  getInfo: host.getInfo.bind(this, match[0], this)
+                  getInfo: host.getInfo.bind(this, this.url, this),
+                  info: {
+                    webpage_url: this.url
+                  },
                 })
               }
-              manifest(title = '', url = '') {
+              get id() {
+                return this.fileurl
+              }
+              get manifest() {
                 return {
-                  title,
+                  title: this.title,
                   live: false,
                   duration: 0,
                   sources: [
                     {
-                      url,
+                      url: this.fileurl,
                       quality: 720,
                       contentType: 'application/x-mpegURL'
                     }
@@ -44,7 +51,7 @@ module.exports = class HosterList {
           }
         }, rules)
       }
-      getInfo(url, host) {
+      getInfo(url) {
         return new Promise((resolve, reject) => {
           execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
             maxBuffer: 104857600
@@ -61,15 +68,18 @@ module.exports = class HosterList {
             catch (err) {
               return console.error(err)
             }
+            console.log(manifest)
             if (!info.title) info = info[0];
-            const title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
-            if (!host.needManifest) return resolve({
-              title,
-              url: info.url.replace(/^http:\/\//i, 'https://'),
-              host,
+            this.title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
+            this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
+            console.log(this)
+            if (!this.needManifest) return resolve({
+              title: this.title,
+              url: fileurl,
+              host: this,
               info
             })
-            const manifest = this.manifest(title, url)
+            const manifest = this.manifest
             if (info.manifest_url) manifest.sources[0].url = info.manifest_url
             else {
               manifest.sources[0].url = info.url
@@ -91,7 +101,7 @@ module.exports = class HosterList {
             return resolve({
               manifest,
               info,
-              host
+              host: this
             })
           })
         })
@@ -208,16 +218,12 @@ module.exports = class HosterList {
           return ponk.fetch(url, {
             match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
           }).then(({ match }) => {
-            const manifest = this.manifest(match[3], match[1])
+            this.title = match[3]
+            this.fileurl = match[1]
+            const manifest = this.manifest
             manifest.duration = parseInt(match[2])
             manifest.sources[0].contentType = 'video/mp4';
-            return {
-              manifest,
-              info: {
-                webpage_url: url
-              },
-              host
-            }
+            return this
           })
         },
         kinoxids: ['80'],
@@ -268,20 +274,12 @@ module.exports = class HosterList {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
           }).then(({ match }) => {
-            const title = match[1]
-            const url = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
-            const manifest = this.manifest(match[1] || 'GoUnlimited', url)
+            this.title = match[1] || 'GoUnlimited'
+            this.fileurl = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
+            const manifest = this.manifest
             manifest.sources[0].contentType = 'video/mp4';
-            return {
-            title,
-            url,
-            manifest,
-            info: {
-              webpage_url: url
-            },
-            host: this,
-          }
-        })
+            return this
+          })
         },
         kinoxids: ['84'],
         priority: 1,
