@@ -276,6 +276,9 @@ module.exports = class HosterList {
             title,
             url,
             manifest,
+            info: {
+              webpage_url: url
+            },
             host: this,
           }
         })
