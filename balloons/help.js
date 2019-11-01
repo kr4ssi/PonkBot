@@ -210,6 +210,7 @@ module.exports = {
     addnext: 'willkür'
   },
   readd: {
+   synop: 'Addiert einen anderen Link für den gerade laufenden Film. Beispiel: es läuft ein Film von einem Hoster der stockt: .readd Elfe des Alternativströms ersetzt den laufenden Film und spult automatisch vor',
     rank: 3,
   },
   lauer: {
@@ -233,7 +234,7 @@ module.exports = {
     rank: 3
   },
   ausschussfiku: {
-    synop: '',
+    synop: 'Macht einen Fikupoll mit einer Auswahl der älteren Filme. Kann man mal machen wenn nix in der Liste ist um die alten Filme laufen zu lassen',
     rank: 3
   },
   vorschlag: {
@@ -249,7 +250,7 @@ module.exports = {
     rank: 3
   },
   fikuaktiv: {
-    synop: '',
+    synop: 'Stellt einen Film auf inaktiv oder aktiv, z.B. wenn die Elfe dood ist, dann taucht der Film nicht in dem Fikupoll auf',
     rank: 3
   },
   fikuadd: {
@@ -293,40 +294,41 @@ module.exports = {
     rank: 0
   },
   waskochen: {
-    synop: '',
+    synop: 'Gibt einem einen Tipp was man kochen könnte',
     rank: 0
   },
   wetter: {
-    synop: '',
+    synop: 'Zeigt einem den Wetterbericht für die aktuelle Zeit für einen Standort. Beispiel: .wetter Altschauerberg',
     rank: 0
   },
   urban: {
-    synop: '',
+    synop: 'Erklärt einen umgangsprachlichen Begriff Beispiel: .urban Dirty Sanchez',
     rank: 1
   },
   dict: {
-    synop: '',
+    synop: 'ist kaputt /tja',
     rank: 1
   }/*,
   aip: {
-    synop: '',
+    synop: 'ist kaputt /tja',
     rank: 1
   }*/,
   inspire: {
-    synop: '',
+    synop: 'Zeigt einem ein hilfreiches Motivationsbild und Spruch',
     rank: 1
   },
   liveleak: {
-    synop: '',
+    synop: 'addiert was von Liveleak. .liveleak willkür addiert etwas als Nächstes',
     rank: 0,
     repeat: true,
     addnext: 'willkür'
   },
   mutter: {
+    synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
     rank: 0
   },
   update: {
-    synop: '',
+    synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
     rank: 4
   }/*,
   ts: {
