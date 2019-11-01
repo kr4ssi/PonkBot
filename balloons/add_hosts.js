@@ -22,7 +22,7 @@ module.exports = class HosterList {
                 this.url = match[0]
                 Object.assign(this, host, {
                   match,
-                  getInfo: host.getInfo.bind(this, this.url, this),
+                  getInfo: host.getInfo.bind(this, this.url),
                   info: {
                     webpage_url: this.url
                   },
@@ -82,18 +82,13 @@ module.exports = class HosterList {
             this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
             if (!this.needManifest) return resolve(this)
-            if (info.manifest_url) this.fileurl = info.manifest_url
+            if (info.manifest_url) this.fileurl = info.manifest_url.replace(/^http:\/\//i, 'https://')
+            this.duration = info.duration
             const manifest = this.manifest
             console.log(manifest)
             if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
             if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
-            manifest.sources[0].url = manifest.sources[0].url.replace(/^http:\/\//i, 'https://')
-            manifest.duration = info.duration
-            return resolve({
-              manifest,
-              info,
-              host: this
-            })
+            return resolve(this)
           })
         })
       }
@@ -102,7 +97,7 @@ module.exports = class HosterList {
       'kinox.to': {
         regex: /https?:\/\/(?:www\.)?kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
         allowedHosts: this,
-        getInfo(url, host, gettitle) {
+        getInfo(url, gettitle) {
           return ponk.fetch(url, {
             cloud: true,
             match: /<title>(.*) Stream/,
@@ -204,10 +199,40 @@ module.exports = class HosterList {
         },
         down: true
       },
+      'gounlimited.to, tazmovies.com': {
+        regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['host', 'id'],
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
+          }).then(({ match }) => {
+            this.title = match[1] || 'GoUnlimited'
+            this.fileurl = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
+            return this
+          })
+        },
+        kinoxids: ['84'],
+        priority: 1,
+        needManifest: true
+      },
+      'nxload.com': {
+        regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['id'],
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/
+          }).then(({ match }) => {
+            this.title = match[1] || 'NxLoad'
+            this.fileurl = 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'
+            return this
+          })
+        },
+        needManifest: true
+      },
       'vidoza.net': {
         regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
-        getInfo(url, host) {
+        getInfo(url) {
           return ponk.fetch(url, {
             match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
           }).then(({ match }) => {
@@ -229,7 +254,7 @@ module.exports = class HosterList {
       'clipwatching.com': {
         regex: /https?:\/\/(?:www\.)?clipwatching\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
-        getInfo(url, host) {
+        getInfo(url) {
           return ponk.fetch(url, {
             match: /Watch ([^<]*)[\s\S]+\|label\|mp4\|(.*)\|sources/
           }).then(({ match }) => {
@@ -250,7 +275,7 @@ module.exports = class HosterList {
       'rapidvideo.com, bitporno.com': {
         regex: /https?:\/\/(?:www\.)?((?:rapidvideo|bitporno)\.com)\/[ve]\/([^/?#&])+/,
         groups: ['host', 'id'],
-        getInfo(url, host) {
+        getInfo(url) {
           return ponk.fetch(url, {
             match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
           }).then(({ match }) => {
@@ -281,22 +306,6 @@ module.exports = class HosterList {
         },
         down: true
       },
-      'gounlimited.to, tazmovies.com': {
-        regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
-          }).then(({ match }) => {
-            this.title = match[1] || 'GoUnlimited'
-            this.fileurl = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
-            return this
-          })
-        },
-        kinoxids: ['84'],
-        priority: 1,
-        needManifest: true
-      },
       'liveleak.com': {},
       'imgur.com': {},
       'instagram.com': {},
@@ -325,19 +334,6 @@ module.exports = class HosterList {
           this.title = 'Kein Livestream'
           this.fileurl = url
           return this
-        }
-      },
-      'nxload.com': {
-        regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/
-          }).then(({ match }) => {
-            this.title = match[1] || 'NxLoad'
-            this.fileurl = 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'
-            return this
-          })
         }
       }
     }).map(([name, rules]) => ([
