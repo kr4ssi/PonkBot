@@ -72,13 +72,14 @@ module.exports = class HosterList {
                 return reject(err)
               }
               let data = stdout.trim().split(/\r?\n/)
-              this.info = data.map((rawData) => JSON.parse(rawData))
+              info = data.map((rawData) => JSON.parse(rawData))
             }
             catch (err) {
               return console.error(err)
             }
-            if (!this.info.title) this.info = this.info[0];
-            this.title = (new RegExp('^' + info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
+            if (!info.title) info = info[0];
+            this.info = info
+            this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
             if (!this.needManifest) return resolve(this)
             if (info.manifest_url) this.fileurl = info.manifest_url
