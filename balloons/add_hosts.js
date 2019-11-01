@@ -194,7 +194,8 @@ module.exports = class HosterList {
           if (!e) return
           link += `/gettoken/${e.textContent}?mime=true`
           return true
-        }
+        },
+        down: true
       },
       'openload.co': {
         ...ydlRegEx['OpenloadIE'],
@@ -209,7 +210,8 @@ module.exports = class HosterList {
           if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
           link += `/stream/${e.textContent}?mime=true`
           return true
-        }
+        },
+        down: true
       },
       'vidoza.net': {
         regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
@@ -241,13 +243,11 @@ module.exports = class HosterList {
         getInfo(url, host) {
           return ponk.fetch(url, {
             match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-          }).then(({ match }) => ({
-            manifest: this.manifest(match[1], match[2]),
-            info: {
-              webpage_url: url
-            },
-            host
-          }))
+          }).then(({ match }) => {
+            this.title = match[1]
+            this.fileurl = match[2]
+            return this
+          })
         },
         kinoxids: ['71', '75'],
         priority: 4,
@@ -256,7 +256,8 @@ module.exports = class HosterList {
           if (!e) return
           link = e.src
           return true
-        }
+        },
+        down: true
       },
       'streamango.com, fruithosts.net, streamcherry.com': {
         ...ydlRegEx['StreamangoIE'],
@@ -267,7 +268,8 @@ module.exports = class HosterList {
           if (!e) return
           link = e.src
           return true
-        }
+        },
+        down: true
       },
       'gounlimited.to': {
         getInfo(url) {
@@ -310,20 +312,20 @@ module.exports = class HosterList {
       '.m3u8-links': {
         regex: /.*\.m3u8$/,
         getInfo(url) {
-          return {
-            manifest: this.manifest('Kein Livestream', url),
-            host,
-          }
+          this.title = 'Kein Livestream'
+          this.fileurl = url
+          return this
         }
       },
       'nxload.com': {
         getInfo(url) {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
             match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/
-          }).then(({ match }) => ({
-            manifest: this.manifest(match[1] || 'NxLoad', 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'),
-            host: this,
-          }))
+          }).then(({ match }) => {
+            this.title = match[1] || 'NxLoad'
+            this.fileurl = 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'
+            return this
+          })
         }
       }
     }).map(([name, rules]) => ([
@@ -340,7 +342,7 @@ module.exports = class HosterList {
     //.map(id => ({ id, host: allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
     //.filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
 
-    this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && host.kinoxids.length > 0).sort((a, b) => a.priority - b.priority)
+    this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && host.kinoxids.length > 0 && !host.down).sort((a, b) => a.priority - b.priority)
     this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(host.kinoxids || []), [])
 
     console.log(this.kinoxHosts, this.kinoxIds)
@@ -363,6 +365,7 @@ module.exports = class HosterList {
         getInfo: userScript
       }))
     }
-    this.allowedHostsString = allowedHosts.map(host => host.name).join(', ')
+    this.allowedHostsString = allowedHosts.filter(host => !host.down).map(host => host.name).join(', ')
+    + '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
   }
 }
