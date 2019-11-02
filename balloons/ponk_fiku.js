@@ -13,17 +13,17 @@ const countries = require("i18n-iso-countries")
 class FikuSystem {
   constructor(ponk){
     Object.assign(this, {
-      fikuList    : [],    // A list of Fiku-suggestions
+      //fikuList    : [],    // A list of Fiku-suggestions
       bot         : ponk   // The bot
     })
   }
 
   getFikuList() {
     return new Promise(resolve => {
-      if (this.fikuList.length) return resolve(true)
+      //if (this.fikuList.length) return resolve(true)
       this.bot.db.knex('fiku').select('*').then(result => {
-        result.forEach(fiku => this.fikuList.push(fiku))
-        resolve(false)
+        //result.forEach(fiku => this.fikuList.push(fiku))
+        resolve(result)
       }, error => {
         this.bot.logger.error('Unexpected error', '\n', error);
       })
@@ -32,10 +32,13 @@ class FikuSystem {
   getFiku(id) {
     return new Promise((resolve, reject) => {
       if (!/^\d+$/.test(id)) return this.bot.sendMessage('Muss 1 nr sein')
-      this.getFikuList().then(() => {
-        const fiku = this.fikuList.find(fiku => fiku.id == id)
-        if (!fiku) return this.bot.sendMessage('ID "' + id + '" gibts nicht')
-        resolve(fiku)
+      this.bot.db.knex('fiku').where({ id }).select('*').then(rows => {
+        //const fiku = this.fikuList.find(fiku => fiku.id == id)
+        if (!rows.length) {
+          return this.bot.sendMessage('ID "' + id + '" gibts nicht')
+        }
+        const row = rows.shift();
+        resolve(row)
       })
     })
   }
@@ -69,7 +72,7 @@ class FikuSystem {
     })
   }
   fikupoll(user, params, meta) {
-    this.getFikuList().then(() => {
+    this.getFikuList().then(fikuList => {
       const split = params.split(' ')
       let timeout = 0
       let runoff = 0
@@ -82,14 +85,14 @@ class FikuSystem {
       if (!title) title = 'Fiku'
       //const date = new Date()
       //const hour = date.getHours()
-      const opts = this.fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < (arr.length - 15)) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+      const opts = fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < (arr.length - 15)) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
       const fikuPoll = (title, opts, timeout) => {
         const settings = {
           title,
           opts,
           obscured: false
         }
-        if (timeout) Object.assign(settings, { timeout })
+        if (timeout) settings.timeout = timeout
         this.bot.pollAction(settings).then(pollvotes => {
           const max = Math.max(...pollvotes)
           if (max < 1 && title === 'Stichwahl') return setFiku('Niemand hat abgestimmt. Partei!')
@@ -152,16 +155,16 @@ module.exports = {
       this.db.knex('fiku').insert(fiku).returning('id').then(result => {
         if (result.length > 0) {
           const id = result.pop()
-          this.API.fiku.getFikuList().then(push => {
+          //this.API.fiku.getFikuList().then(push => {
             this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
-            if (push) this.API.fiku.fikuList.push(Object.assign(fiku, { id }))
-          })
+          //  if (push) this.API.fiku.fikuList.push(Object.assign(fiku, { id }))
+          //})
         }
       })
     },
     fikuliste: function(user, params, meta) {
-      this.API.fiku.getFikuList().then(() => {
-        this.sendByFilter(this.API.fiku.fikuList.map(row => row.title + ' (ID: ' + row.id + ')'
+      this.API.fiku.getFikuList().then(fikuList => {
+        this.sendByFilter(fikuList.map(row => row.title + ' (ID: ' + row.id + ')'
         + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()
         + ' Aktiv: ' + (row.active ? 'j' : 'n')).join('\n'))
       })
@@ -170,7 +173,7 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         this.db.knex('fiku').where(fiku).del().then(deleted => {
           if (deleted) {
-            this.API.fiku.fikuList.splice(this.API.fiku.fikuList.indexOf(fiku), 1);
+            //this.API.fiku.fikuList.splice(this.API.fiku.fikuList.indexOf(fiku), 1);
             this.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
           }
         })
@@ -190,8 +193,34 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         const active = !fiku.active
         this.db.knex('fiku').where(fiku).update({ active }).then(() => {
-          this.API.fiku.fikuList.find(row => row === fiku).active = active
+          //this.API.fiku.fikuList.find(row => row === fiku).active = active
           this.sendMessage('Eintrag ' + fiku.title + ' ' + (active ? '' : 'de') + 'aktiviert')
+        })
+      })
+    },
+    fikuändern: async function(user, params, meta) {
+      const split = params.split(' ')
+      let id = split.shift()
+      let url = split.shift()
+      let title = split.join(' ').trim()
+      url = validUrl.isHttpsUri(url)
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      try {
+        ({ title, location: url } = await this.API.add.allowedHosts.hostAllowed(url).then(host => {
+          if (host.name != 'kinox.to') reject()
+          else return host
+        }).then(host => host.getInfo(url, true)))
+      }
+      catch (err) {
+        console.error(err)
+        title = split.join().trim()
+      }
+      this.API.fiku.getFiku(id).then(fiku => {
+        const update = { url }
+        if (title) update.title = title
+        this.db.knex('fiku').where(fiku).update(update).then(() => {
+          //this.API.fiku.fikuList.find(row => row === fiku).active = active
+          this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title)
         })
       })
     },
