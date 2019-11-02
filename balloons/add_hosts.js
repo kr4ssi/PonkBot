@@ -240,9 +240,9 @@ module.exports = class HosterList {
         kinoxids: ['80'],
         priority: 3,
         userScript: () => {
-          const e = window.pData
+          const e = pData
           if (!e) return
-          link = window.pData.sourcesCode[0].src
+          link = pData.sourcesCode[0].src
           return true
         }
       },
