@@ -215,7 +215,7 @@ class AddCustom {
           const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
           params = [...params, '-headers', headers]
         }
-        execFile('ffprobe', [...params, fileurl, (err, stdout, stderr) => {
+        execFile('ffprobe', [...params, fileurl], (err, stdout, stderr) => {
           if (err) return tryToGetDuration(err)
           console.log(stderr)
           let info
