@@ -198,7 +198,7 @@ class AddCustom {
     });
   }
 
-  getDuration({ manifest, info = {} }) {
+  getDuration({ fileurl, info = {} }) {
     return new Promise((resolve, reject) => {
       let tries = 0
       const tryToGetDuration = err => {
@@ -215,7 +215,7 @@ class AddCustom {
           const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
           params = [...params, '-headers', headers]
         }
-        execFile('ffprobe', [...params, manifest.sources[0].url], (err, stdout, stderr) => {
+        execFile('ffprobe', [...params, fileurl, (err, stdout, stderr) => {
           if (err) return tryToGetDuration(err)
           console.log(stderr)
           let info
