@@ -211,7 +211,7 @@ module.exports = class HosterList {
         needManifest: true
       },
       'nxload.com': {
-        regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
