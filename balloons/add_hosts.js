@@ -29,7 +29,7 @@ module.exports = class HosterList {
                 })
               }
               get id() {
-                return this.fileurl
+                return this.needManifest ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
               }
               get manifest() {
                 return {
@@ -38,7 +38,7 @@ module.exports = class HosterList {
                   duration: this.duration,
                   sources: [
                     {
-                      url: this.fileurl,
+                      url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
                       quality: 720,
                       contentType: ([
                         {type: 'video/mp4', ext: ['.mp4']},
@@ -156,13 +156,8 @@ module.exports = class HosterList {
                 }
                 ponk.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
                 return host.host.match(mirrorurl).getInfo().then(result => {
-                  return {
-                    ...result,
-                    manifest: {
-                      ...result.manifest,
-                      title
-                    }
-                  }
+                  result.title = title
+                  return result
                 }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
               })
               return getMirror(initialindex)
@@ -256,10 +251,10 @@ module.exports = class HosterList {
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url, {
-            match: /Watch ([^<]*)[\s\S]+\|label\|mp4\|(.*)\|sources/
+            match: /Watch ([^<]*)[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|label\|mp4\|(.*)\|sources/
           }).then(({ match }) => {
             this.title = match[1]
-            this.fileurl = 'https://s360.clipwatching.com/' + match[2] + '/v.mp4'
+            this.fileurl = 'https://' + match[2] +'.clipwatching.com/' + match[3] + '/v.mp4'
             return this
           })
         },

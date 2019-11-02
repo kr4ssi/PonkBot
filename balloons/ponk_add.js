@@ -235,32 +235,30 @@ class AddCustom {
 
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
-      console.log(result, result.manifest)
-      let id = result.id
-      let type = 'fi'
+      result.type = 'fi'
       if (result.info && result.info.extractor === 'youtube') {
-        type = 'yt'
-        id = result.info.display_id
+        result.type = 'yt'
+        result.fileurl = result.info.display_id
       }
       const manifest = result.manifest
       if (result.needManifest && manifest) {
-        url = result.info && result.info.webpage_url || url
-        id = this.bot.server.weblink + '/add.json?' + (result.needUserScript ? 'userscript&' : '') + 'url=' + url
+        //url = result.info && result.info.webpage_url || url
+        //id = this.bot.server.weblink + '/add.json?' + (result.needUserScript ? 'userscript&' : '') + 'url=' + url
         if (!manifest.duration && !manifest.live) {
           manifest.duration = await this.getDuration(result)
         }
         if (title) manifest.title = title
-        this.cmManifests[this.fixurl(url)] = {
+        this.cmManifests[this.fixurl(result.url)] = {
           manifest,
           //timestamp,
           user: {}
         }
-        type = 'cm'
-        title = manifest.title
+        result.type = 'cm'
+        //title = manifest.title
       }
-      if (this.bot.playlist.some(item => item.media.id === id)) return this.bot.sendMessage('Ist schon in der playlist')
+      if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (result.needUserScript) {
-        manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
+        //manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
         let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.createPoll({
@@ -269,7 +267,7 @@ class AddCustom {
               url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
               ...this.userScriptPollOpts,
-              'dann ' + url + ' öffnen',
+              'dann ' + result.url + ' öffnen',
               '(Ok klicken) und falls es schon läuft player neu laden'
             ],
             obscured: false
@@ -278,12 +276,12 @@ class AddCustom {
             userScriptPollId = poll.timestamp
           })
         }
-        this.queue.once(id, () => {
+        this.queue.once(result.id, () => {
           userScriptPoll()
-          this.del.once(id, () => {
+          this.del.once(result.id, () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
-          this.play.on(id, data => {
+          this.play.on(result.id, data => {
             if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
             this.bot.client.once('changeMedia', () => {
               if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
@@ -291,7 +289,8 @@ class AddCustom {
           })
         })
       }
-      this.bot.addNetzm(id, meta.addnext, meta.user, type, title || result.title, url)
+      console.log(result, result.manifest)
+      this.bot.addNetzm(result.id, meta.addnext, meta.user, result.type, title || result.title, result.url)
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
     }, err => {

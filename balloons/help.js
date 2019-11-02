@@ -255,7 +255,7 @@ module.exports = {
   },
   fikuändern: {
     synop: 'Ändert die Fikuelfe',
-    rank: 1
+    rank: 2
   },
   fikuadd: {
     synop: 'Addiert den Film wenn er mit .add addierbar ist als nächstes mit .fikuadd Film-ID',
