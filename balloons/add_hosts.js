@@ -5,7 +5,7 @@ const path = require('path')
 const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
-const puppeteer = require('puppeteer');
+
 class HosterList {
   constructor(ponk, ydlRegEx) {
     class Hoster {
@@ -41,7 +41,7 @@ class HosterList {
           }
           get manifest() {
             return {
-              title: this.title,
+              title: this.title || this.url,
               live: this.live || false,
               duration: this.duration,
               sources: [
@@ -177,34 +177,6 @@ class HosterList {
           })
         }
       },
-      'verystream.com, woof.tube': {
-        ...ydlRegEx['VerystreamIE'],
-        kinoxids: ['85'],
-        priority: 1,
-        userScript: () => {
-          const e = document.querySelector("[id^=videolink]")
-          if (!e) return
-          link += `/gettoken/${e.textContent}?mime=true`
-          return true
-        },
-        down: true
-      },
-      'openload.co': {
-        ...ydlRegEx['OpenloadIE'],
-        kinoxids: ['67'],
-        priority: 2,
-        userScript: () => {
-          let e = document.querySelector("[id^=lqEH1]")
-          if (!e) e = document.querySelector("[id^=streamur]")
-          if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
-          if (!e) e = document.querySelector("#main p:last-child")
-          if (!e) return
-          if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
-          link += `/stream/${e.textContent}?mime=true`
-          return true
-        },
-        down: true
-      },
       'gounlimited.to, tazmovies.com': {
         regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
@@ -250,11 +222,11 @@ class HosterList {
         },
         kinoxids: ['80'],
         priority: 3,
-        userScript: () => {
+        userScript: function() {
           const e = pData
           if (!e) return
-          link = pData.sourcesCode[0].src
-          return true
+          this.fileurl = pData.sourcesCode[0].src
+          return this
         }
       },
       'clipwatching.com': {
@@ -262,77 +234,21 @@ class HosterList {
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url, {
-            match: /Watch ([^<]*)[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|label\|mp4\|(.*)\|sources/
+            match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|label\|mp4\|(.*)\|sources/
           }).then(({ match }) => {
-            this.title = match[1]
+            this.title = match[1] || 'Clipwatching'
             this.fileurl = 'https://' + match[2] +'.clipwatching.com/' + match[3] + '/v.mp4'
             return this
           })
         },
         kinoxids: ['87'],
         priority: 3,
-        userScript: () => {
+        userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
           if (!e) return
-          link = e.src
-          return true
-        },
-      },
-      'mixdrop.co': {
-        regex: /https?:\/\/(?:www\.)?mixdrop\.co\/e\/([^/?#&]+)/,
-        groups: ['id'],
-        async getInfo(url) {
-          this.title = url
-          const browser = await puppeteer.launch();
-          const page = await browser.newPage();
-          await page.goto(url);
-          const executionContext = await page.mainFrame().executionContext();
-          this.fileurl = await executionContext.evaluate(this.userScript);
-          await browser.close();
+          this.fileurl = e.src
           return this
-        },
-        kinoxids: ['87'],
-        priority: 3,
-        userScript: () => {
-          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-          if (!e) return
-          link = e.src
-          return e.src
-        },
-      },
-      'rapidvideo.com, bitporno.com': {
-        regex: /https?:\/\/(?:www\.)?((?:rapidvideo|bitporno)\.com)\/[ve]\/([^/?#&])+/,
-        groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url, {
-            match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-          }).then(({ match }) => {
-            this.title = match[1]
-            this.fileurl = match[2]
-            return this
-          })
-        },
-        kinoxids: ['71', '75'],
-        priority: 4,
-        userScript: () => {
-          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-          if (!e) return
-          link = e.src
-          return true
-        },
-        down: true
-      },
-      'streamango.com, fruithosts.net, streamcherry.com': {
-        ...ydlRegEx['StreamangoIE'],
-        kinoxids: ['72', '82'],
-        priority: 5,
-        userScript: () => {
-          const e = document.querySelector("[id^=mgvideo_html5_api]")
-          if (!e) return
-          link = e.src
-          return true
-        },
-        down: true
+        }
       },
       'liveleak.com': {},
       'imgur.com': {},
@@ -406,3 +322,67 @@ class HosterList {
   }
 }
 module.exports =  HosterList
+
+
+/*
+'verystream.com, woof.tube': {
+...ydlRegEx['VerystreamIE'],
+kinoxids: ['85'],
+priority: 1,
+userScript: () => {
+const e = document.querySelector("[id^=videolink]")
+if (!e) return
+link += `/gettoken/${e.textContent}?mime=true`
+return true
+},
+down: true
+},
+'openload.co': {
+...ydlRegEx['OpenloadIE'],
+kinoxids: ['67'],
+priority: 2,
+userScript: () => {
+let e = document.querySelector("[id^=lqEH1]")
+if (!e) e = document.querySelector("[id^=streamur]")
+if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
+if (!e) e = document.querySelector("#main p:last-child")
+if (!e) return
+if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
+link += `/stream/${e.textContent}?mime=true`
+return true
+},
+down: true
+},
+'rapidvideo.com, bitporno.com': {
+regex: /https?:\/\/(?:www\.)?((?:rapidvideo|bitporno)\.com)\/[ve]\/([^/?#&])+/,
+groups: ['host', 'id'],
+getInfo(url) {
+return ponk.fetch(url, {
+match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
+}).then(({ match }) => {
+this.title = match[1]
+this.fileurl = match[2]
+return this
+})
+},
+kinoxids: ['71', '75'],
+priority: 4,
+userScript: () => {
+const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+if (!e) return
+link = e.src
+return true
+},
+down: true
+},
+'streamango.com, fruithosts.net, streamcherry.com': {
+...ydlRegEx['StreamangoIE'],
+kinoxids: ['72', '82'],
+priority: 5,
+userScript: () => {
+const e = document.querySelector("[id^=mgvideo_html5_api]")
+if (!e) return
+return e.src
+},
+down: true
+},*/
