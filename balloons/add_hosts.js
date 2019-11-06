@@ -5,72 +5,78 @@ const path = require('path')
 const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
-
-module.exports = class HosterList {
+const puppeteer = require('puppeteer');
+class HosterList {
   constructor(ponk, ydlRegEx) {
     class Hoster {
       constructor(name, rules = {}) {
         Object.assign(this, {
           name,
           regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
-          needManifest: rules.needManifest || typeof rules.userScript === 'function',
-          needUserScript: typeof rules.userScript === 'function',
-          match(url) {
-            const host = this
-            class HostMatch {
-              constructor(match) {
-                this.url = match[0]
-                Object.assign(this, host, {
-                  match,
-                  getInfo: host.getInfo.bind(this, this.url),
-                  info: {
-                    webpage_url: this.url
-                  },
-                })
-              }
-              get id() {
-                return this.needManifest ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
-              }
-              get manifest() {
-                return {
-                  title: this.title,
-                  live: false,
-                  duration: this.duration,
-                  sources: [
-                    {
-                      url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
-                      quality: 720,
-                      contentType: ([
-                        {type: 'video/mp4', ext: ['.mp4']},
-                        {type: 'video/webm', ext: ['.webm']},
-                        {type: 'application/x-mpegURL', ext: ['.m3u8']},
-                        {type: 'video/ogg', ext: ['.ogv']},
-                        {type: 'application/dash+xml', ext: ['.mpd']},
-                        {type: 'audio/aac', ext: ['.aac']},
-                        {type: 'audio/ogg', ext: ['.ogg']},
-                        {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-                      ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
-                    }
-                  ]
-                }
-              }
-            }
-            const match = url.match(host.regex)
-            return match ? new HostMatch(match) : false
-          }
+          groups: [],
+          type: rules.type || (typeof rules.userScript === 'function' ? 'cm' : 'fi'),
+          needUserScript: typeof rules.userScript === 'function'
         }, rules)
+      }
+      match(url) {
+        const host = this
+        class HostMatch {
+          constructor(match) {
+            this.url = match[0]
+            Object.assign(this, host, {
+              //fileurl,
+              //title,
+              //duration,
+              //live
+              //timestamp,
+              //user: {},
+              info: {},
+              match,
+              getInfo: host.getInfo.bind(this, this.url)
+            })
+            this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
+          }
+          get id() {
+            return this.type === 'cm' ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
+          }
+          get manifest() {
+            return {
+              title: this.title,
+              live: this.live || false,
+              duration: this.duration,
+              sources: [
+                {
+                  url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
+                  quality: 720,
+                  contentType: ([
+                    {type: 'video/mp4', ext: ['.mp4']},
+                    {type: 'video/webm', ext: ['.webm']},
+                    {type: 'application/x-mpegURL', ext: ['.m3u8']},
+                    {type: 'video/ogg', ext: ['.ogv']},
+                    {type: 'application/dash+xml', ext: ['.mpd']},
+                    {type: 'audio/aac', ext: ['.aac']},
+                    {type: 'audio/ogg', ext: ['.ogg']},
+                    {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+                  ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+                }
+              ]
+            }
+          }
+        }
+        const match = url.match(host.regex)
+        return match ? new HostMatch(match) : false
       }
       getInfo(url) {
         return new Promise((resolve, reject) => {
           execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
             maxBuffer: 104857600
           }, (err, stdout, stderr) => {
+            if (err) {
+              ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
+              return reject(err)
+            }
             let info
             try {
-              if (err) {
-                ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
-                return reject(err)
-              }
               let data = stdout.trim().split(/\r?\n/)
               info = data.map((rawData) => JSON.parse(rawData))
             }
@@ -79,9 +85,14 @@ module.exports = class HosterList {
             }
             if (!info.title) info = info[0];
             this.info = info
+            if (info.extractor === 'youtube') {
+              this.type = 'yt'
+              this.fileurl = info.display_id
+              return resolve(this)
+            }
             this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
-            if (!this.needManifest) return resolve(this)
+            if (this.type != 'cm') return resolve(this)
             if (info.manifest_url) this.fileurl = info.manifest_url.replace(/^http:\/\//i, 'https://')
             this.duration = info.duration
             const manifest = this.manifest
@@ -208,7 +219,7 @@ module.exports = class HosterList {
         },
         kinoxids: ['84'],
         priority: 1,
-        needManifest: true
+        type: 'cm'
       },
       'nxload.com': {
         regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
@@ -222,7 +233,7 @@ module.exports = class HosterList {
             return this
           })
         },
-        needManifest: true
+        type: 'cm'
       },
       'vidoza.net': {
         regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
@@ -265,6 +276,28 @@ module.exports = class HosterList {
           if (!e) return
           link = e.src
           return true
+        },
+      },
+      'mixdrop.co': {
+        regex: /https?:\/\/(?:www\.)?mixdrop\.co\/e\/([^/?#&]+)/,
+        groups: ['id'],
+        async getInfo(url) {
+          this.title = url
+          const browser = await puppeteer.launch();
+          const page = await browser.newPage();
+          await page.goto(url);
+          const executionContext = await page.mainFrame().executionContext();
+          this.fileurl = await executionContext.evaluate(this.userScript);
+          await browser.close();
+          return this
+        },
+        kinoxids: ['87'],
+        priority: 3,
+        userScript: () => {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          link = e.src
+          return e.src
         },
       },
       'rapidvideo.com, bitporno.com': {
@@ -334,7 +367,7 @@ module.exports = class HosterList {
     }).map(([name, rules]) => ([
       name, {
         ...rules,
-        needManifest: true
+        type: 'cm'
       }
     ]))).map(([name, rules = {}]) => {
       return new Hoster(name, rules)
@@ -372,3 +405,4 @@ module.exports = class HosterList {
     + '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
   }
 }
+module.exports =  HosterList

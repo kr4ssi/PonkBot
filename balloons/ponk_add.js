@@ -198,10 +198,10 @@ class AddCustom {
     });
   }
 
-  getDuration({ fileurl, info = {} }) {
-    return new Promise((resolve, reject) => {
-      let tries = 0
-      const tryToGetDuration = err => {
+  getDuration(host) {
+    let tries = 0
+    const tryToGetDuration = err => {
+      return new Promise((resolve, reject) => {
         if (err) {
           console.error(err)
           if (tries > 1) {
@@ -211,11 +211,11 @@ class AddCustom {
         }
         tries++
         let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
-        if (info.http_headers) {
-          const headers = Object.entries(info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
+        if (host.info.http_headers) {
+          const headers = Object.entries(host.info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
           params = [...params, '-headers', headers]
         }
-        execFile('ffprobe', [...params, fileurl], (err, stdout, stderr) => {
+        execFile('ffprobe', [...params, host.fileurl], (err, stdout, stderr) => {
           if (err) return tryToGetDuration(err)
           console.log(stderr)
           let info
@@ -225,44 +225,32 @@ class AddCustom {
           catch(err) {
             return console.error(err)
           }
-          if (info.format && info.format.duration) resolve(parseFloat(info.format.duration))
-          else tryToGetDuration(info)
+          host.ffprobe = info
+          if (info.format && info.format.duration) {
+            host.duration = parseFloat(info.format.duration)
+            resolve(host)
+          }
+          else return tryToGetDuration(info)
         })
-      }
-      tryToGetDuration()
-    })
+      })
+    }
+    return tryToGetDuration()
   }
 
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
-      result.type = 'fi'
-      if (result.info && result.info.extractor === 'youtube') {
-        result.type = 'yt'
-        result.fileurl = result.info.display_id
-      }
-      const manifest = result.manifest
-      if (result.needManifest && manifest) {
-        //url = result.info && result.info.webpage_url || url
-        //id = this.bot.server.weblink + '/add.json?' + (result.needUserScript ? 'userscript&' : '') + 'url=' + url
-        if (!manifest.duration && !manifest.live) {
-          manifest.duration = await this.getDuration(result)
-        }
-        if (title) manifest.title = title
-        this.cmManifests[this.fixurl(result.url)] = {
-          manifest,
-          //timestamp,
-          user: {}
-        }
-        result.type = 'cm'
-        //title = manifest.title
-      }
       if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
+      if (title) result.title = title
+      if (result.type === 'cm' && !result.duration) result = await this.getDuration(result)
+      console.log(result)
+      if (result.type === 'cm') this.cmManifests[this.fixurl(result.url)] = result
+      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(id, meta.onPlay)
+      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(id, meta.onQueue)
       if (result.needUserScript) {
-        //manifest.sources[0].url = this.bot.server.weblink + '/redir?url=' + url
         let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.createPoll({
-            title: manifest.title,
+            title: result.title,
             opts: [
               url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
@@ -289,10 +277,7 @@ class AddCustom {
           })
         })
       }
-      console.log(result, result.manifest)
       this.bot.addNetzm(result.id, meta.addnext, meta.user, result.type, title || result.title, result.url)
-      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.once(id, meta.onPlay)
-      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.once(id, meta.onQueue)
     }, err => {
       console.log(err)
       if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)

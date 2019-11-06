@@ -38,6 +38,7 @@
     "knex": "latest",
     "limiter": "latest",
     "mysql": "latest",
+    "puppeteer": "2.0.0",
     "python-shell": "1.0.7",
     "request": "latest",
     "rss-watcher": "1.4.0",
