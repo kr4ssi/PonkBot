@@ -179,19 +179,25 @@ class HosterList {
         }
       },
       'streamz.cc': {
-        regex: /https?:\/\/(?:www\.)?streamz\.cc\/([^/?#&]+)/,
+        regex: /https?:\/\/(?:www\.)?(?:streamcrypt\.net\/)?(?:www\.)?streamz\.cc\/([^/?#&]+)/,
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url, {
-            match: /<title>streamZ\.cc\s([^<]*)[\s\S]+https:\/\/streamz\.cc\/download([^"]+)/
+            match: /<title>streamZ\.cc ([^<]*)[\s\S]+https:\/\/streamz\.cc\/download([^"]+)/
           }).then(({ match }) => {
-            this.title = match[1] || 'Clipwatching'
+            this.title = match[1] || 'Streamz.cc'
             this.fileurl = 'https://streamz.cc/getlink-' + match[2] + '.dll'
             return this
           })
         },
         kinoxids: ['88'],
-        priority: 1
+        priority: 1,
+        userScript: function() {
+          const e = document.querySelector('video')
+          if (!e) return
+          this.fileurl = e.src
+          return this
+        }
       },
       'gounlimited.to, tazmovies.com': {
         regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
