@@ -178,27 +178,6 @@ class HosterList {
           })
         }
       },
-      'streamz.cc': {
-        regex: /https?:\/\/(?:www\.)?(?:streamcrypt\.net\/)?(?:www\.)?streamz\.cc\/([^/?#&]+)/,
-        groups: ['id'],
-        getInfo(url) {
-          return ponk.fetch(url, {
-            match: /<title>streamZ\.cc ([^<]*)[\s\S]+https:\/\/streamz\.cc\/download([^"]+)/
-          }).then(({ match }) => {
-            this.title = match[1] || 'Streamz.cc'
-            this.fileurl = 'https://streamz.cc/getlink-' + match[2] + '.dll'
-            return this
-          })
-        },
-        kinoxids: ['88'],
-        priority: 1,
-        userScript: function() {
-          const e = document.querySelector('video')
-          if (!e) return
-          this.fileurl = e.src
-          return this
-        }
-      },
       'gounlimited.to, tazmovies.com': {
         regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
@@ -212,7 +191,7 @@ class HosterList {
           })
         },
         kinoxids: ['84'],
-        priority: 2,
+        priority: 1,
         type: 'cm'
       },
       'nxload.com': {
@@ -243,7 +222,7 @@ class HosterList {
           })
         },
         kinoxids: ['80'],
-        priority: 3,
+        priority: 2,
         userScript: function() {
           const e = pData
           if (!e) return
@@ -264,7 +243,7 @@ class HosterList {
           })
         },
         kinoxids: ['87'],
-        priority: 4,
+        priority: 3,
         userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
           if (!e) return
