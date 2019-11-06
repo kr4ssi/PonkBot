@@ -5,6 +5,7 @@ const path = require('path')
 const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
+const puppeteer = require('puppeteer');
 
 class HosterList {
   constructor(ponk, ydlRegEx) {
@@ -177,6 +178,21 @@ class HosterList {
           })
         }
       },
+      'streamz.cc': {
+        regex: /https?:\/\/(?:www\.)?streamz\.cc\/([^/?#&]+)/,
+        groups: ['id'],
+        getInfo(url) {
+          return ponk.fetch(url, {
+            match: /<title>streamZ\.cc\s([^<]*)[\s\S]+https:\/\/streamz\.cc\/download([^"]+)/
+          }).then(({ match }) => {
+            this.title = match[1] || 'Clipwatching'
+            this.fileurl = 'https://streamz.cc/getlink-' + match[2] + '.dll'
+            return this
+          })
+        },
+        kinoxids: ['88'],
+        priority: 1
+      },
       'gounlimited.to, tazmovies.com': {
         regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
@@ -190,7 +206,7 @@ class HosterList {
           })
         },
         kinoxids: ['84'],
-        priority: 1,
+        priority: 2,
         type: 'cm'
       },
       'nxload.com': {
@@ -242,7 +258,7 @@ class HosterList {
           })
         },
         kinoxids: ['87'],
-        priority: 3,
+        priority: 4,
         userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
           if (!e) return
