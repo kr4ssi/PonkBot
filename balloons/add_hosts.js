@@ -5,7 +5,6 @@ const path = require('path')
 const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
-const puppeteer = require('puppeteer');
 
 class HosterList {
   constructor(ponk, ydlRegEx) {
@@ -20,19 +19,22 @@ class HosterList {
         }, rules)
       }
       match(url) {
-        const host = this
+        const match = url.match(this.regex)
         class HostMatch {
-          constructor(match) {
+          constructor(host) {
             this.url = match[0]
             Object.assign(this, host, {
+              match,
               //fileurl,
               //title,
               //duration,
-              //live
+              //quality,
+              //thumbnail,
+              //live,
+              ffprobe: {},
+              info: {},
               //timestamp,
               //user: {},
-              info: {},
-              match,
               getInfo: host.getInfo.bind(this, this.url)
             })
             this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
@@ -45,10 +47,11 @@ class HosterList {
               title: this.title || this.url,
               live: this.live || false,
               duration: this.duration,
+              thumbnail: this.thumbnail,
               sources: [
                 {
                   url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
-                  quality: 720,
+                  quality: [240, 360, 480, 540, 720, 1080, 1440].includes(this.quality) ? this.quality : 720,
                   contentType: ([
                     {type: 'video/mp4', ext: ['.mp4']},
                     {type: 'video/webm', ext: ['.webm']},
@@ -64,8 +67,7 @@ class HosterList {
             }
           }
         }
-        const match = url.match(host.regex)
-        return match ? new HostMatch(match) : false
+        return match && new HostMatch(this)
       }
       getInfo(url) {
         return new Promise((resolve, reject) => {
@@ -95,11 +97,9 @@ class HosterList {
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
             if (this.type != 'cm') return resolve(this)
             if (info.manifest_url) this.fileurl = info.manifest_url.replace(/^http:\/\//i, 'https://')
+            if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) this.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
             this.duration = info.duration
-            const manifest = this.manifest
-            console.log(manifest)
-            if ([240, 360, 480, 540, 720, 1080, 1440].includes(info.width)) manifest.sources[0].quality = info.width;
-            if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) manifest.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
+            this.quality = info.width;
             return resolve(this)
           })
         })
@@ -152,10 +152,8 @@ class HosterList {
                   Hoster: host.id,
                   Mirror: mirrorindex
                 }
-                //getprop: 'Stream',
-                //match: /\/\/([^"]+?)"/
               }).then(({ body }) => {
-                if (!body.Stream) return console.error(host.host)
+                if (!body.Stream || !body.Replacement) return console.error(host.host)
                 const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
                 let match
                 if (body.Replacement) {
@@ -251,6 +249,25 @@ class HosterList {
           return this
         }
       },
+      'youtube.com': {
+        ...ydlRegEx['YoutubeIE'],
+        //regex: /https?:\/\/(?:www\.)?((?:youtu\.be\/)|(?:youtube\.com\/((?:watch)|(?:playlist))\?))([^#]+)/,
+        //groups: ['host', 'playlist', 'id'],
+        getInfo(url) {
+          console.log(this.match)
+          if (this.matchGroup('host') === 'youtu.be/') this.fileurl = this.matchGroup('id')
+          else this.fileurl = this.matchGroup('id').split('&').reduce((params, kv) => {
+            kv = kv.split('=')
+            params[kv[0]] = kv[1]
+            return params
+          }, {})['v']
+          this.type = 'yt'
+          return Promise.resolve(this)
+        }
+      },
+      'chilloutzone.net': {
+        ...ydlRegEx['ChilloutzoneIE'],
+      },
       'liveleak.com': {},
       'imgur.com': {},
       'instagram.com': {},
@@ -320,6 +337,7 @@ class HosterList {
     }
     this.allowedHostsString = allowedHosts.filter(host => !host.down).map(host => host.name).join(', ')
     + '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
+    console.log(ydlRegEx)
   }
 }
 module.exports =  HosterList

@@ -243,6 +243,7 @@ class AddCustom {
       if (title) result.title = title
       if (result.type === 'cm' && !result.duration) result = await this.getDuration(result)
       console.log(result)
+      console.log(result.matchGroup('id'))
       if (result.type === 'cm') this.cmManifests[this.fixurl(result.url)] = result
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(id, meta.onQueue)

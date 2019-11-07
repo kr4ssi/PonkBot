@@ -7,10 +7,10 @@
 
 const request = require('request')
 const URLObj = require('url')
+const validUrl = require('valid-url')
 const UserAgent = require('user-agents')
 const cloudscraper = require('cloudscraper')
 const cheerio = require('cheerio')
-const validUrl = require('valid-url')
 
 let w0bm = ''
 let pr0=''
@@ -24,7 +24,20 @@ module.exports = {
   giggle: function(ponk){
     return new Promise((resolve, reject) => {
       Object.assign(ponk, {
-        fetch: function (url, { qs = {}, form = false, method = 'get', json = true, getprop = false, getlist = false, getrandom = false, match = false, customerr = [], headers = {}, cloud = false, $ = false } = {}) {
+        fetch: function (url, {
+          qs = {},
+          form = false,
+          method = 'get',
+          json = true,
+          getprop = false,
+          getlist = false,
+          getrandom = false,
+          match = false,
+          customerr = [],
+          headers = {},
+          cloud = false,
+          $ = false
+        } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', ...arguments)
             if ((getlist || getprop) && !json) throw new Error('json must set to true')
