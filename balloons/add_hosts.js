@@ -245,8 +245,8 @@ class HosterList {
         }
       },
       'clipwatching.com': {
-        regex: /https?:\/\/(?:www\.)?clipwatching\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['id'],
+        regex: /https?:\/\/(?:www\.)?(clipw\.live|clipwatching\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['host', 'id'],
         getInfo(url) {
           return ponk.fetch(url, {
             match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|360p\|label\|(?:mp4\|)?(.*)\|sources/
