@@ -206,6 +206,22 @@ class HosterList {
         },
         type: 'cm'
       },
+      'onlystream.tv': {
+        regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['host', 'id'],
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
+          }).then(({ match }) => {
+            this.title = match[1] || 'Onlystream'
+            this.fileurl = match[2]
+            return this
+          })
+        },
+        kinoxids: ['90'],
+        priority: 2,
+        type: 'cm'
+      },
       'vidoza.net': {
         regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
@@ -233,7 +249,7 @@ class HosterList {
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url, {
-            match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|label\|mp4\|(.*)\|sources/
+            match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|(?:label\|)?mp4\|(.*)\|sources/
           }).then(({ match }) => {
             this.title = match[1] || 'Clipwatching'
             this.fileurl = 'https://' + match[2] +'.clipwatching.com/' + match[3] + '/v.mp4'
@@ -264,29 +280,13 @@ class HosterList {
           })
         },
         kinoxids: ['81'],
-        priority: 3,
+        priority: 4,
         userScript: function() {
           const e = sources
           if (!e) return
           this.fileurl = e[0].file
           return this
         }
-      },
-      'onlystream.tv': {
-        regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
-          }).then(({ match }) => {
-            this.title = match[1] || 'Onlystream'
-            this.fileurl = match[2]
-            return this
-          })
-        },
-        kinoxids: ['90'],
-        priority: 1,
-        type: 'cm'
       },
       'youtube.com': {
         ...ydlRegEx['YoutubeIE'],
