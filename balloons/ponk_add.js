@@ -253,7 +253,7 @@ class AddCustom {
           this.bot.client.createPoll({
             title: result.title,
             opts: [
-              url: result.url,
+              result.url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
               ...this.userScriptPollOpts,
               'dann ' + result.url + ' öffnen',
