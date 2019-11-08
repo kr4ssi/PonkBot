@@ -50,19 +50,16 @@ module.exports = {
               headers,
               url, qs, form, method, json//: match ? false : json
             }, (err, res, body) => {
-              //console.log(res.request.headers['User-Agent'])
-              let result
               try {
                 if (err) throw err
-                const statusCode = res.statusCode
-                result = {
+                let result = {
                   body,
-                  statusCode,
+                  statusCode: res.statusCode,
                   headers
                 }
-                if (statusCode != 200 && !customerr.includes(statusCode)) {
+                if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
                   //console.error(body)
-                  throw new Error(statusCode)
+                  throw new Error(res.statusCode)
                 }
                 if (getprop && !body[getprop]) throw new Error()
                 result.prop = body[getprop] || body
@@ -72,13 +69,13 @@ module.exports = {
                   if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
                 }
                 if (match) {
-                  result.match = body.toString().match(match)
+                  result.match = result.prop.match(match)
                   if (!result.match) {
                     //console.error(body)
                     throw new Error()
                   }
                 }
-                if ($) result.$ = cheerio.load(body)
+                if ($) result.$ = cheerio.load(result.prop)
                 resolve(result)
               }
               catch (err) {

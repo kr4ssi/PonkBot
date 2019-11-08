@@ -249,6 +249,29 @@ class HosterList {
           return this
         }
       },
+      'vidcloud.co': {
+        regex: /https?:\/\/(?:www\.)?vidcloud\.co\/(?:embed|v)\/([^/?#&]+)/,
+        groups: ['id'],
+        getInfo(url) {
+          return ponk.fetch('https://vidcloud.co/player?fid=' + this.matchGroup('id'), {
+            match: /sources\s=\s(\[\{"file":"[^"]+"\}\])[\s\S]+title:\s'([^']+)/,
+            json: true,
+            getprop: 'html'
+          }).then(({ match }) => {
+            this.title = match[2] || 'Vidcloud'
+            this.fileurl = JSON.parse(match[1])[0].file
+            return this
+          })
+        },
+        kinoxids: ['81'],
+        priority: 3,
+        userScript: function() {
+          const e = sources
+          if (!e) return
+          this.fileurl = e[0].file
+          return this
+        }
+      },
       'youtube.com': {
         ...ydlRegEx['YoutubeIE'],
         //regex: /https?:\/\/(?:www\.)?((?:youtu\.be\/)|(?:youtube\.com\/((?:watch)|(?:playlist))\?))([^#]+)/,
@@ -337,7 +360,6 @@ class HosterList {
     }
     this.allowedHostsString = allowedHosts.filter(host => !host.down).map(host => host.name).join(', ')
     + '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
-    console.log(ydlRegEx)
   }
 }
 module.exports =  HosterList
