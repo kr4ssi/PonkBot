@@ -64,6 +64,9 @@ typings/
 test-*
 dev-*
 
+# VS Code
+/.vscode
+
 # Not needed Files
 /_bak
 ponkbot.db
