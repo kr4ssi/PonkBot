@@ -272,6 +272,22 @@ class HosterList {
           return this
         }
       },
+      'onlystream.tv': {
+        regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        groups: ['host', 'id'],
+        getInfo(url) {
+          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+            match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
+          }).then(({ match }) => {
+            this.title = match[1] || 'Onlystream'
+            this.fileurl = match[2]
+            return this
+          })
+        },
+        kinoxids: ['90'],
+        priority: 1,
+        type: 'cm'
+      },
       'youtube.com': {
         ...ydlRegEx['YoutubeIE'],
         //regex: /https?:\/\/(?:www\.)?((?:youtu\.be\/)|(?:youtube\.com\/((?:watch)|(?:playlist))\?))([^#]+)/,
