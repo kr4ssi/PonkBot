@@ -249,7 +249,7 @@ class HosterList {
         groups: ['id'],
         getInfo(url) {
           return ponk.fetch(url, {
-            match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|360p\|(?:label\|)?mp4\|(.*)\|sources/
+            match: /(?:Watch ([^<]*))?[\s\S]+\/\/(\w+)\.clipwatching\.com[\s\S]+\|360p\|label\|(?:mp4\|)?(.*)\|sources/
           }).then(({ match }) => {
             this.title = match[1] || 'Clipwatching'
             this.fileurl = 'https://' + match[2] +'.clipwatching.com/' + match[3] + '/v.mp4'
