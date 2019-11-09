@@ -139,8 +139,8 @@ module.exports = {
       const split = params.trim().split(';')
       let url = validUrl.isHttpsUri(split.pop().trim())
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      let title
-      try {
+      let title = split.join().trim()
+      if (!title) try {
         ({ title, location: url } = await this.API.add.allowedHosts.hostAllowed(url).then(host => {
           if (host.name != 'kinox.to') reject()
           else return host
@@ -148,7 +148,6 @@ module.exports = {
       }
       catch (err) {
         console.error(err)
-        title = split.join().trim()
       }
       if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
       const fiku = { title, url, user, active: true, timestamp: Date.now() }

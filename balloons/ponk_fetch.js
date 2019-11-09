@@ -36,7 +36,8 @@ module.exports = {
           customerr = [],
           headers = {},
           cloud = false,
-          $ = false
+          $ = false,
+          unpack = false
         } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', ...arguments)
@@ -74,6 +75,15 @@ module.exports = {
                     //console.error(body)
                     throw new Error()
                   }
+                }
+                if (unpack) {
+                  const match = result.prop.match(/return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)\)\)/)
+                  if (!match) {
+                    //console.error(body)
+                    throw new Error('can\'t find packed code')
+                  }
+                  function unpack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
+                  result.unpack = unpack(match[1], match[2], match[3], match[4].split('|'))
                 }
                 if ($) result.$ = cheerio.load(result.prop)
                 resolve(result)
