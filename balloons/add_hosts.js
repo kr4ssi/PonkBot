@@ -179,12 +179,14 @@ class HosterList {
       'gounlimited.to, tazmovies.com': {
         regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /Watch ([^<]*)[\s\S]+mp4\|(.*)\|(.*)\|sources/
-          }).then(({ match }) => {
-            this.title = match[1] || 'GoUnlimited'
-            this.fileurl = 'https://' + match[3] + '.gounlimited.to/' + match[2] + '/v.mp4'
+        getInfo() {
+          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
+          return ponk.fetch(this.url, {
+            match: /Watch ([^<]*)/,
+            unpack: /sources:\["([^"]+)/
+          }).then(({ match, unpack }) => {
+            this.title = match[1]
+            this.fileurl = unpack[1]
             return this
           })
         },
@@ -195,12 +197,14 @@ class HosterList {
       'nxload.com': {
         regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
-            match: /title: '([^']*)[\s\S]+\|(.+)\|hls\|(.+)\|urlset/
-          }).then(({ match }) => {
-            this.title = match[1] || 'NxLoad'
-            this.fileurl = 'https://' + match[2] + '.nxload.com/hls/' + match[3].replace(/\|/g, '-') + ',,.urlset/master.m3u8'
+        getInfo() {
+          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
+          return ponk.fetch(this.url, {
+            match: /title: '([^']*)/,
+            unpack: /src:\\\'([^\\]+)\\'/
+          }).then(({ match, unpack }) => {
+            this.title = match[1]
+            this.fileurl = unpack[1]
             return this
           })
         },
@@ -209,11 +213,12 @@ class HosterList {
       'onlystream.tv': {
         regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url.replace(/embed-/i, '').replace(/\.html$/, ''), {
+        getInfo() {
+          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
+          return ponk.fetch(this.url, {
             match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
           }).then(({ match }) => {
-            this.title = match[1] || 'Onlystream'
+            this.title = match[1]
             this.fileurl = match[2]
             return this
           })
@@ -225,8 +230,9 @@ class HosterList {
       'vidoza.net': {
         regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
-        getInfo(url) {
-          return ponk.fetch(url, {
+        getInfo() {
+          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
+          return ponk.fetch(this.url, {
             match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
           }).then(({ match }) => {
             this.title = match[3]
@@ -247,14 +253,14 @@ class HosterList {
       'clipwatching.com': {
         regex: /https?:\/\/(?:www\.)?(clipw\.live|clipwatching\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['host', 'id'],
-        getInfo(url) {
-          return ponk.fetch(url, {
+        getInfo() {
+          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
+          return ponk.fetch(this.url, {
             match: /<title>Watch ([^<]*)/,
-            unpack: true
+            unpack: /sources:\["([^"]+)/
           }).then(({ match, unpack }) => {
-            console.log(unpack)
-            this.title = match[1] || 'Clipwatching'
-            this.fileurl = unpack.match(/sources:\[{file:"([^"]+)/)[1]
+            this.title = match[1]
+            this.fileurl = unpack[1]
             return this
           })
         },
@@ -267,48 +273,30 @@ class HosterList {
           return this
         }
       },
-      'vidcloud.co': {
-        regex: /https?:\/\/(?:www\.)?vidcloud\.co\/(?:embed|v)\/([^/?#&]+)/,
+      'mixdrop.co': {
+        regex: /https?:\/\/(?:www\.)?mixdrop\.co\/[ef]\/([^/?#&]+)/,
         groups: ['id'],
-        getInfo(url) {
-          return ponk.fetch('https://vidcloud.co/player?fid=' + this.matchGroup('id'), {
-            match: /sources\s=\s(\[\{"file":"[^"]+"\}\])[\s\S]+title:\s'([^']+)/,
-            json: true,
-            getprop: 'html'
-          }).then(({ match }) => {
-            this.title = match[2] || 'Vidcloud'
-            this.fileurl = JSON.parse(match[1])[0].file
+        getInfo() {
+          this.url = this.url.replace(/\/f\//, '/e/')
+          return ponk.fetch(this.url, {
+            match: /"title">([^<]*)/,
+            unpack: /vsrc=\"([^"]+)/
+          }).then(({ match, unpack }) => {
+            this.title = match[1]
+            this.fileurl = 'https:' + unpack[1]
             return this
           })
         },
-        kinoxids: ['81'],
-        priority: 4,
-        userScript: function() {
-          const e = sources
+        kinoxids: ['87'],
+        priority: 3,
+        userScript: () => {
+          const e = MDCore
           if (!e) return
-          this.fileurl = e[0].file
+          this.fileurl = encodeURIComponent('https:' + e.vsrc)
           return this
-        }
+        },
       },
-      'youtube.com': {
-        ...ydlRegEx['YoutubeIE'],
-        //regex: /https?:\/\/(?:www\.)?((?:youtu\.be\/)|(?:youtube\.com\/((?:watch)|(?:playlist))\?))([^#]+)/,
-        //groups: ['host', 'playlist', 'id'],
-        getInfo(url) {
-          console.log(this.match)
-          if (this.matchGroup('host') === 'youtu.be/') this.fileurl = this.matchGroup('id')
-          else this.fileurl = this.matchGroup('id').split('&').reduce((params, kv) => {
-            kv = kv.split('=')
-            params[kv[0]] = kv[1]
-            return params
-          }, {})['v']
-          this.type = 'yt'
-          return Promise.resolve(this)
-        }
-      },
-      'chilloutzone.net': {
-        ...ydlRegEx['ChilloutzoneIE'],
-      },
+      'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
       'liveleak.com': {},
       'imgur.com': {},
       'instagram.com': {},

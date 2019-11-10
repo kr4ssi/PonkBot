@@ -62,10 +62,10 @@ module.exports = {
                   //console.error(body)
                   throw new Error(res.statusCode)
                 }
-                if (getprop && !body[getprop]) throw new Error()
+                if (getprop && !body[getprop]) throw new Error('no property \'' + getprop + '\' found')
                 result.prop = body[getprop] || body
                 if (getlist) {
-                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new Error()
+                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new Error('no list \'' + getlist + '\' found')
                   result.list = result.prop[getlist]
                   if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
                 }
@@ -73,17 +73,23 @@ module.exports = {
                   result.match = result.prop.match(match)
                   if (!result.match) {
                     //console.error(body)
-                    throw new Error()
+                    throw new Error('no match \'' + match + '\' found')
                   }
                 }
                 if (unpack) {
-                  const match = result.prop.match(/return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)\)\)/)
+                  const match = result.prop.match(/return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/)
                   if (!match) {
                     //console.error(body)
-                    throw new Error('can\'t find packed code')
+                    throw new Error('no packed code found')
                   }
-                  function unpack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
-                  result.unpack = unpack(match[1], match[2], match[3], match[4].split('|'))
+                  function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
+                  const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
+                  result.unpack = unpacked.match(unpack)
+                  console.log(unpacked)
+                  if (!result.unpack) {
+                    //console.error(body)
+                    throw new Error('no match \'' + unpack + '\' in packed code found')
+                  }
                 }
                 if ($) result.$ = cheerio.load(result.prop)
                 resolve(result)
