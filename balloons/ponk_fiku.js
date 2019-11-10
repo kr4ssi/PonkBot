@@ -163,7 +163,7 @@ module.exports = {
     },
     fikuliste: function(user, params, meta) {
       this.API.fiku.getFikuList().then(fikuList => {
-        this.sendByFilter(fikuList.map(row => row.title + ' (ID: ' + row.id + ')'
+        this.sendByFilter(fikuList.map(row => row.title + '\nID: ' + row.id
         + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()
         + ' Aktiv: ' + (row.active ? 'j' : 'n')).join('\n'))
       })
