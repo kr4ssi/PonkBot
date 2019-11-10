@@ -273,29 +273,6 @@ class HosterList {
           return this
         }
       },
-      'mixdrop.co': {
-        regex: /https?:\/\/(?:www\.)?mixdrop\.co\/[ef]\/([^/?#&]+)/,
-        groups: ['id'],
-        getInfo() {
-          this.url = this.url.replace(/\/f\//, '/e/')
-          return ponk.fetch(this.url, {
-            match: /"title">([^<]*)/,
-            unpack: /vsrc=\"([^"]+)/
-          }).then(({ match, unpack }) => {
-            this.title = match[1]
-            this.fileurl = 'https:' + unpack[1]
-            return this
-          })
-        },
-        kinoxids: ['87'],
-        priority: 3,
-        userScript: () => {
-          const e = MDCore
-          if (!e) return
-          this.fileurl = encodeURIComponent('https:' + e.vsrc)
-          return this
-        },
-      },
       'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
       'liveleak.com': {},
       'imgur.com': {},
