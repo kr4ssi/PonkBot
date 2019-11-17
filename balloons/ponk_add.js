@@ -5,7 +5,6 @@
 
 'use strict';
 
-const parseLink = require('./parselink.js')
 const HosterList = require('./add_hosts.js')
 
 const validUrl = require('valid-url')
@@ -25,6 +24,13 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
 
 class AddCustom {
   constructor(ponk) {
+    Object.assign(this, {
+      //userMedia   : [],    // A list of added media
+      cmManifests : {},    // Custom-json-manifests
+      userLinks   : {},    // Userlinks for IP-Bound hosters
+      userScripts : {},    // Different userscripts
+      bot         : ponk   // The bot
+    })
     PythonShell.run('./youtube-dl_get-regex.py', {
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
@@ -42,44 +48,37 @@ class AddCustom {
       }
     }, (err, result) => {
       if (err) throw err.message
-      Object.assign(this, {
-        allowedHosts : new HosterList(ponk, Object.assign(...result)),
-        //userMedia   : [],    // A list of added media
-        cmManifests : {},    // Custom-json-manifests
-        userLinks   : {},    // Userlinks for IP-Bound hosters
-        userScripts : {},    // Different userscripts
-        bot         : ponk   // The bot
-      })
+      this.allowedHosts = new HosterList(ponk, Object.assign(...result))
       this.allowedHostsString = this.allowedHosts.allowedHostsString
       this.setupUserScript();
       this.setupServer();
-      this.play = new EventEmitter()
-      this.del = new EventEmitter()
-      this.queue = new EventEmitter()
-      this.bot.client.on('queue', ({ item: { media } }) => {
-        this.queue.emit(media.id, media)
-      })
-      this.bot.client.on('changeMedia', data => {
-        this.play.emit(data.id, data)
-      })
-      this.bot.client.on('queueFail', data => {
-        this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-        if (data.msg === 'This item is already on the playlist') return this.bot.sendMessage('Das darf garnicht passieren')
-        this.del.emit(data.id)
-        this.del.removeAllListeners(data.id)
-        this.play.removeAllListeners(data.id)
-        this.queue.removeAllListeners(data.id)
-      });
-      const handleVideoDelete = this.bot.handleVideoDelete
-      this.bot.handleVideoDelete = ({ uid }) => {
-        const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
-        this.del.emit(id)
-        this.del.removeAllListeners(id)
-        this.play.removeAllListeners(id)
-        this.queue.removeAllListeners(id)
-        handleVideoDelete.call(this.bot, { uid })
-      }
     });
+    this.play = new EventEmitter()
+    this.del = new EventEmitter()
+    this.queue = new EventEmitter()
+    this.bot.client.on('queue', ({ item: { media } }) => {
+      this.queue.emit(media.id, media)
+    })
+    this.bot.client.on('changeMedia', data => {
+      this.play.emit(data.id, data)
+    })
+    this.bot.client.on('queueFail', data => {
+      this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
+      if (data.msg === 'This item is already on the playlist') return this.bot.sendMessage('Das darf garnicht passieren')
+      this.del.emit(data.id)
+      this.del.removeAllListeners(data.id)
+      this.play.removeAllListeners(data.id)
+      this.queue.removeAllListeners(data.id)
+    });
+    const handleVideoDelete = this.bot.handleVideoDelete
+    this.bot.handleVideoDelete = ({ uid }) => {
+      const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
+      this.del.emit(id)
+      this.del.removeAllListeners(id)
+      this.play.removeAllListeners(id)
+      this.queue.removeAllListeners(id)
+      handleVideoDelete.call(this.bot, { uid })
+    }
   }
 
   setupUserScript() {
@@ -239,17 +238,25 @@ class AddCustom {
 
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
+      //if (!meta.fiku && result.fikuonly) throw new Error('not addable')
       if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (title) result.title = title
-      if (result.type === 'cm' && !result.duration) result = await this.getDuration(result)
+      if (result.type === 'cm' && !result.duration) try {
+        result = await this.getDuration(result)
+      } catch (err) {
+        throw err
+      }
       console.log(result)
       console.log(result.matchGroup('id'))
       if (result.type === 'cm') this.cmManifests[this.fixurl(result.url)] = result
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(id, meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(id, meta.onQueue)
-      if (result.needUserScript) {
+      if (result.needUserScript) this.queue.once(result.id, () => {
         let userScriptPollId
         const userScriptPoll = () => {
+          this.bot.client.once('newPoll', poll => {
+            userScriptPollId = poll.timestamp
+          })
           this.bot.client.createPoll({
             title: result.title,
             opts: [
@@ -261,30 +268,22 @@ class AddCustom {
             ],
             obscured: false
           })
-          this.bot.client.once('newPoll', poll => {
-            userScriptPollId = poll.timestamp
-          })
         }
-        this.queue.once(result.id, () => {
-          userScriptPoll()
-          this.del.once(result.id, () => {
+        userScriptPoll()
+        this.del.once(result.id, () => {
+          if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+        })
+        this.play.on(result.id, data => {
+          if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
+          this.bot.client.once('changeMedia', () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
-          this.play.on(result.id, data => {
-            if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
-            this.bot.client.once('changeMedia', () => {
-              if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
-            })
-          })
         })
-      }
+      })
       this.bot.addNetzm(result.id, meta.addnext, meta.user, result.type, title || result.title, result.url)
-    }, err => {
+    }).catch(err => {
       console.log(err)
-      if (!meta.fiku) return this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
-      const media = parseLink(url)
-      if (media.type) return this.bot.mediaSend({ type: media.type, id: media.id, pos: meta.addnext ? 'next' : 'end', title })
-      if (media.msg) this.bot.sendMessage(media.msg)
+      this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
     })
   }
 }

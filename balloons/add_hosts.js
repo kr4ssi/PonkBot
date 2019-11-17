@@ -6,6 +6,8 @@ const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
 
+const parseLink = require('./parselink.js')
+
 class HosterList {
   constructor(ponk, ydlRegEx) {
     class Hoster {
@@ -187,6 +189,7 @@ class HosterList {
           }).then(({ match, unpack }) => {
             this.title = match[1]
             this.fileurl = unpack[1]
+            console.log(this)
             return this
           })
         },
@@ -273,6 +276,56 @@ class HosterList {
           return this
         }
       },
+      'youtube.com': {
+        ...ydlRegEx['YoutubeIE'],
+        type: 'yt',
+        fikuonly: true,
+        getInfo() {
+          this.fileurl = this.match[2]
+          console.log(this.match, this.match[0].match(/[?&](?:t|timestamp)=(\d+)/))
+          return Promise.resolve(this)
+        }
+      },
+      'googledrive': {
+        ...ydlRegEx['GoogleDriveIE'],
+        type: 'gd',
+        fikuonly: true,
+        getInfo() {
+          this.fileurl = this.matchGroup('id')
+          return Promise.resolve(this)
+        }
+      },
+      'vimeo.com': {
+        ...ydlRegEx['DailymotionIE'],
+        type: 'vi',
+        fikuonly: true,
+        getInfo() {
+          this.fileurl = this.matchGroup('id')
+          return Promise.resolve(this)
+        }
+      },
+      'dailymotion.com': {
+        ...ydlRegEx['VimeoIE'],
+        type: 'dm',
+        fikuonly: true,
+        getInfo() {
+          this.fileurl = this.matchGroup('id')
+          return Promise.resolve(this)
+        }
+      },
+      'rest': {
+        regex: /.*/,
+        fikuonly: true,
+        getInfo() {
+          const media = parseLink(this.url)
+          if (media.type) {
+            this.type = media.type
+            this.fileurl = media.id
+            return Promise.resolve(this)
+          }
+          return Promise.reject(media.msg)
+        }
+      },
       'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
       'liveleak.com': {},
       'imgur.com': {},
@@ -341,8 +394,8 @@ class HosterList {
         getInfo: userScript
       }))
     }
-    this.allowedHostsString = allowedHosts.filter(host => !host.down).map(host => host.name).join(', ')
-    + '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
+    this.allowedHostsString = allowedHosts.filter(host => !host.fikuonly).map(host => host.name).join(', ')
+    //+ '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
   }
 }
 module.exports =  HosterList

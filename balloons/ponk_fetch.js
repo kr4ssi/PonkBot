@@ -51,6 +51,7 @@ module.exports = {
               headers,
               url, qs, form, method, json//: match ? false : json
             }, (err, res, body) => {
+              class matchError extends Error {}
               try {
                 if (err) throw err
                 let result = {
@@ -62,10 +63,10 @@ module.exports = {
                   //console.error(body)
                   throw new Error(res.statusCode)
                 }
-                if (getprop && !body[getprop]) throw new Error('no property \'' + getprop + '\' found')
+                if (getprop && !body[getprop]) throw new matchError('no property \'' + getprop + '\' found')
                 result.prop = body[getprop] || body
                 if (getlist) {
-                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new Error('no list \'' + getlist + '\' found')
+                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new matchError('no list \'' + getlist + '\' found')
                   result.list = result.prop[getlist]
                   if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
                 }
@@ -73,14 +74,14 @@ module.exports = {
                   result.match = result.prop.match(match)
                   if (!result.match) {
                     //console.error(body)
-                    throw new Error('no match \'' + match + '\' found')
+                    throw new matchError('no match \'' + match + '\' found')
                   }
                 }
                 if (unpack) {
                   const match = result.prop.match(/return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/)
                   if (!match) {
                     //console.error(body)
-                    throw new Error('no packed code found')
+                    throw new matchError('no packed code found')
                   }
                   function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
                   const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
@@ -88,14 +89,14 @@ module.exports = {
                   console.log(unpacked)
                   if (!result.unpack) {
                     //console.error(body)
-                    throw new Error('no match \'' + unpack + '\' in packed code found')
+                    throw new matchError('no match \'' + unpack + '\' in packed code found')
                   }
                 }
                 if ($) result.$ = cheerio.load(result.prop)
                 resolve(result)
               }
               catch (err) {
-                /\D/.test(err.message) ? console.error(err.message) : ponk.sendMessage(err.message ? ('Status: ' + res.statusCode) : 'Keine Ergebnisse /elo')
+                err instanceof matchError ? ponk.sendMessage(/\d/.test(err.message) ? ('Status: ' + err.message) : 'Keine Ergebnisse /elo') : console.error(err)
                 reject(err)
               }
             })
