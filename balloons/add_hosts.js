@@ -313,19 +313,6 @@ class HosterList {
           return Promise.resolve(this)
         }
       },
-      'rest': {
-        regex: /.*/,
-        fikuonly: true,
-        getInfo() {
-          const media = parseLink(this.url)
-          if (media.type) {
-            this.type = media.type
-            this.fileurl = media.id
-            return Promise.resolve(this)
-          }
-          return Promise.reject(media.msg)
-        }
-      },
       'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
       'liveleak.com': {},
       'imgur.com': {},
@@ -355,6 +342,19 @@ class HosterList {
           this.title = 'Kein Livestream'
           this.fileurl = url
           return this
+        },
+        'rest': {
+          regex: /.*/,
+          fikuonly: true,
+          getInfo() {
+            const media = parseLink(this.url)
+            if (media.type) {
+              this.type = media.type
+              this.fileurl = media.id
+              return Promise.resolve(this)
+            }
+            return Promise.reject(media.msg)
+          }
         }
       }
     }).map(([name, rules]) => ([
