@@ -499,7 +499,7 @@ module.exports = {
                 this.sendMessage(meta.message.match(/armbernd/g).map(() => quote()).join(' '))
               },
               saufen: function(user, params, meta) {
-                const notafk = this.userlist.filter(user => ![this.name, 'kr4ssi'].includes(user.name) && !user.meta.afk)
+                const notafk = this.userlist.filter(user => ![this.name, 'kr4ssi', 'hrss'].includes(user.name) && !user.meta.afk)
                 const randuser = notafk[Math.floor(Math.random() * notafk.length)].name
                 const messages = [
                   `Ich sage: ${randuser} muss saufen.`,
