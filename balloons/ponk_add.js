@@ -249,8 +249,8 @@ class AddCustom {
       console.log(result)
       console.log(result.matchGroup('id'))
       if (result.type === 'cm') this.cmManifests[this.fixurl(result.url)] = result
-      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(id, meta.onPlay)
-      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(id, meta.onQueue)
+      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(result.id, meta.onPlay)
+      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(result.id, meta.onQueue)
       if (result.needUserScript) this.queue.once(result.id, () => {
         let userScriptPollId
         const userScriptPoll = () => {

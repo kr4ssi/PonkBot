@@ -341,7 +341,7 @@ class HosterList {
         getInfo(url) {
           this.title = 'Kein Livestream'
           this.fileurl = url
-          return this
+          return Promise.resolve(this)
         },
         'rest': {
           regex: /.*/,
