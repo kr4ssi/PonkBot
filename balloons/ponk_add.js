@@ -239,6 +239,8 @@ class AddCustom {
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
       //if (!meta.fiku && result.fikuonly) throw new Error('not addable')
+      console.log(result)
+      console.log(result.matchGroup('id'))
       if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (title) result.title = title
       if (result.type === 'cm' && !result.duration) try {
@@ -246,8 +248,6 @@ class AddCustom {
       } catch (err) {
         throw err
       }
-      console.log(result)
-      console.log(result.matchGroup('id'))
       //if (result.type === 'cm')
       this.cmManifests[this.fixurl(result.url)] = result
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(result.id, meta.onPlay)

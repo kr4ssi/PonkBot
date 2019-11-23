@@ -155,7 +155,7 @@ class HosterList {
                   Mirror: mirrorindex
                 }
               }).then(({ body }) => {
-                if (!body.Stream || !body.Replacement) return console.error(host.host)
+                if (!body.Stream) return console.error(host.host) // || !body.Replacement
                 const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
                 let match
                 if (body.Replacement) {
