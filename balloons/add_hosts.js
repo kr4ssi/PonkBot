@@ -259,11 +259,10 @@ class HosterList {
         getInfo() {
           this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
           return ponk.fetch(this.url, {
-            match: /<title>Watch ([^<]*)/,
-            unpack: /sources:\["([^"]+)/
-          }).then(({ match, unpack }) => {
+            match: /<title>Watch ([^<]*)[\s\S]+sources: \[{src: "([^"]+)/
+          }).then(({ match }) => {
             this.title = match[1]
-            this.fileurl = unpack[1]
+            this.fileurl = match[2]
             return this
           })
         },
