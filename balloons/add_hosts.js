@@ -313,6 +313,7 @@ class HosterList {
         }
       },
       'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
+      'gfycat.com': ydlRegEx['GfycatIE'],
       'liveleak.com': {},
       'imgur.com': {},
       'instagram.com': {},

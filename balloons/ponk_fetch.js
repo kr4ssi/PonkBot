@@ -215,7 +215,7 @@ module.exports = {
     },
     netzm: function(user, params, meta) {
       this.db.knex('netzms').select('faden').then(result => {
-        const faden = params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i)
+        const faden = params.match(/^(https:\/\/(?:(?:www|nocsp|backdoor)\.)?kohlchan\.net)\/\w+\/res\/\d+\.html)/i)
         const faeden = faden ? [faden[1]] : result.map(row => row.faden)
         if (faeden.length < 1) return this.sendMessage('Kein Faden ladiert')
         const netzms = []
@@ -258,7 +258,7 @@ module.exports = {
       })
     },
     lauer: function(user, params, meta) {
-      const url = params.match(/^(https:\/\/(?:(?:www)|(?:nocsp)|(?:backdoor)\.)?kohlchan\.net)\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
+      const url = params.match(/^(https:\/\/(?:(?:www|nocsp|backdoor)\.)?kohlchan\.net)\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
       if (!url) return this.sendMessage('Lauere nur auf KC!')
       const siteurl = url[1]//'https://kohlchan.net'
       const board = url[2]

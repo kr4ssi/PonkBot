@@ -225,6 +225,40 @@ module.exports = {
         })))
       })
     },
+    mützen: function(user, params, meta) {
+      this.db.getKeyValue('xmasemotes').then(xmasemotes => {
+        console.log(xmasemotes)
+        if (xmasemotes != 1) {
+          this.db.setKeyValue('xmasemotes', 1);
+          fs.readdir(path.join(__dirname, '..', '..', 'emotes', 'public', 'xmas'), (err, filenames) => {
+            if (err) return console.log(err)
+            console.log(filenames)
+            let i = 0
+            this.emotes.forEach(({ name, image }) => {
+              const filename = filenames.find(filename => new RegExp('^' + name.slice(1).replace(/[:()]/g, '\\$&') + '\\.[^.]+$').test(filename))
+              if (!filename) return
+              const newfilename = image.replace(filename, 'xmas/' + filename)
+              console.log(filename, newfilename)
+              setTimeout(() => {
+                this.client.socket.emit('updateEmote', { name, image: newfilename})
+              }, i * 200)
+              i++
+            })
+          })
+        }
+        else {
+          this.db.setKeyValue('xmasemotes', 0)
+          let i = 0
+          this.emotes.forEach(({ name, image }) => {
+            if (!/\/xmas\//.test(image)) return
+            setTimeout(() => {
+              this.client.socket.emit('updateEmote', { name, image: image.replace('/xmas', '')})
+            }, i * 200)
+            i++
+          })
+        }
+      })
+    },
     selbstsäge: function(user, params, meta) {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)

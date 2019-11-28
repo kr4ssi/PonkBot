@@ -331,6 +331,10 @@ mutter: {
   synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
   rank: 0
 },
+mützen: {
+  synop: '',
+  rank: 4
+},
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
   rank: 4
