@@ -242,7 +242,6 @@ module.exports = {
               setTimeout(() => {
                 this.client.socket.emit('updateEmote', { name, image: newfilename})
               }, i++ * 300)
-              i++
             })
           })
         }
@@ -253,8 +252,7 @@ module.exports = {
             if (!/\/xmas\//.test(image)) return
             setTimeout(() => {
               this.client.socket.emit('updateEmote', { name, image: image.replace('/xmas', '')})
-            }, i * 300)
-            i++
+            }, i++ * 300)
           })
         }
       })
