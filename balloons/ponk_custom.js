@@ -235,6 +235,7 @@ module.exports = {
             console.log(filenames)
             let i = 0
             this.emotes.forEach(({ name, image }) => {
+              if (/\/xmas\//.test(image)) return
               const filename = filenames.find(filename => new RegExp('^' + name.slice(1).replace(/[:()]/g, '\\$&') + '\\.[^.]+$').test(filename))
               if (!filename) return
               const newfilename = image.replace(filename, 'xmas/' + filename)
