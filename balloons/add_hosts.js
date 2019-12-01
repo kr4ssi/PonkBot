@@ -275,6 +275,29 @@ class HosterList {
           return this
         }
       },
+      'streamcrypt.net': {
+        allowedHosts: this,
+        getInfo() {
+          return ponk.fetch(this.url).then(({ res }) => {
+            return this.allowedHosts.hostAllowed(res.request.uri.href).then(host => host.getInfo())
+          })
+        },
+        priority: 1,
+        kinoxids: ['58']
+      },
+      'thevideos.ga': {
+        regex: /https?:\/\/((?:www\.)?thevideos\.ga)\/embed-([^.]+)\.html/,
+        groups: ['host', 'id'],
+        getInfo() {
+          return ponk.fetch(this.url, {
+            match: /<title>([^<]*) EMBED<\/title>/,
+          }).then(({ match }) => {
+            this.title = match[1]
+            this.fileurl = 'https://' + this.matchGroup('host') + '/stream' + this.matchGroup('id') + '.mp4'
+            return this
+          })
+        }
+      },
       'youtube.com': {
         ...ydlRegEx['YoutubeIE'],
         type: 'yt',

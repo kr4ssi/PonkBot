@@ -57,7 +57,8 @@ module.exports = {
                 let result = {
                   body,
                   statusCode: res.statusCode,
-                  headers
+                  headers,
+                  res
                 }
                 if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
                   //console.error(body)
