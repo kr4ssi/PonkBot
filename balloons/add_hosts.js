@@ -282,6 +282,7 @@ class HosterList {
             return this.allowedHosts.hostAllowed(res.request.uri.href).then(host => host.getInfo())
           })
         },
+        type: 'cm',
         priority: 1,
         kinoxids: ['58']
       },
