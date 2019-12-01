@@ -296,7 +296,8 @@ class HosterList {
             this.fileurl = 'https://' + this.matchGroup('host') + '/stream' + this.matchGroup('id') + '.mp4'
             return this
           })
-        }
+        },
+        type: 'cm'
       },
       'youtube.com': {
         ...ydlRegEx['YoutubeIE'],
