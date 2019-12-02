@@ -470,6 +470,26 @@ module.exports = {
             })
           }
         })
+        ponk.registerCooldown({
+          type           : 'emit',
+          name           : 'emit',
+          personalType   : 'ignore',
+          personalParams : null,
+          sharedType     : 'bucket',
+          sharedParams   : [10, 1, 'second', null],
+        })
+        const emit = ponk.client.socket.emit.bind(ponk.client.socket)
+        ponk.client.socket.emit = (...params) => {
+          ponk.checkCooldown({ type: 'emit', user: ponk.name, silent: true }).then(() => {
+            emit(...params)
+          }, message => {
+            setTimeout(() => {
+              process.nextTick(() => {
+                ponk.client.socket.emit(...params)
+              })
+            }, 100)
+          })
+        }
         ponk.createEmoteCSS()
         ponk.logger.log('Registering custom handlers');
         Object.assign(module.exports.handlers, ...fs.readdirSync(path.join(__dirname, 'quotes')).map(file => {

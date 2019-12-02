@@ -53,6 +53,7 @@ module.exports = {
     openweather  : process.env.api_openweather,
     rapidapi     : process.env.api_rapidapi,
     gitrepo      : process.env.gitrepo,
-    imagehost    : process.env.imagehost
+    imagehost    : process.env.imagehost,
+    emotehost    : process.env.emotehost
   }
 }

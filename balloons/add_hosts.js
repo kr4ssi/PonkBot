@@ -282,7 +282,6 @@ class HosterList {
             return this.allowedHosts.hostAllowed(res.request.uri.href).then(host => host.getInfo())
           })
         },
-        type: 'cm',
         priority: 1,
         kinoxids: ['58']
       },
@@ -399,7 +398,7 @@ class HosterList {
     this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && host.kinoxids.length > 0 && !host.down).sort((a, b) => a.priority - b.priority)
     this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(host.kinoxids || []), [])
 
-    console.log(this.kinoxHosts, this.kinoxIds)
+    //console.log(this.kinoxHosts, this.kinoxIds)
 
     this.hostAllowed = url => new Promise((resolve, reject) => {
       if (!allowedHosts.find(host => {
