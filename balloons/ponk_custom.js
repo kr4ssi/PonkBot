@@ -487,7 +487,7 @@ module.exports = {
               process.nextTick(() => {
                 ponk.client.socket.emit(...params)
               })
-            }, 100)
+            }, 500)
           })
         }
         ponk.createEmoteCSS()

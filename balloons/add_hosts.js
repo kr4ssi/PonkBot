@@ -275,6 +275,15 @@ class HosterList {
           return this
         }
       },
+      'vivo.sx': {
+        ...ydlRegEx['VivoIE'],
+        userScript: function() {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          this.fileurl = e.src
+          return this
+        }
+      },
       'streamcrypt.net': {
         allowedHosts: this,
         getInfo() {
