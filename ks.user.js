@@ -21,12 +21,13 @@ if (host) initTimer = setInterval(() => {
   clearInterval(initTimer)
   console.log(result)
   link = result.fileurl || link
-  const confirmString = `Userlink:\n${link}\n\nfür Addierungslink:\n${window.location.href}\ngefunden. Dem Bot schicken?`
+  const location = window.location.href.match(host.regex)[0]
+  const confirmString = `Userlink:\n${link}\n\nfür Addierungslink:\n${location}\ngefunden. Dem Bot schicken?`
   console.log(link)
   if (config.useSendMessage && window.parent) return window.parent.postMessage({userlink: link}, 'https://cytu.be/r/' + config.chan)
-  if (config.useGetValue) return GM_setValue(window.location.href, link)
+  if (config.useGetValue) return GM_setValue(location, link)
   if (!config.dontAsk && !confirm(confirmString)) return
-  window.location.replace(config.weblink + `/add.json?url=${window.location.href}&userlink=${link}`)
+  window.location.replace(config.weblink + `/add.json?url=${location}&userlink=${link}`)
 }, 1000)
 
 else if (config.useGetValue) initTimer = setInterval(() => {

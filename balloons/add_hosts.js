@@ -1,6 +1,6 @@
 'use-scrict';
 
-const { execFile } = require('child_process')
+const { PythonShell } = require('python-shell')
 const path = require('path')
 const URL = require('url')
 const Entities = require('html-entities').AllHtmlEntities;
@@ -73,16 +73,16 @@ class HosterList {
       }
       getInfo(url) {
         return new Promise((resolve, reject) => {
-          execFile('./youtube-dl/youtube-dl', ['--dump-json', '-f', 'best', '--restrict-filenames', url], {
-            maxBuffer: 104857600
-          }, (err, stdout, stderr) => {
+          PythonShell.run('./youtube-dl/youtube-dl', {
+            args: ['--dump-json', '-f', 'best', '--restrict-filenames', url]
+        }, (err, data) => {
             if (err) {
               ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
               return reject(err)
             }
             let info
             try {
-              let data = stdout.trim().split(/\r?\n/)
+              //let data = stdout.trim().split(/\r?\n/)
               info = data.map((rawData) => JSON.parse(rawData))
             }
             catch (err) {
@@ -129,7 +129,7 @@ class HosterList {
                 return true
               }
             })
-            const hosts = sortedIds.map(id => ({ id, host: this.allowedHosts.kinoxHosts.find(host => host.kinoxids.includes(id)) }))
+            const hosts = sortedIds.map(id => ({ id, host: this.fromKinoxId(id) }))
             console.log(hosts)
             const getHost = () => {
               let host = hosts.shift()
@@ -178,24 +178,52 @@ class HosterList {
           })
         }
       },
-      'gounlimited.to, tazmovies.com': {
-        regex: /https?:\/\/(?:www\.)?(gounlimited\.to|tazmovies\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['host', 'id'],
+      [['clipwatching.com',
+      'gounlimited.to',
+      'govid.me',
+      'holavid.com',
+      'streamty.com',
+      'thevideobee.to',
+      'uqload.com',
+      'vidbom.com',
+      'vidlo.us',
+      'vidlocker.xyz',
+      'vidshare.tv',
+      'vup.to',
+      'xvideosharing.com'].join(', ')]: {
+        ...ydlRegEx['XFileShareIE'],
         getInfo() {
-          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
-          return ponk.fetch(this.url, {
-            match: /Watch ([^<]*)/,
-            unpack: /sources:\["([^"]+)/
-          }).then(({ match, unpack }) => {
-            this.title = match[1]
-            this.fileurl = unpack[1]
-            console.log(this)
-            return this
-          })
+          if (this.matchGroup('host') === 'gounlimited.to') this.needUserScript = false
+          return Hoster.prototype.getInfo.call(this, this.url)
         },
-        kinoxids: ['84'],
-        priority: 1,
-        type: 'cm'
+        kinoxids: {
+          '84': 1,
+          '87': 3
+        },
+        userScript: function() {
+          const e = /(?:www\.)?vup.to/.test(window.location.hostname) ? (holaplayer && holaplayer.cache_) : document.querySelector('video').firstElementChild || document.querySelector('video')
+          if (!e) return
+          this.fileurl = e.src
+          return this
+        }
+      },
+      'vshare.io': {
+        ...ydlRegEx['VShareIE'],
+        userScript: function() {
+          const e = document.querySelector('video').firstElementChild || document.querySelector('video')
+          if (!e) return
+          this.fileurl = e.src
+          return this
+        }
+      },
+      'vivo.sx': {
+        ...ydlRegEx['VivoIE'],
+        userScript: function() {
+          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
+          this.fileurl = e.src
+          return this
+        }
       },
       'nxload.com': {
         regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
@@ -203,7 +231,7 @@ class HosterList {
         getInfo() {
           this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
           return ponk.fetch(this.url, {
-            match: /title: '([^']*)/,
+            match: /<title>([^<]*) \| Your streaming service/,
             unpack: /src:\\\'([^\\]+)\\'/
           }).then(({ match, unpack }) => {
             this.title = match[1]
@@ -253,37 +281,6 @@ class HosterList {
           return this
         }
       },
-      'clipwatching.com': {
-        regex: /https?:\/\/(?:www\.)?(clipw\.live|clipwatching\.com)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-        groups: ['host', 'id'],
-        getInfo() {
-          this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
-          return ponk.fetch(this.url, {
-            match: /<title>Watch ([^<]*)[\s\S]+sources: \[{src: "([^"]+)/
-          }).then(({ match }) => {
-            this.title = match[1]
-            this.fileurl = match[2]
-            return this
-          })
-        },
-        kinoxids: ['87'],
-        priority: 3,
-        userScript: function() {
-          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-          if (!e) return
-          this.fileurl = e.src
-          return this
-        }
-      },
-      'vivo.sx': {
-        ...ydlRegEx['VivoIE'],
-        userScript: function() {
-          const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-          if (!e) return
-          this.fileurl = e.src
-          return this
-        }
-      },
       'streamcrypt.net': {
         allowedHosts: this,
         getInfo() {
@@ -327,7 +324,7 @@ class HosterList {
           return Promise.resolve(this)
         }
       },
-      'vimeo.com': {
+      'dailymotion.com': {
         ...ydlRegEx['DailymotionIE'],
         type: 'vi',
         fikuonly: true,
@@ -336,7 +333,7 @@ class HosterList {
           return Promise.resolve(this)
         }
       },
-      'dailymotion.com': {
+      'vimeo.com': {
         ...ydlRegEx['VimeoIE'],
         type: 'dm',
         fikuonly: true,
@@ -354,11 +351,12 @@ class HosterList {
       'arte.tv': {},
       'bandcamp.com': {},
       'mixcloud.com': {},
-      'archive.org': {},
+      'archive.org': ydlRegEx['ArchiveOrgIE'],
       'ccc.de': {},
       'bitchute.com': {},
       'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
-      'peertube': ydlRegEx['PeerTubeIE']
+      'peertube': ydlRegEx['PeerTubeIE'],
+      'f0ck.me': {}
     }).concat(Object.entries({
       'twitter.com': {},
       'ARDMediathek': ydlRegEx['ARDMediathekIE'],
@@ -404,10 +402,20 @@ class HosterList {
     //.map(id => ({ id, host: allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
     //.filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
 
-    this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && host.kinoxids.length > 0 && !host.down).sort((a, b) => a.priority - b.priority)
-    this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(host.kinoxids || []), [])
+    const kinoxIds = host => (Array.isArray(host.kinoxids) ? host.kinoxids : Object.keys(host.kinoxids))
 
-    //console.log(this.kinoxHosts, this.kinoxIds)
+    this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && kinoxIds(host).length > 0)
+
+    this.fromKinoxId = id => this.kinoxHosts.find(host => kinoxIds(host).includes(id))
+
+    const kinoxPriority = id => {
+      const host = this.fromKinoxId(id)
+      return host && (host.priority || host.kinoxids[id])
+    }
+
+    this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(kinoxIds(host) || []), []).sort((a, b) => kinoxPriority(a) - kinoxPriority(b))
+
+    //console.log(allowedHosts)
 
     this.hostAllowed = url => new Promise((resolve, reject) => {
       if (!allowedHosts.find(host => {
@@ -432,67 +440,3 @@ class HosterList {
   }
 }
 module.exports =  HosterList
-
-
-/*
-'verystream.com, woof.tube': {
-...ydlRegEx['VerystreamIE'],
-kinoxids: ['85'],
-priority: 1,
-userScript: () => {
-const e = document.querySelector("[id^=videolink]")
-if (!e) return
-link += `/gettoken/${e.textContent}?mime=true`
-return true
-},
-down: true
-},
-'openload.co': {
-...ydlRegEx['OpenloadIE'],
-kinoxids: ['67'],
-priority: 2,
-userScript: () => {
-let e = document.querySelector("[id^=lqEH1]")
-if (!e) e = document.querySelector("[id^=streamur]")
-if (!e) e = document.querySelector("#mediaspace_wrapper > div:last-child > p:last-child")
-if (!e) e = document.querySelector("#main p:last-child")
-if (!e) return
-if (e.textContent.match(/(HERE IS THE LINK)|(enough for anybody)/)) return
-link += `/stream/${e.textContent}?mime=true`
-return true
-},
-down: true
-},
-'rapidvideo.com, bitporno.com': {
-regex: /https?:\/\/(?:www\.)?((?:rapidvideo|bitporno)\.com)\/[ve]\/([^/?#&])+/,
-groups: ['host', 'id'],
-getInfo(url) {
-return ponk.fetch(url, {
-match: /<title>([^<]+)[\s\S]+<source src="([^"]+)"/
-}).then(({ match }) => {
-this.title = match[1]
-this.fileurl = match[2]
-return this
-})
-},
-kinoxids: ['71', '75'],
-priority: 4,
-userScript: () => {
-const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-if (!e) return
-link = e.src
-return true
-},
-down: true
-},
-'streamango.com, fruithosts.net, streamcherry.com': {
-...ydlRegEx['StreamangoIE'],
-kinoxids: ['72', '82'],
-priority: 5,
-userScript: () => {
-const e = document.querySelector("[id^=mgvideo_html5_api]")
-if (!e) return
-return e.src
-},
-down: true
-},*/
