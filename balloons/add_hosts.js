@@ -63,6 +63,7 @@ class HosterList {
       }
       download(url) {
         if (ponk.downloading) return ponk.sendMessage('ladiert schon 1')
+        ponk.downloading = true
         let progress
         let timer
         let infofilename
@@ -75,20 +76,21 @@ class HosterList {
             '--newline',
             url]
         }).on('message', message => {
-          ponk.downloading = true
           if (!infofilename && message.startsWith('[info]')) {
             const match = message.match(/JSON to: (.*)$/)
             if (match) infofilename = match[1]
           }
           if (!message.startsWith('[download]')) return ponk.sendMessage(message)
           progress = message
-          if (!timer) timer = setInterval(() => ponk.sendMessage(progress), 5000)
+          if (!timer) timer = setInterval(() => ponk.sendMessage(progress), 10000)
         }).on('close', () => {
           clearInterval(timer)
           ponk.downloading = false
           console.log('closed')
           const info = JSON.parse(fs.readFileSync(infofilename))
-          ponk.addNetzm(ponk.API.keys.filehost + `/files/${path.basename(info._filename)}`)
+          const filename = path.basename(info._filename)
+          ponk.sendMessage(filename + ' wird addiert')
+          ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename)
         }).on('error', err => {
           clearInterval(timer)
           ponk.downloading = false
