@@ -12,8 +12,8 @@ const parseLink = require('./parselink.js')
 class HosterList {
   constructor(ponk, ydlRegEx) {
     class Addition {
-      constructor(url) {
-        const host = allowedHosts.find(host => {
+      constructor(url, hosterList = allowedHosts) {
+        const host = hosterList.find(host => {
           this.match = url.match(host.regex)
           return !!this.match
         })
@@ -166,7 +166,7 @@ class HosterList {
                 return true
               }
             })
-            const hosts = sortedIds.map(id => ({ id, host: this.fromKinoxId(id) }))
+            const hosts = sortedIds.map(id => ({ id, host: this.allowedHosts.fromKinoxId(id) }))
             console.log(hosts)
             const getHost = () => {
               let host = hosts.shift()
@@ -204,7 +204,7 @@ class HosterList {
                   console.log(match[0], mirrorindex, mirrorcount, date)
                 }
                 ponk.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
-                return host.host.match(mirrorurl).getInfo().then(result => {
+                return new Addition(mirrorurl, [host.host]).getInfo().then(result => {
                   result.title = title
                   return result
                 }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
@@ -445,6 +445,9 @@ class HosterList {
     //console.log(allowedHosts)
     this.hostAllowed = url => new Promise((resolve, reject) => {
       resolve(new Addition(url))
+    })
+    this.kinoxAllowed = url => new Promise((resolve, reject) => {
+      resolve(new Addition(url, this.kinoxHosts))
     })
     //this.kinoxhost = id => this.kinoxHosts.find
     this.userScripts = {
