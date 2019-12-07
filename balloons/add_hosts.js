@@ -88,7 +88,7 @@ class HosterList {
           ponk.downloading = false
           console.log('closed')
           const info = JSON.parse(fs.readFileSync(infofilename))
-          ponk.addNetzm(ponk.API.keys.filehost + `/files/${info._filename}`)
+          ponk.addNetzm(ponk.API.keys.filehost + `/files/${path.basename(info._filename)}`)
         }).on('error', err => {
           clearInterval(timer)
           ponk.downloading = false
