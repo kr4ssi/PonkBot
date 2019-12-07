@@ -3,6 +3,7 @@
 const { PythonShell } = require('python-shell')
 const path = require('path')
 const URL = require('url')
+const fs = require('fs')
 const Entities = require('html-entities').AllHtmlEntities;
 const entities = new Entities();
 
@@ -10,6 +11,91 @@ const parseLink = require('./parselink.js')
 
 class HosterList {
   constructor(ponk, ydlRegEx) {
+    class Addition {
+      constructor(url) {
+        const host = allowedHosts.find(host => {
+          this.match = url.match(host.regex)
+          return !!this.match
+        })
+        if (!host) throw new Error('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
+        this.url = this.match[0]
+        Object.assign(this, host, {
+          //fileurl,
+          //title,
+          //duration,
+          //quality,
+          //thumbnail,
+          //live,
+          ffprobe: {},
+          info: {},
+          //timestamp,
+          //user: {},
+          getInfo: host.getInfo.bind(this, this.url)
+        })
+        this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
+      }
+      get id() {
+        return this.type === 'cm' ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
+      }
+      get manifest() {
+        return {
+          title: this.title || this.url,
+          live: this.live || false,
+          duration: this.duration,
+          thumbnail: this.thumbnail,
+          sources: [
+            {
+              url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
+              quality: [240, 360, 480, 540, 720, 1080, 1440].includes(this.quality) ? this.quality : 720,
+              contentType: ([
+                {type: 'video/mp4', ext: ['.mp4']},
+                {type: 'video/webm', ext: ['.webm']},
+                {type: 'application/x-mpegURL', ext: ['.m3u8']},
+                {type: 'video/ogg', ext: ['.ogv']},
+                {type: 'application/dash+xml', ext: ['.mpd']},
+                {type: 'audio/aac', ext: ['.aac']},
+                {type: 'audio/ogg', ext: ['.ogg']},
+                {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+            }
+          ]
+        }
+      }
+      download(url) {
+        if (ponk.downloading) return ponk.sendMessage('ladiert schon 1')
+        let progress
+        let timer
+        let infofilename
+        new PythonShell('./youtube-dl/youtube-dl', {
+          args: [
+            '-o', path.join(ponk.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
+            '-f', 'mp4',
+            '--restrict-filenames',
+            '--write-info-json',
+            '--newline',
+            url]
+        }).on('message', message => {
+          ponk.downloading = true
+          if (!infofilename && message.startsWith('[info]')) {
+            const match = message.match(/JSON to: (.*)$/)
+            if (match) infofilename = match[1]
+          }
+          if (!message.startsWith('[download]')) return ponk.sendMessage(message)
+          progress = message
+          if (!timer) timer = setInterval(() => ponk.sendMessage(progress), 5000)
+        }).on('close', () => {
+          clearInterval(timer)
+          ponk.downloading = false
+          console.log('closed')
+          const info = JSON.parse(fs.readFileSync(infofilename))
+          ponk.addNetzm(ponk.API.keys.filehost + `/${info.title}-${info.id}.${info.ext}`)
+        }).on('error', err => {
+          clearInterval(timer)
+          ponk.downloading = false
+          console.error(err)
+        })
+      }
+    }
     class Hoster {
       constructor(name, rules = {}) {
         Object.assign(this, {
@@ -20,62 +106,11 @@ class HosterList {
           needUserScript: typeof rules.userScript === 'function'
         }, rules)
       }
-      match(url) {
-        const match = url.match(this.regex)
-        class HostMatch {
-          constructor(host) {
-            this.url = match[0]
-            Object.assign(this, host, {
-              match,
-              //fileurl,
-              //title,
-              //duration,
-              //quality,
-              //thumbnail,
-              //live,
-              ffprobe: {},
-              info: {},
-              //timestamp,
-              //user: {},
-              getInfo: host.getInfo.bind(this, this.url)
-            })
-            this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
-          }
-          get id() {
-            return this.type === 'cm' ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
-          }
-          get manifest() {
-            return {
-              title: this.title || this.url,
-              live: this.live || false,
-              duration: this.duration,
-              thumbnail: this.thumbnail,
-              sources: [
-                {
-                  url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
-                  quality: [240, 360, 480, 540, 720, 1080, 1440].includes(this.quality) ? this.quality : 720,
-                  contentType: ([
-                    {type: 'video/mp4', ext: ['.mp4']},
-                    {type: 'video/webm', ext: ['.webm']},
-                    {type: 'application/x-mpegURL', ext: ['.m3u8']},
-                    {type: 'video/ogg', ext: ['.ogv']},
-                    {type: 'application/dash+xml', ext: ['.mpd']},
-                    {type: 'audio/aac', ext: ['.aac']},
-                    {type: 'audio/ogg', ext: ['.ogg']},
-                    {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-                  ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
-                }
-              ]
-            }
-          }
-        }
-        return match && new HostMatch(this)
-      }
       getInfo(url) {
         return new Promise((resolve, reject) => {
           PythonShell.run('./youtube-dl/youtube-dl', {
             args: ['--dump-json', '-f', 'best', '--restrict-filenames', url]
-        }, (err, data) => {
+          }, (err, data) => {
             if (err) {
               ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
               return reject(err)
@@ -373,19 +408,19 @@ class HosterList {
           this.title = 'Kein Livestream'
           this.fileurl = url
           return Promise.resolve(this)
-        }
-      },
-      'rest': {
-        regex: /.*/,
-        fikuonly: true,
-        getInfo() {
-          const media = parseLink(this.url)
-          if (media.type) {
-            this.type = media.type
-            this.fileurl = media.id
-            return Promise.resolve(this)
+        },
+        'rest': {
+          regex: /.*/,
+          fikuonly: true,
+          getInfo() {
+            const media = parseLink(this.url)
+            if (media.type) {
+              this.type = media.type
+              this.fileurl = media.id
+              return Promise.resolve(this)
+            }
+            return Promise.reject(media.msg)
           }
-          return Promise.reject(media.msg)
         }
       }
     }).map(([name, rules]) => ([
@@ -397,36 +432,19 @@ class HosterList {
       return new Hoster(name, rules)
     })
     const userScriptHosts = allowedHosts.filter(host => host.needUserScript)
-
-    //const hosts = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
-    //.map(id => ({ id, host: allowedHosts.find(host => host.kinoxids && host.kinoxids.includes(id))}))
-    //.filter(host => host.host).sort((a, b) => a.host.priority - b.host.priority)
-
     const kinoxIds = host => (Array.isArray(host.kinoxids) ? host.kinoxids : Object.keys(host.kinoxids))
-
     this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && kinoxIds(host).length > 0)
-
     this.fromKinoxId = id => this.kinoxHosts.find(host => kinoxIds(host).includes(id))
-
     const kinoxPriority = id => {
       const host = this.fromKinoxId(id)
       return host && (host.priority || host.kinoxids[id])
     }
-
     this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(kinoxIds(host) || []), []).sort((a, b) => kinoxPriority(a) - kinoxPriority(b))
-
     //console.log(allowedHosts)
-
     this.hostAllowed = url => new Promise((resolve, reject) => {
-      if (!allowedHosts.find(host => {
-        const hostMatch = host.match(url)
-        return hostMatch && resolve(hostMatch) && true
-      })) reject()
+      resolve(new Addition(url))
     })
-
     //this.kinoxhost = id => this.kinoxHosts.find
-
-
     this.userScripts = {
       includes: userScriptHosts.map(host => host.regex),
       allowedHostsSource: userScriptHosts.map(({ regex, groups, userScript }) => ({
@@ -436,7 +454,6 @@ class HosterList {
       }))
     }
     this.allowedHostsString = allowedHosts.filter(host => !host.fikuonly).map(host => host.name).join(', ')
-    //+ '. Hoster down: ' + allowedHosts.filter(host => host.down).map(host => host.name).join(', ')
   }
 }
 module.exports =  HosterList

@@ -54,6 +54,8 @@ module.exports = {
     rapidapi     : process.env.api_rapidapi,
     gitrepo      : process.env.gitrepo,
     imagehost    : process.env.imagehost,
-    emotehost    : process.env.emotehost
+    emotehost    : process.env.emotehost,
+    filepath     : process.env.filepath,
+    filehost     : process.env.filehost
   }
 }
