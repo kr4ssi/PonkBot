@@ -86,47 +86,49 @@ class AddCustom {
       encoding: "utf-8"
     }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst allowedHosts[^\n\r]+\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
     if (!userscript) throw new Error('Userscript broken');
-    const userScriptHeader = userscriptmeta.parse(userscript[1])
+    const weblink = this.bot.server.weblink
     const allowedHosts = this.allowedHosts
-    const includes = allowedHosts.userScripts.includes
     const allowedHostsSource = toSource(allowedHosts.userScripts.allowedHostsSource)
-
-    const getHeader = (header = {}) => userscriptmeta.stringify(Object.assign(userScriptHeader, header, {
-      include: includes.concat(header.include || [])
-    }));
-    const getScript = (config = {}) => '\nconst allowedHosts = ' + allowedHostsSource + '\n\nconst config = ' + toSource(Object.assign({
-      weblink: this.bot.server.weblink,
-    }, config)) + userscript[2];
-
-    this.userScripts = [{
-      filename: 'ks.user.js',
-      userscript: getHeader() + getScript(),
-      descr: ''
-    }, {
-      filename: 'ks.dontask.user.js',
-      userscript: getHeader() + getScript({
+    const packageObj = require('../package.json')
+    class UserScript {
+      constructor(filename, descr = '', opt = {}, meta = {}) {
+        Object.assign(this, {
+          filename,
+          descr,
+          meta: userscriptmeta.stringify({
+            name: packageObj.name + ' .add',
+            namespace: packageObj.homepage,
+            version: packageObj.version + '.1.0.7',
+            author: packageObj.author,
+            ...meta,
+            include: allowedHosts.userScripts.includes.concat(meta.include || [])
+          })
+        })
+        const hosts = '\nconst allowedHosts = ' + allowedHostsSource
+        const config = '\n\nconst config = ' + toSource(Object.assign({
+          weblink,
+        }, opt))
+        this.userscript = this.meta + hosts + config + userscript[2]
+      }
+    }
+    this.userScripts = [
+      new UserScript('add.user'),
+      new UserScript('add.dontask.user', 'Ohne Abfrage', {
         dontAsk: true
       }),
-      descr: '(ODER ohne Abfrage)'
-    }, {
-      filename: 'ks.new.user.js',
-      userscript: getHeader({
+      new UserScript('add.new.user', 'Mit Channelberechtigung', {
+        useGetValue: true
+      }, {
         include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
         grant: [
           'GM_setValue', 'GM_getValue', 'unsafeWindow'
         ]
-      }) + getScript({
-        useGetValue: true
       }),
-      descr: '(ODER neue Methode, ohne Umweg über den Server, aber mit zusätzlichen Berechtigungen, nach Installation muss der Synch neu ladiert werden)'
-    }, {
-      filename: 'ks.auto.user.js',
-      userscript: getHeader() + getScript({
+      new UserScript('add.auto.user', 'Experimentell', {
         useSendMessage: true,
         chan: this.bot.client.chan
-      }),
-      descr: ''
-    }];
+      })
+    ]
 
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
 
@@ -154,8 +156,6 @@ class AddCustom {
     url = decodeURIComponent(url).replace(/^http:\/\//i, 'https://');
     url = validUrl.isHttpsUri(url);
     if (!url) return false;
-    url = url.replace(/https:\/\/(openload.co|oload\.[a-z0-9-]{2,})\/(f|embed)\//, 'https://openload.co/f/');
-    return url.replace(/https:\/\/(streamango\.com|fruithosts\.net)\/(f|embed)\//, 'https://streamango.com/f/');
   }
 
   setupServer() {
@@ -190,11 +190,14 @@ class AddCustom {
       else res.redirect(empty);
     });
 
-    this.userScripts.forEach(({ filename, userscript }) => {
-      this.bot.server.host.get('/' + filename, (req, res) => {
+    this.userScripts.forEach(({ filename, meta, userscript }) => {
+      this.bot.server.host.get('/' + filename + '.js', (req, res) => {
         res.end(userscript);
-      });
-    });
+      })
+      this.bot.server.host.get('/' + filename + '.meta.js', (req, res) => {
+        res.end(userscript.meta);
+      })
+    })
   }
 
   getDuration(host) {
@@ -263,9 +266,7 @@ class AddCustom {
             opts: [
               result.url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
-              ...this.userScriptPollOpts,
-              'dann ' + result.url + ' öffnen',
-              '(Ok klicken) und falls es schon läuft player neu laden'
+              ...this.userScriptPollOpts
             ],
             obscured: false
           })

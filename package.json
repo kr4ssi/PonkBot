@@ -10,19 +10,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Xaekai/PonkBot.git"
+    "url": "git+https://github.com/kr4ssi/PonkBot.git"
   },
   "keywords": [
     "cytube",
     "bot",
     "ponkbot"
   ],
-  "author": "Xaekai",
+  "author": "kr4ssi",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Xaekai/PonkBot/issues"
+    "url": "https://github.com/kr4ssi/PonkBot/issues"
   },
-  "homepage": "https://github.com/Xaekai/PonkBot#readme",
+  "homepage": "https://github.com/kr4ssi/PonkBot/",
   "dependencies": {
     "brotli": "latest",
     "chalk": "github:chalk/chalk",
