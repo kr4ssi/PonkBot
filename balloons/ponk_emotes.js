@@ -141,7 +141,7 @@ module.exports = {
         pushToGit: function(filename, content, encoding) {
           if (count > 0) return waiting.push(arguments)
           count++
-          const gitObj = { commit_message: !!content ? 'updated' : 'deleted'}
+          const gitObj = { commit_message: (!!content ? 'updated ' : 'deleted ') + filename}
           if (encoding) gitObj.encoding = encoding
           const gitArr = [gitrepo, filename, 'master']
           if (!!content) gitArr.push(content)
@@ -153,7 +153,7 @@ module.exports = {
               resolve()
             }).catch(err => {
               if (!!content && err.response && err.response.status == 400 && err.description === 'A file with this name doesn\'t exist') {
-                gitObj.commit_message = 'created'
+                gitObj.commit_message = 'created ' + filename
                 gitclient.RepositoryFiles.create(...gitArr).then(result => {
                   count--
                   if (waiting.length) ponk.pushToGit(...waiting.shift())
