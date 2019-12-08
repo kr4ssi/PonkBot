@@ -40,16 +40,10 @@ class Emotes {
       fs.mkdirSync(path.join(this.emotespath, '_bak'))
       this.bakfilenames = []
     }
-    this.bot.emotes.forEach(({ name, image }) => {
-      const filenname = name.slice(1).replace(/[:()<>]/g, '\\$&')
-      if (image.startsWith(this.bot.API.keys.emotehost)) {
-        const linkedname = path.basename(URL.parse(image).pathname)
-        const shouldname = filenname + path.extname(linkedname)
-        if (!this.filenames.has(linkedname) && !this.recoverEmote(linkedname)) return console.log(image)
-        if (shouldname != linkedname) this.renameEmote(linkedname, shouldname, false)
-      }
-      else this.downloadEmote(name, filenname, image)
+    if (!this.bot.emotes) this.bot.client.once('emoteList', (list) => {
+      this.checkEmotes()
     })
+    else this.checkEmotes()
     fs.readdir(path.join(this.emotespath, 'xmas'), (err, filenames) => {
       if (err) return console.log(err)
       //console.log(filenames)
@@ -79,7 +73,18 @@ class Emotes {
       this.renameEmote(oldname, shouldname)
       this.removeEmote(oldname)
     })
-    //this.bot.client.on('emoteList',   (list)=>{ });
+  }
+  checkEmotes () {
+    this.bot.emotes.forEach(({ name, image }) => {
+      const filenname = name.slice(1).replace(/[:()<>]/g, '\\$&')
+      if (image.startsWith(this.bot.API.keys.emotehost)) {
+        const linkedname = path.basename(URL.parse(image).pathname)
+        const shouldname = filenname + path.extname(linkedname)
+        if (!this.filenames.has(linkedname) && !this.recoverEmote(linkedname)) return console.log(image)
+        if (shouldname != linkedname) this.renameEmote(linkedname, shouldname, false)
+      }
+      else this.downloadEmote(name, filenname, image)
+    })
   }
   removeEmote(filename) {
     if (!this.filenames.has(filename)) return
@@ -92,10 +97,8 @@ class Emotes {
     this.removeEmote(shouldname)
     fs.copyFileSync(path.join(this.emotespath, oldname), path.join(this.emotespath, shouldname))
     if (add) this.filenames.add(shouldname)
-    console.log(shouldname, 1)
     this.bot.pushToGit(oldname)
     fs.readFile(path.join(this.emotespath, shouldname), {encoding: 'base64'}, (err, data) => {
-      console.log(shouldname, data)
       if (err) return console.log(err)
       this.bot.pushToGit('emotes/' + shouldname, data, 'base64')
     })
