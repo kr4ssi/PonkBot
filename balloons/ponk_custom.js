@@ -10,14 +10,6 @@ const path = require('path');
 const request = require('request')
 const validUrl = require('valid-url')
 
-const Gitlab = require('gitlab').Gitlab
-const gitclient = new Gitlab({
-  token: process.env.api_gitlab
-})
-const gitrepo = process.env.gitrepo
-
-let count = 0
-const waiting = []
 let lastImages = []
 const cleanban = []
 const lastCSS = {
@@ -324,33 +316,6 @@ module.exports = {
                 else ponk.sendMessage(quotes[Math.floor(Math.random() * quotes.length)])
               }
             }
-          },
-          pushToGit: function(filename, content, encoding) {
-            if (count > 0) return waiting.push(arguments)
-            count++
-            const gitObj = { commit_message: 'updated' }
-            if (encoding) gitObj.encoding = encoding
-            const gitArr = [gitrepo, filename, 'master', content, gitObj.commit_message, gitObj]
-            return new Promise((resolve, reject) => {
-              gitclient.RepositoryFiles.edit(...gitArr).then(result => {
-                count--
-                if (waiting.length) ponk.pushToGit(...waiting.shift())
-                resolve()
-              }).catch(err => {
-                if (err.response && err.response.status == 400 && err.description === 'A file with ponk name doesn\'t exist') {
-                  const gitArr = [gitrepo, filename, 'master', content, 'created', gitObj]
-                  gitObj.commit_message = 'created'
-                  gitclient.RepositoryFiles.create(...gitArr).then(result => {
-                    count--
-                    if (waiting.length) ponk.pushToGit(...waiting.shift())
-                    resolve()
-                  }).catch(err => {
-                    console.error(err)
-                  })
-                }
-                else console.error(err)
-              })
-            })
           },
           createEmoteCSS: function() {
             return new Promise((resolve, reject) => ponk.db.knex('emotes').whereNotNull('width').orWhereNotNull('height').select('emote', 'width', 'height').then(sizes => {
