@@ -40,7 +40,7 @@ class Emotes {
       fs.mkdirSync(path.join(this.emotespath, '_bak'))
       this.bakfilenames = []
     }
-    if (!this.bot.emotes) this.bot.client.once('emoteList', (list) => {
+    if (this.bot.emotes.length < 1) this.bot.client.once('emoteList', (list) => {
       this.checkEmotes(list)
     })
     else this.checkEmotes()
