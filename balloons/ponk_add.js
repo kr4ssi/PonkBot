@@ -154,8 +154,7 @@ class AddCustom {
   fixurl(url) {
     if (typeof url === 'undefined') return false;
     url = decodeURIComponent(url).replace(/^http:\/\//i, 'https://');
-    url = validUrl.isHttpsUri(url);
-    if (!url) return false;
+    return validUrl.isHttpsUri(url);
   }
 
   setupServer() {
