@@ -25,7 +25,7 @@ class Emotes {
     Object.assign(this, {
       bot         : ponk   // The bot
     })
-    this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
+    this.emotespath = path.join(__dirname, '..', 'emotes', 'public')
     this.filenames = new Set()
     const keepnames = new Set()
     fs.readdirSync(this.emotespath).forEach(filename => {
