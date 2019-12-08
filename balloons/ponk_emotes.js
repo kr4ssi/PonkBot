@@ -25,7 +25,7 @@ class Emotes {
     Object.assign(this, {
       bot         : ponk   // The bot
     })
-    this.emotespath = path.join(__dirname, '..', 'emotes', 'public')
+    this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
     this.filenames = new Set()
     const keepnames = new Set()
     fs.readdirSync(this.emotespath).forEach(filename => {
@@ -41,7 +41,7 @@ class Emotes {
       this.bakfilenames = []
     }
     if (!this.bot.emotes) this.bot.client.once('emoteList', (list) => {
-      this.checkEmotes()
+      this.checkEmotes(list)
     })
     else this.checkEmotes()
     fs.readdir(path.join(this.emotespath, 'xmas'), (err, filenames) => {
@@ -74,8 +74,8 @@ class Emotes {
       this.removeEmote(oldname)
     })
   }
-  checkEmotes () {
-    this.bot.emotes.forEach(({ name, image }) => {
+  checkEmotes (emotes) {
+    (emotes || this.bot.emotes).forEach(({ name, image }) => {
       const filenname = name.slice(1).replace(/[:()<>]/g, '\\$&')
       if (image.startsWith(this.bot.API.keys.emotehost)) {
         const linkedname = path.basename(URL.parse(image).pathname)
@@ -97,7 +97,7 @@ class Emotes {
     this.removeEmote(shouldname)
     fs.copyFileSync(path.join(this.emotespath, oldname), path.join(this.emotespath, shouldname))
     if (add) this.filenames.add(shouldname)
-    this.bot.pushToGit(oldname)
+    this.bot.pushToGit('emotes/' + oldname)
     fs.readFile(path.join(this.emotespath, shouldname), {encoding: 'base64'}, (err, data) => {
       if (err) return console.log(err)
       this.bot.pushToGit('emotes/' + shouldname, data, 'base64')
