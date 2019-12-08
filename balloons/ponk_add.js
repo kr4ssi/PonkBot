@@ -147,7 +147,7 @@ class AddCustom {
     });
 
     this.userScriptPollOpts = [
-      ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + ' ' + descr)
+      ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + '.js ' + descr)
     ]
   }
 
@@ -195,7 +195,7 @@ class AddCustom {
         res.end(userscript);
       })
       this.bot.server.host.get('/' + filename + '.meta.js', (req, res) => {
-        res.end(userscript.meta);
+        res.end(meta);
       })
     })
   }
