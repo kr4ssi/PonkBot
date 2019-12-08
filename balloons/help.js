@@ -335,6 +335,10 @@ mützen: {
   synop: '',
   rank: 4
 },
+getemote: {
+  synop: '',
+  rank: 4
+},
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
   rank: 4

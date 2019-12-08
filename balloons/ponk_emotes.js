@@ -5,6 +5,8 @@
 
 'use strict';
 
+const CyTubeClient = require('../lib/client.js');
+
 const path = require('path')
 const request = require('request')
 const fs = require('fs')
@@ -25,6 +27,7 @@ class Emotes {
   constructor(ponk) {
     Object.assign(this, {
       emoteCSS    : '',    // The emote CSS
+      otherEmotes : {},
       bot         : ponk   // The bot
     })
     this.createEmoteCSS()
@@ -286,5 +289,32 @@ module.exports = {
         }
       })
     },
+    getemote: function(user, params, meta) {
+      const split = params.trim().split(' ')
+      const chan = split.shift()
+      const name = split.shift()
+      const getEmotes = (chan, update) => new Promise((resolve, reject) => {
+        if (this.API.emotes.otherEmotes[chan] && !update) return resolve(this.API.emotes.otherEmotes[chan])
+        const { host, port, secure, user, auth } = this.client
+        const tempclient = new CyTubeClient({
+          host, port, secure, user, auth, chan
+        }, this.log).once('ready', function() {
+          this.connect()
+        }).once('connected', function() {
+          this.start()
+        }).once('emoteList', function(emotelist) {
+          resolve(emotelist)
+          this.socket.close()
+        }).on('error', reject)
+      })
+      if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
+      if (!name || !name.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
+      getEmotes(chan).then(emotes => {
+        this.API.emotes.otherEmotes[chan] = emotes
+        const emote = emotes.find(emote => emote.name == name)
+        if (!emote) return this.sendMessage('Emote nicht gefunden')
+        this.client.socket.emit('updateEmote', { name, image: emote.image })
+      })
+    }
   }
 }
