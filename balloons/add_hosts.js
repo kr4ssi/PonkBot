@@ -393,7 +393,8 @@ class HosterList {
       'bitchute.com': {},
       'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
       'peertube': ydlRegEx['PeerTubeIE'],
-      'f0ck.me': {}
+      'f0ck.me': {},
+      'pornhub.com': {}
     }).concat(Object.entries({
       'twitter.com': {},
       'ARDMediathek': ydlRegEx['ARDMediathekIE'],
