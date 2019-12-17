@@ -13,6 +13,7 @@ const fs = require('fs')
 const fileType = require('file-type')
 const stream = require('stream')
 const URL = require('url')
+const validUrl = require('valid-url')
 
 const Gitlab = require('gitlab').Gitlab
 
@@ -40,6 +41,7 @@ class Emotes {
     })
     if (process.env.NODE_ENV === 'production') return
     this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
+    this.cleanName = name => name.slice(1).replace(/\"\*\/\:\<\>\?\\\|/, '')
     this.filenames = new Set()
     const keepnames = new Set()
     fs.readdirSync(this.emotespath).forEach(filename => {
@@ -61,7 +63,7 @@ class Emotes {
       if (!emote) this.bot.sendMessage(`Emote ${name} addiert.`)
       else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
       const linkedname = path.basename(URL.parse(image).pathname)
-      const filename = name.slice(1).replace(/[:()]/g, '\\$&')
+      const filename = this.cleanName(name)
       const extfilename = filename + path.extname(linkedname)
       if (image.startsWith(this.bot.API.keys.emotehost)) {
         if (!this.filenames.has(extfilename)) this.recoverEmote(extfilename)
@@ -70,21 +72,21 @@ class Emotes {
     })
     this.bot.client.on('removeEmote', ({ name, image, source }) => {
       const linkedname = path.basename(URL.parse(image).pathname)
-      const filename = name.slice(1).replace(/[:()]/g, '\\$&') + path.extname(linkedname)
+      const filename = this.cleanName(name) + path.extname(linkedname)
       this.removeEmote(filename)
     })
     this.bot.client.on('renameEmote', ({ name, old, source }) => {
       const emote = this.bot.emotes.find(emote => emote.name === name)
       const linkedname = path.basename(URL.parse(emote.image).pathname)
-      const shouldname = name.slice(1).replace(/[:()]/g, '\\$&') + path.extname(linkedname)
-      const oldname = old.slice(1).replace(/[:()]/g, '\\$&') + path.extname(linkedname)
+      const shouldname = this.cleanName(name) + path.extname(linkedname)
+      const oldname = this.cleanName(old) + path.extname(linkedname)
       this.renameEmote(oldname, shouldname)
       this.removeEmote(oldname)
     })
   }
   checkEmotes (emotes) {
     (emotes || this.bot.emotes).forEach(({ name, image }) => {
-      const filenname = name.slice(1).replace(/[:()<>]/g, '\\$&')
+      const filenname = this.cleanName(name)
       if (image.startsWith(this.bot.API.keys.emotehost)) {
         const linkedname = path.basename(URL.parse(image).pathname)
         const shouldname = filenname + path.extname(linkedname)

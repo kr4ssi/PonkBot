@@ -241,7 +241,7 @@ class AddCustom {
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
       //if (!meta.fiku && result.fikuonly) throw new Error('not addable')
-      //console.log(result)
+      console.log(result)
       console.log(result.matchGroup('id'))
       if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (title) result.title = title

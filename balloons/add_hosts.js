@@ -67,14 +67,17 @@ class HosterList {
         let progress
         let timer
         let infofilename
-        new PythonShell('./youtube-dl/youtube-dl', {
+        PythonShell.run('youtube_dl', {
+          cwd: path.join(__dirname, '..', 'youtube-dl'),
+          pythonOptions: ['-m'],
           args: [
             '-o', path.join(ponk.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
             '-f', 'mp4',
             '--restrict-filenames',
             '--write-info-json',
             '--newline',
-            url]
+            url
+          ]
         }).on('message', message => {
           if (!infofilename && message.startsWith('[info]')) {
             const match = message.match(/JSON to: (.*)$/)
@@ -110,7 +113,9 @@ class HosterList {
       }
       getInfo(url) {
         return new Promise((resolve, reject) => {
-          PythonShell.run('./youtube-dl/youtube-dl', {
+          PythonShell.run('youtube_dl', {
+            cwd: path.join(__dirname, '..', 'youtube-dl'),
+            pythonOptions: ['-m'],
             args: ['--dump-json', '-f', 'best', '--restrict-filenames', url]
           }, (err, data) => {
             if (err) {
@@ -215,7 +220,8 @@ class HosterList {
           })
         }
       },
-      [['clipwatching.com',
+      [['nxload.com',
+      'clipwatching.com',
       'gounlimited.to',
       'govid.me',
       'holavid.com',
@@ -230,7 +236,7 @@ class HosterList {
       'xvideosharing.com'].join(', ')]: {
         ...ydlRegEx['XFileShareIE'],
         getInfo() {
-          if (this.matchGroup('host') === 'gounlimited.to') this.needUserScript = false
+          if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
           return Hoster.prototype.getInfo.call(this, this.url)
         },
         kinoxids: {
@@ -393,8 +399,7 @@ class HosterList {
       'bitchute.com': {},
       'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
       'peertube': ydlRegEx['PeerTubeIE'],
-      'f0ck.me': {},
-      'pornhub.com': {}
+      'f0ck.me': {}
     }).concat(Object.entries({
       'twitter.com': {},
       'ARDMediathek': ydlRegEx['ARDMediathekIE'],

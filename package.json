@@ -4,7 +4,7 @@
   "description": "A chatbot for CyTube",
   "main": "service.js",
   "scripts": {
-    "postinstall": "git clone https://github.com/ytdl-org/youtube-dl.git && make --directory youtube-dl || echo",
+    "postinstall": "git clone https://github.com/ytdl-org/youtube-dl.git",
     "prestart": "cd youtube-dl && git pull",
     "start": "node service.js"
   },
