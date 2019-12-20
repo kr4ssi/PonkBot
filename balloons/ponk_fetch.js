@@ -244,7 +244,7 @@ module.exports = {
           const siteURLObj = URLObj.parse(faden)
           const siteurl = siteURLObj.protocol + '//' + siteURLObj.hostname
           let added = {};
-          [...Array(meta.repeat)].forEach(() => {
+          [...Array(Math.min(meta.repeat, netzms.length))].forEach(() => {
             const netzm = netzms.splice(Math.floor(Math.random() * netzms.length), 1).pop()
             this.addNetzm(siteurl + netzm.item, meta.addnext, user)
             added[netzm.faden] = (added[netzm.faden] || 0) + 1
