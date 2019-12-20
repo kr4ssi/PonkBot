@@ -41,7 +41,17 @@ class Emotes {
     })
     if (process.env.NODE_ENV === 'production') return
     this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
-    this.cleanName = name => name.slice(1).replace(/\"\*\/\:\<\>\?\\\|/, '')
+    this.cleanName = name => name.slice(1).replace(/["*/:<>?\\|]/g, match => ({
+      '"': 'gänsefüßchen',
+      '*': 'sternchen',
+      '/': 'schrägstrich',
+      ':': 'doppelpunkt',
+      '<': 'spitzeklammerauf',
+      '>': 'spitzeklammerzu',
+      '?': 'fragezeichen',
+      '\\': 'backslash',
+      '|': 'senkrechterstrich'
+    })[match])
     this.filenames = new Set()
     const keepnames = new Set()
     fs.readdirSync(this.emotespath).forEach(filename => {
