@@ -111,12 +111,12 @@ class HosterList {
           needUserScript: typeof rules.userScript === 'function'
         }, rules)
       }
-      getInfo(url) {
+      getInfo(url, moreargs = []) {
         return new Promise((resolve, reject) => {
           PythonShell.run('youtube_dl', {
             cwd: path.join(__dirname, '..', 'youtube-dl'),
             pythonOptions: ['-m'],
-            args: ['--dump-json', '-f', 'best', '--restrict-filenames', url]
+            args: ['--dump-json', '-f', 'best', '--restrict-filenames', ...moreargs,  url]
           }, (err, data) => {
             if (err) {
               ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
@@ -237,7 +237,9 @@ class HosterList {
         ...ydlRegEx['XFileShareIE'],
         getInfo() {
           if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
-          return Hoster.prototype.getInfo.call(this, this.url)
+          let args = []
+          if (['gounlimited.to'].includes(this.matchGroup('host'))) args = ['--no-check-certificate']
+          return Hoster.prototype.getInfo.call(this, this.url, args)
         },
         kinoxids: {
           '84': 1,
