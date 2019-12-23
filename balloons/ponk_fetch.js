@@ -233,7 +233,7 @@ module.exports = {
             'audio/aac',
             'audio/ogg',
             'audio/mpeg'
-          ].includes(file.mime)).map(file => ({ faden, item: file.path}))
+          ].includes(file.mime)).map(({path, originalName}) => ({ faden, path, title: originalName}))
           if (!files.length) return this.db.knex('netzms').where({faden}).del().then(() => Promise.reject('none'))
           netzms.push(...files)
           if (!result.some(row => row.faden === faden)) return this.db.knex('netzms').insert({ faden }).then(() => {
@@ -246,7 +246,7 @@ module.exports = {
           let added = {};
           [...Array(Math.min(meta.repeat, netzms.length))].forEach(() => {
             const netzm = netzms.splice(Math.floor(Math.random() * netzms.length), 1).pop()
-            this.addNetzm(siteurl + netzm.item, meta.addnext, user)
+            this.addNetzm(siteurl + netzm.path, meta.addnext, user, 'fi', netzm.title)
             added[netzm.faden] = (added[netzm.faden] || 0) + 1
           })
           Object.entries(added).forEach(([faden, count]) => {
