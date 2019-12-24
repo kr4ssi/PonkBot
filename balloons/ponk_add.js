@@ -264,7 +264,7 @@ class AddCustom {
             title: result.title,
             opts: [
               result.url,
-              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ')',
+              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ') (ks*.user.js bitte löschen)',
               ...this.userScriptPollOpts
             ],
             obscured: false
