@@ -446,7 +446,7 @@ module.exports = {
       }).then(({ $ }) => {
         const out = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\'])').find('.title')
         console.log(out)
-        this.sendMessage(out.text().replace(/\s+(?=\s)/g, ''))
+        this.sendMessage(out.text().replace(/\s+(?=\s)/g, '').trim())
       })
     }
   }
