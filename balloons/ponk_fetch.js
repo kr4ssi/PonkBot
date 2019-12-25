@@ -439,6 +439,15 @@ module.exports = {
           })
         })
       })
+    },
+    tv: function(user, params, meta) {
+      this.fetch('https://programm.ard.de/TV/Programm/Alle-Sender', {
+        $: true
+      }).then(({ $ }) => {
+        const out = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\'])').find('.title')
+        console.log(out)
+        this.sendMessage(out.text().replace(/\s+(?=\s)/g, ''))
+      })
     }
   }
 }

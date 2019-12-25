@@ -339,6 +339,10 @@ getemote: {
   synop: '',
   rank: 4
 },
+tv: {
+  synop: '',
+  rank: 1
+},
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
   rank: 4
