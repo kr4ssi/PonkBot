@@ -41,7 +41,7 @@ class Emotes {
     })
     if (process.env.NODE_ENV === 'production') return
     this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
-    this.cleanName = name => name.slice(1).replace(/["*/:<>?\\|]/g, match => ({
+    this.cleanName = name => (name[0] != '/' ? name : name.slice(1).replace(/["*/:<>?\\|]/g, match => ({
       '"': 'gänsefüßchen',
       '*': 'sternchen',
       '/': 'schrägstrich',
