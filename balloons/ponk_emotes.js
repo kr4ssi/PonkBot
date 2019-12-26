@@ -76,7 +76,7 @@ class Emotes {
       else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
       const linkedfilename = path.basename(URL.parse(image).pathname)
       const cleanname = this.cleanName(name)
-      const filename = filename + path.extname(linkedfilename)
+      const filename = cleanname + path.extname(linkedfilename)
       if (image.startsWith(this.bot.API.keys.emotehost)) {
         if (!this.filenames.has(filename)) this.recoverEmote(filename)
       }
@@ -118,7 +118,7 @@ class Emotes {
   renameEmote(oldfilename, shouldfilename, add = true) {
     this.removeEmote(shouldfilename)
     fs.copyFileSync(path.join(this.emotespath, oldfilename), path.join(this.emotespath, shouldfilename))
-    this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
+    //this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
     if (add) this.filenames.add(shouldfilename)
     this.pushToGit('emotes/' + oldfilename)
     fs.readFile(path.join(this.emotespath, shouldfilename), {encoding: 'base64'}, (err, data) => {
