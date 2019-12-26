@@ -444,9 +444,11 @@ module.exports = {
       this.fetch('https://programm.ard.de/TV/Programm/Alle-Sender', {
         $: true
       }).then(({ $ }) => {
-        const out = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\'])').find('.title')
-        console.log(out)
-        this.sendMessage(out.text().replace(/\s+(?=\s)/g, '').trim())
+        const station = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\' i])')
+        const name = station.attr('data-click-pixel').slice('Detailansicht::'.length)
+        const title = station.find('.title').contents()[0].nodeValue.trim()
+        const subtitle =  station.find('.subtitle').text().trim()
+        this.sendMessage(name + ' - ' + title + ' - ' + subtitle)
       })
     }
   }
