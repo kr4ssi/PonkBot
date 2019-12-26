@@ -140,7 +140,7 @@ class Emotes {
     })
     r.pipe(pass)
     fileType.stream(pass).then(stream => {
-      const filename = filename + '.' + stream.fileType.ext
+      const filename = cleanname + '.' + stream.fileType.ext
       stream.pipe(fs.createWriteStream(path.join(this.emotespath, filename)).on('close', () => {
         this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + filename})
         this.filenames.add(filename)
