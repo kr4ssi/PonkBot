@@ -80,7 +80,7 @@ class Emotes {
       if (image.startsWith(this.bot.API.keys.emotehost)) {
         if (!this.filenames.has(filename)) this.recoverEmote(filename)
       }
-      else this.downloadEmote(name, cleanname, image)
+      else this.downloadEmote(name, image, cleanname)
     })
     this.bot.client.on('removeEmote', ({ name, image, source }) => {
       const linkedfilename = path.basename(URL.parse(image).pathname)
@@ -105,7 +105,7 @@ class Emotes {
         if (!this.filenames.has(linkedfilename) && !this.recoverEmote(linkedfilename)) return console.log(image)
         if (shouldfilename != linkedfilename) this.renameEmote(linkedfilename, shouldfilename, false)
       }
-      else this.downloadEmote(name, cleanname, image)
+      else this.downloadEmote(name, image, cleanname)
     })
   }
   removeEmote(filename) {
@@ -132,14 +132,15 @@ class Emotes {
     this.filenames.add(filename)
     return true
   }
-  downloadEmote(name, filename, image) {
+  downloadEmote(name, image, cleanname) {
+    cleanname = cleanname || this.cleanName(name)
     const pass = new stream.PassThrough();
     const r = request.get(image).on('error', err => {
       console.error(image, err);
     })
     r.pipe(pass)
     fileType.stream(pass).then(stream => {
-      filename = filename + '.' + stream.fileType.ext
+      const filename = filename + '.' + stream.fileType.ext
       stream.pipe(fs.createWriteStream(path.join(this.emotespath, filename)).on('close', () => {
         this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + filename})
         this.filenames.add(filename)
@@ -218,18 +219,11 @@ module.exports = {
       const name = split.shift()
       let image = split.join().trim()
       if (!image) return this.getLastImage().then(image => {
-        this.client.socket.emit('updateEmote', { name, image })
+        this.downloadEmote(name, image)
       })
       image = validUrl.isHttpsUri(image)
       if (!image) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      if (/\.json$/.test(image)) return this.fetch(image, {
-        json: true
-      }).then(({ body }) => {
-        const emote = body.find(emote => emote.name == name)
-        if (!emote) return this.sendMessage('Emote nicht gefunden')
-        this.client.socket.emit('updateEmote', { name, image: emote.image })
-      })
-      this.client.socket.emit('updateEmote', { name, image })
+      this.downloadEmote(name, image)
     },
     emote: function(user, params, meta) {
       if (!params.match(/^\/[\wäÄöÖüÜß]+$/) || !this.emotes.some(emote => emote.name == params)) return this.sendMessage('Ist kein emote')
@@ -333,7 +327,7 @@ module.exports = {
         this.API.emotes.otherEmotes[chan] = emotes
         const emote = emotes.find(emote => emote.name == name)
         if (!emote) return this.sendMessage('Emote nicht gefunden')
-        if (add) this.client.socket.emit('updateEmote', { name, image: emote.image })
+        if (add) this.downloadEmote(emote.name, emote.image)
         else this.sendMessage(emote.image + '.pic')
       })
     }
