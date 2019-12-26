@@ -445,6 +445,7 @@ module.exports = {
         $: true
       }).then(({ $ }) => {
         const station = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\' i])')
+        if (!station.length) return this.sendMessage('Kein Sender gefunden')
         const name = station.attr('data-click-pixel').slice('Detailansicht::'.length)
         const title = station.find('.title').contents()[0].nodeValue.trim()
         const subtitle =  station.find('.subtitle').text().trim()
