@@ -219,11 +219,11 @@ module.exports = {
       const name = split.shift()
       let image = split.join().trim()
       if (!image) return this.getLastImage().then(image => {
-        this.downloadEmote(name, image)
+        this.API.emotes.downloadEmote(name, image)
       })
       image = validUrl.isHttpsUri(image)
       if (!image) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      this.downloadEmote(name, image)
+      this.API.emotes.downloadEmote(name, image)
     },
     emote: function(user, params, meta) {
       if (!params.match(/^\/[\wäÄöÖüÜß]+$/) || !this.emotes.some(emote => emote.name == params)) return this.sendMessage('Ist kein emote')
@@ -327,7 +327,7 @@ module.exports = {
         this.API.emotes.otherEmotes[chan] = emotes
         const emote = emotes.find(emote => emote.name == name)
         if (!emote) return this.sendMessage('Emote nicht gefunden')
-        if (add) this.downloadEmote(emote.name, emote.image)
+        if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
         else this.sendMessage(emote.image + '.pic')
       })
     }
