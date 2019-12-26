@@ -448,7 +448,8 @@ module.exports = {
         const name = station.attr('data-click-pixel').slice('Detailansicht::'.length)
         const title = station.find('.title').contents()[0].nodeValue.trim()
         const subtitle =  station.find('.subtitle').text().trim()
-        this.sendMessage(name + ' - ' + title + ' - ' + subtitle)
+        const date =  station.find('.date').text().trim()
+        this.sendMessage(name + ' - ' + date + ': ' + title + ' - ' + subtitle)
       })
     }
   }
