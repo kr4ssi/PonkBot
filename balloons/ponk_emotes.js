@@ -48,6 +48,8 @@ class Emotes {
       ':': 'doppelpunkt',
       '<': 'spitzeklammerauf',
       '>': 'spitzeklammerzu',
+      '(': 'klammerauf',
+      ')': 'klammerzu',
       '?': 'fragezeichen',
       '\\': 'backslash',
       '|': 'senkrechterstrich'
@@ -72,38 +74,38 @@ class Emotes {
       const emote = this.bot.emotes.find(emote => emote.name === name)
       if (!emote) this.bot.sendMessage(`Emote ${name} addiert.`)
       else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
-      const linkedname = path.basename(URL.parse(image).pathname)
-      const filename = this.cleanName(name)
-      const extfilename = filename + path.extname(linkedname)
+      const linkedfilename = path.basename(URL.parse(image).pathname)
+      const cleanname = this.cleanName(name)
+      const filename = filename + path.extname(linkedfilename)
       if (image.startsWith(this.bot.API.keys.emotehost)) {
-        if (!this.filenames.has(extfilename)) this.recoverEmote(extfilename)
+        if (!this.filenames.has(filename)) this.recoverEmote(filename)
       }
-      else this.downloadEmote(name, filename, image)
+      else this.downloadEmote(name, cleanname, image)
     })
     this.bot.client.on('removeEmote', ({ name, image, source }) => {
-      const linkedname = path.basename(URL.parse(image).pathname)
-      const filename = this.cleanName(name) + path.extname(linkedname)
+      const linkedfilename = path.basename(URL.parse(image).pathname)
+      const filename = this.cleanName(name) + path.extname(linkedfilename)
       this.removeEmote(filename)
     })
     this.bot.client.on('renameEmote', ({ name, old, source }) => {
       const emote = this.bot.emotes.find(emote => emote.name === name)
-      const linkedname = path.basename(URL.parse(emote.image).pathname)
-      const shouldname = this.cleanName(name) + path.extname(linkedname)
-      const oldname = this.cleanName(old) + path.extname(linkedname)
-      this.renameEmote(oldname, shouldname)
-      this.removeEmote(oldname)
+      const linkedfilename = path.basename(URL.parse(emote.image).pathname)
+      const shouldfilename = this.cleanName(name) + path.extname(linkedfilename)
+      const oldfilename = this.cleanName(old) + path.extname(linkedfilename)
+      this.renameEmote(oldfilename, shouldfilename)
+      this.removeEmote(oldfilename)
     })
   }
   checkEmotes (emotes) {
     (emotes || this.bot.emotes).forEach(({ name, image }) => {
-      const filenname = this.cleanName(name)
+      const cleanname = this.cleanName(name)
       if (image.startsWith(this.bot.API.keys.emotehost)) {
-        const linkedname = path.basename(URL.parse(image).pathname)
-        const shouldname = filenname + path.extname(linkedname)
-        if (!this.filenames.has(linkedname) && !this.recoverEmote(linkedname)) return console.log(image)
-        if (shouldname != linkedname) this.renameEmote(linkedname, shouldname, false)
+        const linkedfilename = path.basename(URL.parse(image).pathname)
+        const shouldfilename = cleanname + path.extname(linkedfilename)
+        if (!this.filenames.has(linkedfilename) && !this.recoverEmote(linkedfilename)) return console.log(image)
+        if (shouldfilename != linkedfilename) this.renameEmote(linkedfilename, shouldfilename, false)
       }
-      else this.downloadEmote(name, filenname, image)
+      else this.downloadEmote(name, cleanname, image)
     })
   }
   removeEmote(filename) {
@@ -113,14 +115,15 @@ class Emotes {
     this.filenames.delete(filename)
     this.pushToGit('emotes/' + filename)
   }
-  renameEmote(oldname, shouldname, add = true) {
-    this.removeEmote(shouldname)
-    fs.copyFileSync(path.join(this.emotespath, oldname), path.join(this.emotespath, shouldname))
-    if (add) this.filenames.add(shouldname)
-    this.pushToGit('emotes/' + oldname)
-    fs.readFile(path.join(this.emotespath, shouldname), {encoding: 'base64'}, (err, data) => {
+  renameEmote(oldfilename, shouldfilename, add = true) {
+    this.removeEmote(shouldfilename)
+    fs.copyFileSync(path.join(this.emotespath, oldfilename), path.join(this.emotespath, shouldfilename))
+    this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
+    if (add) this.filenames.add(shouldfilename)
+    this.pushToGit('emotes/' + oldfilename)
+    fs.readFile(path.join(this.emotespath, shouldfilename), {encoding: 'base64'}, (err, data) => {
       if (err) return console.log(err)
-      this.pushToGit('emotes/' + shouldname, data, 'base64')
+      this.pushToGit('emotes/' + shouldfilename, data, 'base64')
     })
   }
   recoverEmote(filename) {
