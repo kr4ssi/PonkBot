@@ -52,6 +52,7 @@ class AddCustom {
       this.allowedHostsString = this.allowedHosts.allowedHostsString
       this.setupUserScript();
       this.setupServer();
+      this.setupMediathek();
     });
     this.play = new EventEmitter()
     this.del = new EventEmitter()
@@ -79,6 +80,32 @@ class AddCustom {
       this.queue.removeAllListeners(id)
       handleVideoDelete.call(this.bot, { uid })
     }
+  }
+  
+  setupMediathek() {
+    this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
+      $: true
+    }).then(({ $ }) => {
+      return Promise.all($('.button._focusable').filter((i, e) => /devicetype=pc/.test(e.attribs.href)).map((i, e) => {
+        return this.allowedHosts.hostAllowed('https://www.ardmediathek.de' + e.attribs.href).then(host => {
+          return host.getInfo()
+        }).then(result => ({
+          ...result,
+          title: e.attribs.title
+        }))
+      }).toArray())
+    }).then(results => results.forEach(({ title, info }) => {
+      this.bot.server.host.get('/mediathek/' + title + '.json', (req, res) => {
+        res.json({
+          title,
+          live: true,
+          sources: [360, 540, 720, 1080].map(quality => ({
+            url: (info.formats.find(format => format.format.endsWith(quality))||{}).url,
+            contentType: 'application/x-mpegURL'
+          })).filter(e => !!e.url)
+        });
+      })
+    }))
   }
 
   setupUserScript() {
