@@ -130,10 +130,10 @@ class AddCustom {
           live: true,
           duration: 0,
           sources: urls.map(url => {
-            let quality = 1080
+            let quality = 720
             let contentType = 'application/x-mpegURL'
             if (url.endsWith('manifest.mpd')) contentType = 'application/dash+xml'
-            else if (url.endsWith('native_sd.m3u8')) quality = 720
+            else if (url.endsWith('native_hd.m3u8')) quality = 1080
             else if (url.endsWith('translated_hd.m3u8')) quality = 540
             else if (url.endsWith('translated_sd.m3u8')) quality = 480
             else if (url.endsWith('translated-2_hd.m3u8')) quality = 360
@@ -143,7 +143,7 @@ class AddCustom {
               quality,
               url
             }
-          })
+          }).filter(source => !source.url.includes('translated'))
         })
       })
       this.cccmanifests.push(this.bot.server.weblink + '/' + path + '.json')
