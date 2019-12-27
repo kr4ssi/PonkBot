@@ -81,7 +81,7 @@ class AddCustom {
       handleVideoDelete.call(this.bot, { uid })
     }
   }
-  
+
   setupMediathek() {
     this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
       $: true
@@ -99,6 +99,7 @@ class AddCustom {
         res.json({
           title,
           live: true,
+          duration: 0,
           sources: [360, 540, 720, 1080].map(quality => ({
             url: (info.formats.find(format => format.format.endsWith(quality))||{}).url,
             contentType: 'application/x-mpegURL'
