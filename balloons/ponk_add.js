@@ -83,6 +83,7 @@ class AddCustom {
   }
 
   setupMediathek() {
+    this.gezmanifests = []
     this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
       $: true
     }).then(({ $ }) => {
@@ -107,6 +108,43 @@ class AddCustom {
           })).filter(e => !!e.url)
         });
       })
+      this.gezmanifests.push(this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json')
+    }))
+    this.cccmanifests = []
+    this.bot.fetch('https://streaming.media.ccc.de/36c3', {
+      $: true
+    }).then(({ $ }) => Promise.all($('.panel.panel-default').map((i, e) => {
+      const path = $(e).parent().attr('href')
+      return this.bot.fetch('https://streaming.media.ccc.de/' + path, {
+        $: true,
+        match: /<title>([^<]+)/
+      }).then(({ $, match }) => ({ $, match, path }))
+    }).toArray())).then(results => results.forEach(({ $, match, path }) => {
+      const title = match[1]
+      const urls = $('a').filter((i, e) => /\.(?:mpd|m3u8)$/.test(e.attribs.href)).map((i, e) => e.attribs.href).toArray()
+      this.bot.server.host.get('/' + path + '.json', (req, res) => {
+        res.json({
+          title,
+          live: true,
+          duration: 0,
+          sources: urls.map(url => {
+            let quality = 1080
+            let contentType = 'application/x-mpegURL'
+            if (url.endsWith('manifest.mpd')) contentType = 'application/dash+xml'
+            else if (url.endsWith('native_sd.m3u8')) quality = 720
+            else if (url.endsWith('translated_hd.m3u8')) quality = 540
+            else if (url.endsWith('translated_sd.m3u8')) quality = 480
+            else if (url.endsWith('translated-2_hd.m3u8')) quality = 360
+            else if (url.endsWith('translated-2_sd.m3u8')) quality = 240
+            return {
+              contentType,
+              quality,
+              url
+            }
+          })
+        })
+      })
+      this.cccmanifests.push(this.bot.server.weblink + '/' + path + '.json')
     }))
   }
 
@@ -360,6 +398,20 @@ module.exports = {
         onPlay: () => {
           this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
         }
+      })
+    },
+    '36c3': function(user, params, meta) {
+      this.API.add.cccmanifests.forEach(id => {
+        if (this.playlist.some(item => item.media.id === id)) return
+        console.log(id)
+        this.mediaSend({ type: 'cm', id })
+      })
+    },
+    gez: function(user, params, meta) {
+      this.API.add.gezmanifests.forEach(id => {
+        if (this.playlist.some(item => item.media.id === id)) return
+        console.log(id)
+        this.mediaSend({ type: 'cm', id })
       })
     }
   }

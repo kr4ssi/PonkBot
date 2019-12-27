@@ -343,6 +343,14 @@ tv: {
   synop: '',
   rank: 1
 },
+'36c3': {
+  synop: '',
+  rank: 4
+},
+gez: {
+  synop: '',
+  rank: 4
+},
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
   rank: 4
