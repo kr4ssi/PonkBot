@@ -101,7 +101,7 @@ class AddCustom {
           live: true,
           duration: 0,
           sources: [360, 540, 720, 1080].map(quality => ({
-            url: (info.formats.find(format => format.format.endsWith(quality))||{}).url,
+            url: ((info.formats.find(format => format.format.endsWith(quality))||{}).url||'').replace('http://', 'https://'),
             contentType: 'application/x-mpegURL'
           })).filter(e => !!e.url)
         });
