@@ -54,7 +54,7 @@ class AddCustom {
       this.allowedHostsString = this.allowedHosts.allowedHostsString
       this.setupUserScript();
       this.setupServer();
-      this.setupMediathek();
+      //this.setupMediathek();
     });
     this.play = new EventEmitter()
     this.del = new EventEmitter()

@@ -347,6 +347,10 @@ tv: {
   synop: '',
   rank: 4
 },
+fahrplan: {
+  synop: '',
+  rank: 1
+},
 gez: {
   synop: '',
   rank: 4
