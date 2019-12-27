@@ -430,7 +430,7 @@ module.exports = {
               duration: 0,
             });
           })
-          this.socket.close()
+          setTimeout(() => this.socket.close(), 3000)
         }).on('error', error => console.log(error))
       }
     },
