@@ -5,6 +5,8 @@
 
 'use strict';
 
+const CyTubeClient = require('../lib/client.js');
+
 const HosterList = require('./add_hosts.js')
 
 const validUrl = require('valid-url')
@@ -401,11 +403,36 @@ module.exports = {
       })
     },
     '36c3': function(user, params, meta) {
-      this.API.add.cccmanifests.forEach(id => {
+      if (params != 'keller') this.API.add.cccmanifests.forEach(id => {
         if (this.playlist.some(item => item.media.id === id)) return
         console.log(id)
         this.mediaSend({ type: 'cm', id })
       })
+      else {
+        const { host, port, secure, user, auth } = this.client
+        const cccmanifests = this.API.add.cccmanifests
+        const tempclient = new CyTubeClient({
+          host, port, secure, user, auth, chan: 'keller'
+        }, this.log).once('ready', function() {
+          this.connect()
+        }).once('connected', function() {
+          this.start()
+        }).once('started', function() {
+           this.playlist()
+         }).once('playlist', function(playlist) {
+          cccmanifests.forEach(id => {
+            if (playlist.some(item => item.media.id === id)) return
+            this.socket.emit('queue', {
+              type: 'cm',
+              id,
+              pos: 'end',
+              temp: true,
+              duration: 0,
+            });
+          })
+          this.socket.close()
+        }).on('error', error => console.log(error))
+      }
     },
     gez: function(user, params, meta) {
       this.API.add.gezmanifests.forEach(id => {
