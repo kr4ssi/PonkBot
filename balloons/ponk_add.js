@@ -95,7 +95,7 @@ class AddCustom {
         }))
       }).toArray())
     }).then(results => results.forEach(({ title, info }) => {
-      this.bot.server.host.get('/mediathek/' + title + '.json', (req, res) => {
+      this.bot.server.host.get('/mediathek/' + decodeURIComponent(title) + '.json', (req, res) => {
         res.json({
           title,
           live: true,
