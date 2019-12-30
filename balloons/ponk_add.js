@@ -55,6 +55,7 @@ class AddCustom {
       this.setupUserScript();
       this.setupServer();
       this.setupMediathek();
+      this.setupCCCManifests();
     });
     this.play = new EventEmitter()
     this.del = new EventEmitter()
@@ -94,24 +95,50 @@ class AddCustom {
           return host.getInfo()
         }).then(result => ({
           ...result,
-          title: e.attribs.title
-        }))
-      }).toArray())
-    }).then(results => results.forEach(({ title, info }) => {
-      this.bot.server.host.get('/mediathek/' + encodeURIComponent(title) + '.json', (req, res) => {
-        res.json({
-          title,
-          live: true,
-          duration: 0,
-          sources: [360, 540, 720, 1080].map(quality => ({
-            url: ((info.formats.find(format => format.height === quality && format.manifest_url === info.manifest_url)||{}).url||'').replace('http://', 'https://'),
+          sources: [360, 480, 540, 720, 1080].map(quality => ({
+            url: ((result.info.formats.find(format => {
+              if (/hr/.test(e.attribs.title)) {
+                if (/sub/.test(format.url)) return
+              }
+              else if (format.manifest_url != result.info.manifest_url) return
+              return format.height === quality
+            })||{}).url||'').replace('http://', 'https://'),
             contentType: 'application/x-mpegURL',
             quality
-          })).filter(e => !!e.url)
-        });
-      })
-      this.gezmanifests.push(this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json')
-    }))
+          })).filter(e => !!e.url),
+          title: e.attribs.title
+        }))
+      }).toArray().concat([
+        'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
+        'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
+        'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
+      ].map(url => this.allowedHosts.hostAllowed(url).then(host => {
+        return host.getInfo()
+      }).then(result => ({
+        ...result,
+        sources: [360, 480, 540, 720, 1080].map(quality => ({
+          url: ((result.info.formats.find(format => {
+            return format.height === quality
+          })||{}).url||'').replace('http://', 'https://'),
+          contentType: 'application/x-mpegURL',
+          quality
+        })).filter(e => !!e.url),
+        title: result.info.title.replace(' Livestream', '')
+      }))))).then(results => results.forEach(({ info, title, sources }) => {
+        this.bot.server.host.get('/mediathek/' + encodeURIComponent(title) + '.json', (req, res) => {
+          res.json({
+            title,
+            live: true,
+            duration: 0,
+            sources
+          })
+        })
+        this.gezmanifests.push(this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json')
+      }))
+    })
+  }
+
+  setupCCCManifests() {
     this.cccmanifests = []
     this.bot.fetch('https://streaming.media.ccc.de/36c3', {
       $: true
@@ -418,8 +445,8 @@ module.exports = {
         }).once('connected', function() {
           this.start()
         }).once('started', function() {
-           this.playlist()
-         }).once('playlist', function(playlist) {
+          this.playlist()
+        }).once('playlist', function(playlist) {
           cccmanifests.forEach(id => {
             if (playlist.some(item => item.media.id === id)) return
             this.socket.emit('queue', {

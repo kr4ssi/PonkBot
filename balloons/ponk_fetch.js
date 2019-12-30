@@ -441,6 +441,21 @@ module.exports = {
       })
     },
     tv: function(user, params, meta) {
+      if (/^ZDF/i.test(params)) return this.fetch('https://www.zdf.de/live-tv', {
+        $: true
+      }).then(({ $ }) => {
+        let station = $('section[class^=\'b-epg-timeline timeline-' + params + ' \' i]')
+        const name = station.find('h3').text().replace(' Programm', '')
+        station = station.find('ul li:has(.live-tag) a')
+        this.fetch('https://www.zdf.de/' + JSON.parse(station.attr('data-dialog')).contentUrl, {
+          $: true
+        }).then(({ $ }) => {
+          const title = $('.teaser-title-link').text().trim()
+          const subtitle = $('.overlay-subtitle').text().trim()
+          const date = $('.overlay-link-time').text().trim()
+          this.sendMessage(name + ' - ' + date + ': ' + title + (subtitle ? ' - ' + subtitle : ''))
+        })
+      })
       this.fetch('https://programm.ard.de/TV/Programm/Alle-Sender', {
         $: true
       }).then(({ $ }) => {
@@ -450,7 +465,8 @@ module.exports = {
         const title = station.find('.title').contents()[0].nodeValue.trim()
         const subtitle =  station.find('.subtitle').text().trim()
         const date =  station.find('.date').text().trim()
-        this.sendMessage(name + ' - ' + date + ': ' + title + ' - ' + subtitle)
+        const enddate =  station.next().find('.date').text().trim()
+        this.sendMessage(name + ' - ' + date + ' - ' + enddate + ' Uhr: ' + title + ' - ' + subtitle)
       })
     },
     fahrplan: function(user, params, meta) {
