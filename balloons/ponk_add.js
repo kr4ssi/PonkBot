@@ -133,7 +133,10 @@ class AddCustom {
             sources
           })
         })
-        this.gezmanifests.push(this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json')
+        this.gezmanifests.push({
+          title,
+          id: this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json'
+        })
       }))
     })
   }
@@ -462,10 +465,15 @@ module.exports = {
       }
     },
     gez: function(user, params, meta) {
-      this.API.add.gezmanifests.forEach(id => {
+      this.API.add.gezmanifests.some(({ title, id }) => {
+        let stop
         if (this.playlist.some(item => item.media.id === id)) return
-        console.log(id)
+        if (params) {
+          if (!(new RegExp('^' + params, 'i')).test(title)) return
+          else stop = true
+        }
         this.mediaSend({ type: 'cm', id })
+        if (stop) return true
       })
     }
   }
