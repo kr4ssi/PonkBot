@@ -67,7 +67,7 @@ class HosterList {
         let progress
         let timer
         let infofilename
-        PythonShell.run('youtube_dl', {
+        new PythonShell('youtube_dl', {
           cwd: path.join(__dirname, '..', 'youtube-dl'),
           pythonOptions: ['-m'],
           args: [
