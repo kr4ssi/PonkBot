@@ -54,7 +54,6 @@ class AddCustom {
       this.allowedHostsString = this.allowedHosts.allowedHostsString
       this.setupUserScript();
       this.setupServer();
-      this.setupMediathek();
     });
     this.play = new EventEmitter()
     this.del = new EventEmitter()
@@ -86,7 +85,7 @@ class AddCustom {
 
   setupMediathek() {
     this.gezmanifests = []
-    this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
+    return this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
       $: true
     }).then(({ $ }) => {
       return Promise.all($('.button._focusable').filter((i, e) => /devicetype=pc/.test(e.attribs.href)).map((i, e) => {
@@ -393,15 +392,46 @@ module.exports = {
       })
     },
     gez: function(user, params, meta) {
-      this.API.add.gezmanifests.some(({ title, id }) => {
-        let stop
-        if (this.playlist.some(item => item.media.id === id)) return
+      let chan
+      if (/keller$/.test(params)) {
+        chan = 'keller'
+        params = params.split(' ').slice(0, -1).join(' ')
+      }
+      (this.API.add.gezmanifests ? Promise.resolve() : this.API.add.setupMediathek()).then(() => {
+        let gezmanifests = this.API.add.gezmanifests
         if (params) {
-          if (!(new RegExp('^' + params, 'i')).test(title)) return
-          else stop = true
+          const gezmanifest = gezmanifests.find(({ title }) => (new RegExp('^' + params, 'i')).test(title))
+          if (!gezmanifest) return this.sendMessage('Kein Sender gefunden')
+          gezmanifests = [gezmanifest]
         }
-        this.mediaSend({ type: 'cm', id })
-        if (stop) return true
+        if (!chan) gezmanifests.forEach(({ id }) => {
+          if (this.playlist.some(item => item.media.id === id)) return
+          this.mediaSend({ type: 'cm', id })
+        })
+        else {
+          const { host, port, secure, user, auth } = this.client
+          const tempclient = new CyTubeClient({
+            host, port, secure, user, auth, chan
+          }, this.log).once('ready', function() {
+            this.connect()
+          }).once('connected', function() {
+            this.start()
+          }).once('started', function() {
+            this.playlist()
+          }).once('playlist', function(playlist) {
+            gezmanifests.forEach(({ id }, i) => {
+              if (playlist.some(item => item.media.id === id)) return
+              setTimeout(() => this.socket.emit('queue', {
+                type: 'cm',
+                id,
+                pos: 'end',
+                temp: true,
+                duration: 0,
+              }), i * 200)
+            })
+            setTimeout(() => this.socket.close(), gezmanifests.length * 200)
+          }).on('error', error => console.log(error))
+        }
       })
     }
   }
