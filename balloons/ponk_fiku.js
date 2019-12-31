@@ -85,7 +85,7 @@ class FikuSystem {
       if (!title) title = 'Fiku'
       //const date = new Date()
       //const hour = date.getHours()
-      const opts = fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < (arr.length - 15)) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+      const opts = fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < 8) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
       const fikuPoll = (title, opts, timeout) => {
         const settings = {
           title,
