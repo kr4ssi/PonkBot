@@ -468,18 +468,6 @@ module.exports = {
         const enddate =  station.next().find('.date').text().trim()
         this.sendMessage(name + ' - ' + date + ' - ' + enddate + ' Uhr: ' + title + ' - ' + subtitle)
       })
-    },
-    fahrplan: function(user, params, meta) {
-      this.fetch('https://streaming.media.ccc.de/36c3', {
-        $: true
-      }).then(({ $ }) => {
-        $('.panel-body:has(img' + (params ? ('[alt^=\'' + params + '\' i]') : '') + ')').each((i, panel) => {
-          const name = $(panel).find('img').attr('alt')
-          const curr = $(panel).find('.current-talk strong').text() + ' ' + $(panel).find('.current-talk span').text()
-          const next = $(panel).find('.next-talk strong').text() + ' ' + $(panel).find('.next-talk span').text()
-          this.sendMessage(name + ' - ' + curr + ' - ' + next)
-        })
-      })
     }
   }
 }
