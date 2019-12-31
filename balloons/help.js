@@ -343,17 +343,9 @@ tv: {
   synop: '',
   rank: 1
 },
-'36c3': {
-  synop: '',
-  rank: 4
-},
-fahrplan: {
-  synop: '',
-  rank: 1
-},
 gez: {
   synop: '',
-  rank: 4
+  rank: 3
 },
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',

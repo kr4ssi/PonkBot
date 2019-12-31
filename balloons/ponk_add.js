@@ -141,45 +141,6 @@ class AddCustom {
     })
   }
 
-  setupCCCManifests() {
-    this.cccmanifests = []
-    this.bot.fetch('https://streaming.media.ccc.de/36c3', {
-      $: true
-    }).then(({ $ }) => Promise.all($('.panel.panel-default').map((i, e) => {
-      const path = $(e).parent().attr('href')
-      return this.bot.fetch('https://streaming.media.ccc.de/' + path, {
-        $: true,
-        match: /<title>([^<]+)/
-      }).then(({ $, match }) => ({ $, match, path }))
-    }).toArray())).then(results => results.forEach(({ $, match, path }) => {
-      const title = match[1]
-      const urls = $('a').filter((i, e) => /\.(?:mpd|m3u8)$/.test(e.attribs.href)).map((i, e) => e.attribs.href).toArray()
-      this.bot.server.host.get('/' + path + '.json', (req, res) => {
-        res.json({
-          title,
-          live: true,
-          duration: 0,
-          sources: urls.map(url => {
-            let quality = 720
-            let contentType = 'application/x-mpegURL'
-            if (url.endsWith('manifest.mpd')) contentType = 'application/dash+xml'
-            else if (url.endsWith('native_hd.m3u8')) quality = 1080
-            else if (url.endsWith('translated_hd.m3u8')) quality = 540
-            else if (url.endsWith('translated_sd.m3u8')) quality = 480
-            else if (url.endsWith('translated-2_hd.m3u8')) quality = 360
-            else if (url.endsWith('translated-2_sd.m3u8')) quality = 240
-            return {
-              contentType,
-              quality,
-              url
-            }
-          }).filter(source => !source.url.includes('translated'))
-        })
-      })
-      this.cccmanifests.push(this.bot.server.weblink + '/' + path + '.json')
-    }))
-  }
-
   setupUserScript() {
     const userscript = require('fs').readFileSync('ks.user.js', {
       encoding: "utf-8"
@@ -431,38 +392,6 @@ module.exports = {
           this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
         }
       })
-    },
-    '36c3': function(user, params, meta) {
-      if (params != 'keller') this.API.add.cccmanifests.forEach(id => {
-        if (this.playlist.some(item => item.media.id === id)) return
-        console.log(id)
-        this.mediaSend({ type: 'cm', id })
-      })
-      else {
-        const { host, port, secure, user, auth } = this.client
-        const cccmanifests = this.API.add.cccmanifests
-        const tempclient = new CyTubeClient({
-          host, port, secure, user, auth, chan: 'keller'
-        }, this.log).once('ready', function() {
-          this.connect()
-        }).once('connected', function() {
-          this.start()
-        }).once('started', function() {
-          this.playlist()
-        }).once('playlist', function(playlist) {
-          cccmanifests.forEach(id => {
-            if (playlist.some(item => item.media.id === id)) return
-            this.socket.emit('queue', {
-              type: 'cm',
-              id,
-              pos: 'end',
-              temp: true,
-              duration: 0,
-            });
-          })
-          setTimeout(() => this.socket.close(), 3000)
-        }).on('error', error => console.log(error))
-      }
     },
     gez: function(user, params, meta) {
       this.API.add.gezmanifests.some(({ title, id }) => {
