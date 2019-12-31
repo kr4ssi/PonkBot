@@ -55,7 +55,6 @@ class AddCustom {
       this.setupUserScript();
       this.setupServer();
       this.setupMediathek();
-      this.setupCCCManifests();
     });
     this.play = new EventEmitter()
     this.del = new EventEmitter()
