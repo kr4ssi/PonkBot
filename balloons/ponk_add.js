@@ -429,7 +429,7 @@ module.exports = {
                 duration: 0,
               }), i * 200)
             })
-            setTimeout(() => this.socket.close(), gezmanifests.length * 200)
+            setTimeout(() => this.socket.close(), gezmanifests.length * 300)
           }).on('error', error => console.log(error))
         }
       })
