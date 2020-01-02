@@ -410,7 +410,7 @@ module.exports = {
           if (this.playlist.some(item => item.media.id === id)) return
           this.mediaSend({ type: 'cm', id })
         })
-        else {
+        else if (meta.rank > 2) {
           const { host, port, secure, user, auth } = this.client
           const tempclient = new CyTubeClient({
             host, port, secure, user, auth, chan
