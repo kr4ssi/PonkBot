@@ -399,8 +399,10 @@ module.exports = {
       }
       (this.API.add.gezmanifests ? Promise.resolve() : this.API.add.setupMediathek()).then(() => {
         let gezmanifests = this.API.add.gezmanifests
-        if (params) {
-          const gezmanifest = gezmanifests.find(({ title }) => (new RegExp('^' + params, 'i')).test(title))
+        if (params != 'alle') {
+          let gezmanifest
+          if (params) gezmanifest = gezmanifests.find(({ title }) => (new RegExp('^' + params, 'i')).test(title))
+          else gezmanifest = gezmanifests[Math.floor(Math.random() * gezmanifests.length)]
           if (!gezmanifest) return this.sendMessage('Kein Sender gefunden')
           gezmanifests = [gezmanifest]
         }
