@@ -345,7 +345,7 @@ tv: {
 },
 gez: {
   synop: '',
-  rank: 3
+  rank: 2
 },
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
