@@ -304,7 +304,7 @@ class HosterList {
         type: 'cm'
       },
       'vidoza.net': {
-        regex: /https?:\/\/(?:www\.)?vidoza\.net\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+        regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
         groups: ['id'],
         getInfo() {
           this.url = this.url.replace(/embed-/i, '').replace(/\.html$/, '')
