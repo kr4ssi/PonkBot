@@ -158,5 +158,6 @@ module.exports = [
   'Wegen Leuten wie dir haben wir jetzt das NetzDG!',
   'Nur über meine Leiche!',
   'Allein die Frage regt mich doch schon wieder auf! /mett',
-  'abstrus'
+  'abstrus',
+  '/5nein'
 ]
