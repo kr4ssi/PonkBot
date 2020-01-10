@@ -466,7 +466,7 @@ module.exports = {
           body = body.result.results
         }
         catch (err) {
-          console.log(err)
+           return this.sendMessage('Keine Ergebnisse /elo')
         }
         console.log(body)
         body = body.shift()
