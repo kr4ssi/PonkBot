@@ -62,7 +62,7 @@ class AddCustom {
     this.bot.client.on('queue', ({ item }) => {
       if (item.queueby != this.bot.name) return
       this.cmAdditions[item.media.id] && this.cmAdditions[item.media.id].emit('queue')
-      this.queue.emit(item.media.id, media)
+      this.queue.emit(item.media.id, item.media)
     })
     this.bot.client.on('changeMedia', data => {
       this.play.emit(data.id, data)
