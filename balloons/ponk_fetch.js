@@ -29,6 +29,7 @@ module.exports = {
           form = false,
           method = 'get',
           json = true,
+          jsonparse = false,
           body = '',
           getprop = false,
           getlist = false,
@@ -42,7 +43,7 @@ module.exports = {
         } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', ...arguments)
-            if ((getlist || getprop) && !json) throw new Error('json must set to true')
+            if ((getlist || getprop) && !json && !jsonparse) throw new Error('json or jsonparse must set to true')
             if (getrandom && !getlist) throw new Error('getrandom from where')
             const r = cloud ? cloudscraper : request
             headers = Object.assign({
@@ -55,6 +56,8 @@ module.exports = {
               class matchError extends Error {}
               try {
                 if (err) throw err
+                if (jsonparse) body = JSON.parse(body)
+                if (body.err) throw body.err
                 let result = {
                   body,
                   statusCode: res.statusCode,

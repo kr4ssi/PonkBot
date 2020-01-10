@@ -440,6 +440,9 @@ module.exports = {
       this.fetch('https://mediathekviewweb.de/api/query', {
         method: 'post',
         json: false,
+        jsonparse: true,
+        getprop: 'result',
+        getlist: 'results',
         headers: {
           "content-type": "text/plain"
         },
@@ -459,15 +462,7 @@ module.exports = {
           offset: 0,
           size: 1
         })
-      }).then(({ body }) => {
-        try {
-          body = JSON.parse(body)
-          if (body.err) throw body.err
-          body = body.result.results
-        }
-        catch (err) {
-           return this.sendMessage('Keine Ergebnisse /elo')
-        }
+      }).then(({ list: body }) => {
         console.log(body)
         body = body.shift()
         this.API.add.cmAdditions[this.API.add.fixurl(body.url_website)] = {
