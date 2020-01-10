@@ -163,9 +163,9 @@ module.exports = {
     },
     fikuliste: function(user, params, meta) {
       this.API.fiku.getFikuList().then(fikuList => {
-        this.sendByFilter(fikuList.map(row => row.title + '\nID: ' + row.id
-        + ' Addiert: ' + (new Date(row.timestamp || 0)).toLocaleDateString()
-        + ' Aktiv: ' + (row.active ? 'j' : 'n')).join('\n'))
+        this.sendByFilter(fikuList.map(row =>  row.id + ': ' + row.title
+        + ' (' + (new Date(row.timestamp || 0)).toLocaleDateString() + ')'
+        + (row.active ? '' : ' (deaktiviert)')).join('\n'))
       })
     },
     fikulöschen: function(user, params, meta) {
