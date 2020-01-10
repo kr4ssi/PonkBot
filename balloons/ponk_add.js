@@ -465,9 +465,10 @@ module.exports = {
       }).then(({ list: body }) => {
         console.log(body)
         body = body.shift()
+        const title = body.topic + ' - ' + body.title
         this.API.add.cmAdditions[this.API.add.fixurl(body.url_website)] = {
           manifest: {
-            title: body.topic + ' - ' + body.title,
+            title,
             live: false,
             duration: body.duration,
             sources: [body.url_video_low, body.url_video, body.url_video_hd].map((url, i) => ({
@@ -487,6 +488,7 @@ module.exports = {
           }
         }
         this.mediaSend({ type: 'cm', id: this.server.weblink + '/add.json?' + 'url=' + encodeURIComponent(this.API.add.fixurl(body.url_website)) })
+        this.sendMessage(title + ' addiert')
       })
     }
   }
