@@ -1,18 +1,20 @@
 'use-scrict';
 
+const EventEmitter = require('events')
 const { PythonShell } = require('python-shell')
 const path = require('path')
 const URL = require('url')
 const fs = require('fs')
-const Entities = require('html-entities').AllHtmlEntities;
+const Entities = require('html-entities').AllHtmlEntities
 const entities = new Entities();
 
 const parseLink = require('./parselink.js')
 
 class HosterList {
   constructor(ponk, ydlRegEx) {
-    class Addition {
+    class Addition extends EventEmitter {
       constructor(url, hosterList = allowedHosts) {
+        super()
         const host = hosterList.find(host => {
           this.match = url.match(host.regex)
           return !!this.match

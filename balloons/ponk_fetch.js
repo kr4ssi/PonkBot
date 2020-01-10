@@ -29,6 +29,7 @@ module.exports = {
           form = false,
           method = 'get',
           json = true,
+          body = '',
           getprop = false,
           getlist = false,
           getrandom = false,
@@ -49,7 +50,7 @@ module.exports = {
             }, headers)
             r({
               headers,
-              url, qs, form, method, json//: match ? false : json
+              url, qs, form, method, json, body//: match ? false : json
             }, (err, res, body) => {
               class matchError extends Error {}
               try {
@@ -61,7 +62,7 @@ module.exports = {
                   res
                 }
                 if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
-                  //console.error(body)
+                  console.error(body)
                   throw new Error(res.statusCode)
                 }
                 if (getprop && !body[getprop]) throw new matchError('no property \'' + getprop + '\' found')

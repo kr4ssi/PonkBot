@@ -9,6 +9,8 @@ const CyTubeClient = require('../lib/client.js');
 
 const HosterList = require('./add_hosts.js')
 
+const path = require('path')
+const URL = require('url')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
@@ -27,8 +29,7 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
 class AddCustom {
   constructor(ponk) {
     Object.assign(this, {
-      //userMedia   : [],    // A list of added media
-      cmManifests : {},    // Custom-json-manifests
+      cmAdditions : {},    // Custom Additions
       userLinks   : {},    // Userlinks for IP-Bound hosters
       userScripts : {},    // Different userscripts
       bot         : ponk   // The bot
@@ -58,8 +59,10 @@ class AddCustom {
     this.play = new EventEmitter()
     this.del = new EventEmitter()
     this.queue = new EventEmitter()
-    this.bot.client.on('queue', ({ item: { media } }) => {
-      this.queue.emit(media.id, media)
+    this.bot.client.on('queue', ({ item }) => {
+      if (item.queueby != this.bot.name) return
+      this.cmAdditions[item.media.id] && this.cmAdditions[item.media.id].emit('queue')
+      this.queue.emit(item.media.id, media)
     })
     this.bot.client.on('changeMedia', data => {
       this.play.emit(data.id, data)
@@ -233,7 +236,7 @@ class AddCustom {
       if (req.query.userlink) return userlink(req, res);
       const url = this.fixurl(req.query.url)
       if (!url) return res.send('invalid url');
-      const cmManifest = this.cmManifests[url];
+      const cmManifest = this.cmAdditions[url];
       if (!cmManifest) return res.sendStatus(404);
       res.json(cmManifest.manifest);
     });
@@ -299,8 +302,6 @@ class AddCustom {
   add(url, title, meta) {
     this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
       //if (!meta.fiku && result.fikuonly) throw new Error('not addable')
-      console.log(result)
-      console.log(result.matchGroup('id'))
       if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
       if (title) result.title = title
       if (result.type === 'cm' && !result.duration) try {
@@ -308,11 +309,10 @@ class AddCustom {
       } catch (err) {
         throw err
       }
-      //if (result.type === 'cm')
-      this.cmManifests[this.fixurl(result.url)] = result
+      this.cmAdditions[this.fixurl(result.url)] = result
       if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(result.id, meta.onPlay)
-      if (meta.onQueue && typeof meta.onQueue === 'function') this.queue.on(result.id, meta.onQueue)
-      if (result.needUserScript) this.queue.once(result.id, () => {
+      if (meta.onQueue && typeof meta.onQueue === 'function') result.on('queue', meta.onQueue)
+      if (result.needUserScript) result.on('queue', () => {
         let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
@@ -434,6 +434,64 @@ module.exports = {
             setTimeout(() => this.socket.close(), gezmanifests.length * 300)
           }).on('error', error => console.log(error))
         }
+      })
+    },
+    doku: function(user, params, meta) {
+      this.fetch('https://mediathekviewweb.de/api/query', {
+        method: 'post',
+        json: false,
+        headers: {
+          "content-type": "text/plain"
+        },
+        body: JSON.stringify({
+          queries: [
+            {
+              fields: [
+                'title',
+                'topic'
+              ],
+              query: params
+            }
+          ],
+          sortBy: 'timestamp',
+          sortOrder: 'desc',
+          future: false,
+          offset: 0,
+          size: 1
+        })
+      }).then(({ body }) => {
+        try {
+          body = JSON.parse(body)
+          if (body.err) throw body.err
+          body = body.result.results
+        }
+        catch (err) {
+          console.log(err)
+        }
+        console.log(body)
+        body = body.shift()
+        this.API.add.cmAdditions[this.API.add.fixurl(body.url_website)] = {
+          manifest: {
+            title: body.topic + ' - ' + body.title,
+            live: false,
+            duration: body.duration,
+            sources: [body.url_video_low, body.url_video, body.url_video_hd].map((url, i) => ({
+              url,
+              quality: [360, 480, 720][i],
+              contentType: ([
+                {type: 'video/mp4', ext: ['.mp4']},
+                {type: 'video/webm', ext: ['.webm']},
+                {type: 'application/x-mpegURL', ext: ['.m3u8']},
+                {type: 'video/ogg', ext: ['.ogv']},
+                {type: 'application/dash+xml', ext: ['.mpd']},
+                {type: 'audio/aac', ext: ['.aac']},
+                {type: 'audio/ogg', ext: ['.ogg']},
+                {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(url).pathname))) || {}).type || 'video/mp4'
+            }))
+          }
+        }
+        this.mediaSend({ type: 'cm', id: this.server.weblink + '/add.json?' + 'url=' + encodeURIComponent(this.API.add.fixurl(body.url_website)) })
       })
     }
   }
