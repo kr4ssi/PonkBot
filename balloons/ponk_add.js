@@ -460,11 +460,12 @@ module.exports = {
           sortOrder: 'desc',
           future: false,
           offset: 0,
-          size: 1
+          size: 2
         })
-      }).then(({ list: body }) => {
-        console.log(body)
-        body = body.shift()
+      }).then(({ list }) => {
+        console.log(list)
+        let body = list.shift()
+        if (body.title.endsWith('(Hörfassung)')) body = list.shift()
         const title = body.topic + ' - ' + body.title
         this.API.add.cmAdditions[this.API.add.fixurl(body.url_website)] = {
           manifest: {
