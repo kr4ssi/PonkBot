@@ -49,10 +49,11 @@ module.exports = {
             headers = Object.assign({
               'User-Agent': (new UserAgent()).toString()
             }, headers)
-            r({
+            r(Object.assign({
               headers,
-              url, qs, form, method, json, body//: match ? false : json
-            }, (err, res, body) => {
+              url, qs, form, method, json
+            },//: match ? false : json
+            body && { body }), (err, res, body) => {
               class matchError extends Error {}
               try {
                 if (err) throw err
