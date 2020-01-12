@@ -20,12 +20,12 @@ class autoAdd {
     this.ids.forEach(id => {
       const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=' + id)
       watcher.on('new article', article => {
-        this.bot.db.getKeyValue('newfeed').then(newfeed => {
+        this.bot.db.getKeyValue(id).then(newfeed => {
           //console.log(newfeed, article, article.link, article.title)
           if (article.link === newfeed) return
           this.bot.sendMessage(article.author + ' - ' + article.title + ' addiert')
           this.bot.API.add.add(article.link, undefined, {fiku: true})
-          this.bot.db.setKeyValue('newfeed', article.link)
+          this.bot.db.setKeyValue(id, article.link)
         })
       }).on('error', err => {
         console.error(err)
