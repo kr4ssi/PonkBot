@@ -349,7 +349,8 @@ gez: {
 },
 doku: {
   synop: '',
-  rank: 2
+  rank: 2,
+  addnext: 'willkür'
 },
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',

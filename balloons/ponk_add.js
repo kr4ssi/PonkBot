@@ -488,7 +488,7 @@ module.exports = {
             }))
           }
         }
-        this.mediaSend({ type: 'cm', id: this.server.weblink + '/add.json?' + 'url=' + encodeURIComponent(this.API.add.fixurl(body.url_website)) })
+        this.mediaSend({ type: 'cm', id: this.server.weblink + '/add.json?' + 'url=' + encodeURIComponent(this.API.add.fixurl(body.url_website)), pos: meta.addnext ? 'next' : 'end' })
         this.sendMessage(title + ' addiert')
       })
     }
