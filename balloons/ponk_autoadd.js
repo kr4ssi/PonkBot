@@ -23,7 +23,7 @@ class autoAdd {
         this.bot.db.getKeyValue('newfeed').then(newfeed => {
           //console.log(newfeed, article, article.link, article.title)
           if (article.link === newfeed) return
-          this.bot.sendMessage(article.title + ' addiert')
+          this.bot.sendMessage(article.author.name + ' - ' + article.title + ' addiert')
           this.bot.API.add.add(article.link, undefined, {fiku: true})
           this.bot.db.setKeyValue('newfeed', article.link)
         })
