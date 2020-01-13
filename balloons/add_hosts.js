@@ -58,7 +58,7 @@ class HosterList {
                 {type: 'audio/aac', ext: ['.aac']},
                 {type: 'audio/ogg', ext: ['.ogg']},
                 {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-              ].find(contentType => contentType.ext.some(ext => URL.parse(this.fileurl).pathname.endsWith(ext))) || {}).type || 'video/mp4'
+              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
             }
           ]
         }
@@ -356,7 +356,7 @@ class HosterList {
         regex: /https?:\/\/((?:www\.)?tvnow.de)\/(.*)/,
         getInfo() {
           return ponk.fetch(this.url, {
-            match: /<title>(.*?) im Online Stream[\s\S]+(https:\/\/vodnowusoaws[^;]*?\/\.mpd)/,
+            match: /<title>(.*?) | TVNOW.*(https:\/\/vodnowusoaws[^;]+?\/.m3u8)/,
           }).then(({ match }) => {
             this.title = match[1]
             this.fileurl = match[2]
