@@ -356,7 +356,7 @@ class HosterList {
         regex: /https?:\/\/((?:www\.)?tvnow.de)\/(.*)/,
         getInfo() {
           return ponk.fetch(this.url, {
-            match: /<title>(.*?) im Online Stream[\s\S]+(https:\/\/vodnowusoaws[^;]+?\/.mpd)/,
+            match: /<title>(.*?) im Online Stream[\s\S]+(https:\/\/vodnowusoaws[^;]+?\/.m3u8)/,
           }).then(({ match }) => {
             this.title = match[1]
             this.fileurl = match[2]
