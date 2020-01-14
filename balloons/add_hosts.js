@@ -356,10 +356,10 @@ class HosterList {
         regex: /https?:\/\/((?:www\.)?tvnow.de)\/(.*)/,
         getInfo() {
           return ponk.fetch(this.url, {
-            match: /<title>(.*?) im Online Stream[\s\S]+(https:\/\/vodnowusoaws[^;]+?\/fairplay.m3u8)/,
+            match: /<title>(.*?) \| TVNOW[\s\S]+?footprint\.net([^\.]+)/,
           }).then(({ match }) => {
             this.title = match[1]
-            this.fileurl = match[2]
+            this.fileurl = 'https://vodnowusoawshls-a.akamaihd.net' + match[2] + '.ism/fairplay.m3u8'
             return this
           })
         },

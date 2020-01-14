@@ -79,7 +79,7 @@ module.exports = {
                 if (match) {
                   result.match = result.prop.match(match)
                   if (!result.match) {
-                    //console.error(body)
+                    console.error(body)
                     throw new matchError('no match \'' + match + '\' found')
                   }
                 }
