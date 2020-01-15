@@ -386,7 +386,7 @@ class HosterList {
       },
       'dailymotion.com': {
         ...ydlRegEx['DailymotionIE'],
-        type: 'vi',
+        type: 'dm',
         fikuonly: true,
         getInfo() {
           this.fileurl = this.matchGroup('id')
@@ -395,7 +395,7 @@ class HosterList {
       },
       'vimeo.com': {
         ...ydlRegEx['VimeoIE'],
-        type: 'dm',
+        type: 'vi',
         fikuonly: true,
         getInfo() {
           this.fileurl = this.matchGroup('id')
