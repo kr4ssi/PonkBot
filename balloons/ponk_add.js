@@ -67,7 +67,7 @@ class AddCustom {
       this.cmAdditions[id] && this.cmAdditions[id].emit('delete') && this.cmAdditions[id].removeAllListeners()
     })
     this.bot.client.on('mediaUpdate', ({ currentTime }) => {
-      this.cmAdditions[ponk.currMedia.id] && this.cmAdditions[ponk.currMedia.id].emit('changeMedia')
+      this.cmAdditions[ponk.currMedia.id] && this.cmAdditions[ponk.currMedia.id].emit('mediaUpdate')
     })
   }
 
@@ -238,7 +238,7 @@ class AddCustom {
       } catch (err) {
         throw err
       }
-      this.cmAdditions[this.fixurl(result.url)] = result
+      this.cmAdditions[result.id] = result
       if (meta.onPlay && typeof meta.onPlay === 'function') result.on('play', meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') result.on('queue', meta.onQueue)
       if (result.needUserScript) result.on('queue', () => {

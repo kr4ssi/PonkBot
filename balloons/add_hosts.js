@@ -15,6 +15,7 @@ class HosterList {
     class Addition extends EventEmitter {
       constructor(url, hosterList = allowedHosts) {
         super()
+        this.on('queue', () => console.log(this))
         const host = hosterList.find(host => {
           this.match = url.match(host.regex)
           return !!this.match
