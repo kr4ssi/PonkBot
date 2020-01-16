@@ -11,8 +11,6 @@ const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
 const userscriptmeta = require('userscript-meta')
-
-const EventEmitter = require('events');
 const crypto = require('crypto')
 const { execFile } = require('child_process')
 const { PythonShell } = require('python-shell')
@@ -49,37 +47,28 @@ class AddCustom {
       if (err) throw err.message
       this.allowedHosts = new HosterList(ponk, Object.assign(...result))
       this.allowedHostsString = this.allowedHosts.allowedHostsString
-      this.setupUserScript();
-      this.setupServer();
+      this.setupUserScript()
+      this.setupServer()
     });
-    this.play = new EventEmitter()
-    this.del = new EventEmitter()
-    this.queue = new EventEmitter()
     this.bot.client.on('queue', ({ item }) => {
       if (item.queueby != this.bot.name) return
       this.cmAdditions[item.media.id] && this.cmAdditions[item.media.id].emit('queue')
-      this.queue.emit(item.media.id, item.media)
     })
-    this.bot.client.on('changeMedia', data => {
-      this.play.emit(data.id, data)
+    this.bot.client.on('changeMedia', media => {
+      this.cmAdditions[media.id] && this.cmAdditions[media.id].emit('play')
     })
     this.bot.client.on('queueFail', data => {
       this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
       if (data.msg === 'This item is already on the playlist') return this.bot.sendMessage('Das darf garnicht passieren')
-      this.del.emit(data.id)
-      this.del.removeAllListeners(data.id)
-      this.play.removeAllListeners(data.id)
-      this.queue.removeAllListeners(data.id)
-    });
-    const handleVideoDelete = this.bot.handleVideoDelete
-    this.bot.handleVideoDelete = ({ uid }) => {
+      this.cmAdditions[data.id] && this.cmAdditions[data.id].emit('queueFail') && this.cmAdditions[data.id].removeAllListeners()
+    })
+    this.bot.client.prependListener('delete', ({ uid }) => {
       const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
-      this.del.emit(id)
-      this.del.removeAllListeners(id)
-      this.play.removeAllListeners(id)
-      this.queue.removeAllListeners(id)
-      handleVideoDelete.call(this.bot, { uid })
-    }
+      this.cmAdditions[id] && this.cmAdditions[id].emit('delete') && this.cmAdditions[id].removeAllListeners()
+    })
+    this.bot.client.on('mediaUpdate', ({ currentTime }) => {
+      this.cmAdditions[ponk.currMedia.id] && this.cmAdditions[ponk.currMedia.id].emit('changeMedia')
+    })
   }
 
   setupUserScript() {
@@ -250,7 +239,7 @@ class AddCustom {
         throw err
       }
       this.cmAdditions[this.fixurl(result.url)] = result
-      if (meta.onPlay && typeof meta.onPlay === 'function') this.play.on(result.id, meta.onPlay)
+      if (meta.onPlay && typeof meta.onPlay === 'function') result.on('play', meta.onPlay)
       if (meta.onQueue && typeof meta.onQueue === 'function') result.on('queue', meta.onQueue)
       if (result.needUserScript) result.on('queue', () => {
         let userScriptPollId
@@ -269,10 +258,10 @@ class AddCustom {
           })
         }
         userScriptPoll()
-        this.del.once(result.id, () => {
+        result.once('delete', () => {
           if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
         })
-        this.play.on(result.id, data => {
+        result.on('play', data => {
           if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
           this.bot.client.once('changeMedia', () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
