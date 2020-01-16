@@ -5,12 +5,8 @@
 
 'use strict';
 
-const CyTubeClient = require('../lib/client.js');
-
 const HosterList = require('./add_hosts.js')
 
-const path = require('path')
-const URL = require('url')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
@@ -84,62 +80,6 @@ class AddCustom {
       this.queue.removeAllListeners(id)
       handleVideoDelete.call(this.bot, { uid })
     }
-  }
-
-  setupMediathek() {
-    this.gezmanifests = []
-    return this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
-      $: true
-    }).then(({ $ }) => {
-      return Promise.all($('.button._focusable').filter((i, e) => /devicetype=pc/.test(e.attribs.href)).map((i, e) => {
-        return this.allowedHosts.hostAllowed('https://www.ardmediathek.de' + e.attribs.href).then(host => {
-          return host.getInfo()
-        }).then(result => ({
-          ...result,
-          sources: [360, 480, 540, 720, 1080].map(quality => ({
-            url: ((result.info.formats.find(format => {
-              if (/hr/.test(e.attribs.title)) {
-                if (/sub/.test(format.url)) return
-              }
-              else if (format.manifest_url != result.info.manifest_url) return
-              return format.height === quality
-            })||{}).url||'').replace('http://', 'https://'),
-            contentType: 'application/x-mpegURL',
-            quality
-          })).filter(e => !!e.url),
-          title: e.attribs.title
-        }))
-      }).toArray().concat([
-        'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
-        'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
-        'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
-      ].map(url => this.allowedHosts.hostAllowed(url).then(host => {
-        return host.getInfo()
-      }).then(result => ({
-        ...result,
-        sources: [360, 480, 540, 720, 1080].map(quality => ({
-          url: ((result.info.formats.find(format => {
-            return format.height === quality
-          })||{}).url||'').replace('http://', 'https://'),
-          contentType: 'application/x-mpegURL',
-          quality
-        })).filter(e => !!e.url),
-        title: result.info.title.replace(' Livestream', '')
-      }))))).then(results => results.forEach(({ info, title, sources }) => {
-        this.bot.server.host.get('/mediathek/' + encodeURIComponent(title) + '.json', (req, res) => {
-          res.json({
-            title,
-            live: true,
-            duration: 0,
-            sources
-          })
-        })
-        this.gezmanifests.push({
-          title,
-          id: this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json'
-        })
-      }))
-    })
   }
 
   setupUserScript() {
@@ -389,107 +329,6 @@ module.exports = {
         onPlay: () => {
           this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
         }
-      })
-    },
-    gez: function(user, params, meta) {
-      let chan
-      if (/keller$/.test(params)) {
-        chan = 'keller'
-        params = params.split(' ').slice(0, -1).join(' ')
-      }
-      (this.API.add.gezmanifests ? Promise.resolve() : this.API.add.setupMediathek()).then(() => {
-        let gezmanifests = this.API.add.gezmanifests
-        if (params != 'alle') {
-          let gezmanifest
-          if (params) gezmanifest = gezmanifests.find(({ title }) => (new RegExp('^' + params, 'i')).test(title))
-          else gezmanifest = gezmanifests[Math.floor(Math.random() * gezmanifests.length)]
-          if (!gezmanifest) return this.sendMessage('Kein Sender gefunden')
-          gezmanifests = [gezmanifest]
-        }
-        if (!chan) gezmanifests.forEach(({ id }) => {
-          if (this.playlist.some(item => item.media.id === id)) return
-          this.mediaSend({ type: 'cm', id })
-        })
-        else if (meta.rank > 2) {
-          const { host, port, secure, user, auth } = this.client
-          const tempclient = new CyTubeClient({
-            host, port, secure, user, auth, chan
-          }, this.log).once('ready', function() {
-            this.connect()
-          }).once('connected', function() {
-            this.start()
-          }).once('started', function() {
-            this.playlist()
-          }).once('playlist', function(playlist) {
-            gezmanifests.forEach(({ id }, i) => {
-              if (playlist.some(item => item.media.id === id)) return
-              setTimeout(() => this.socket.emit('queue', {
-                type: 'cm',
-                id,
-                pos: 'end',
-                temp: true,
-                duration: 0,
-              }), i * 200)
-            })
-            setTimeout(() => this.socket.close(), gezmanifests.length * 300)
-          }).on('error', error => console.log(error))
-        }
-      })
-    },
-    doku: function(user, params, meta) {
-      this.fetch('https://mediathekviewweb.de/api/query', {
-        method: 'post',
-        json: false,
-        jsonparse: true,
-        getprop: 'result',
-        getlist: 'results',
-        headers: {
-          "content-type": "text/plain"
-        },
-        body: JSON.stringify({
-          queries: [
-            {
-              fields: [
-                'title',
-                'topic'
-              ],
-              query: params
-            }
-          ],
-          sortBy: 'timestamp',
-          sortOrder: 'desc',
-          future: false,
-          offset: 0,
-          size: 2
-        })
-      }).then(({ list }) => {
-        console.log(list)
-        let body = list.shift()
-        if (body.title.endsWith('(Hörfassung)')) body = list.shift()
-        const title = body.topic + ' - ' + body.title
-        this.API.add.cmAdditions[this.API.add.fixurl(body.url_website)] = {
-          manifest: {
-            title,
-            live: false,
-            duration: body.duration,
-            sources: [body.url_video_low, body.url_video, body.url_video_hd].map((url, i) => ({
-              url,
-              quality: [360, 480, 720][i],
-              contentType: ([
-                {type: 'video/mp4', ext: ['.mp4']},
-                {type: 'video/webm', ext: ['.webm']},
-                {type: 'application/x-mpegURL', ext: ['.m3u8']},
-                {type: 'video/ogg', ext: ['.ogv']},
-                {type: 'application/dash+xml', ext: ['.mpd']},
-                {type: 'audio/aac', ext: ['.aac']},
-                {type: 'audio/ogg', ext: ['.ogg']},
-                {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(url).pathname))) || {}).type || 'video/mp4'
-            }))
-          }
-        }
-        this.mediaSend({ type: 'cm', id: this.server.weblink + '/add.json?' + 'url=' + encodeURIComponent(this.API.add.fixurl(body.url_website)), pos: meta.addnext ? 'next' : 'end' })
-        this.sendMessage(title + ' addiert')
       })
     }
   }

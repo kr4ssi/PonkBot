@@ -444,44 +444,6 @@ module.exports = {
           })
         })
       })
-    },
-    tv: function(user, params, meta) {
-      const getZDF = (params = '') => this.fetch('https://www.zdf.de/live-tv', {
-        $: true
-      }).then(({ $ }) => {
-        let station = $('section[class^=\'b-epg-timeline timeline-' + params + '\' i]')
-        if (!station.length) return this.sendMessage('Kein Sender gefunden')
-        station.each((i, station) => {
-          station = $(station)
-          if (!/^b-epg-timeline timeline-ZDF/.test(station.attr('class'))) return false
-          const name = station.find('h3').text().replace(' Programm', '')
-          station = station.find('ul li:has(.live-tag) a')
-          this.fetch('https://www.zdf.de/' + JSON.parse(station.attr('data-dialog')).contentUrl, {
-            $: true
-          }).then(({ $ }) => {
-            const title = $('.teaser-title').text().trim()
-            const subtitle = $('.overlay-subtitle').text().trim()
-            const date = $('.overlay-link-time').text().trim()
-            this.sendMessage(name + ' - ' + date + ': ' + title + (subtitle ? ' - ' + subtitle : ''))
-          })
-        })
-      })
-      if (/^ZDF/i.test(params)) return getZDF(params)
-      this.fetch('https://programm.ard.de/TV/Programm/Alle-Sender', {
-        $: true
-      }).then(({ $ }) => {
-        let station = $('li[data-action=\'Sendung\']:has(span[data-click-pixel^=\'Livestream::' + params + '\' i])')
-        if (!station.length) return this.sendMessage('Kein Sender gefunden')
-        station.each((i, station) => {
-          station = $(station)
-          const name = station.attr('data-click-pixel').slice('Detailansicht::'.length)
-          const title = station.find('.title').contents()[0].nodeValue.trim()
-          const subtitle =  station.find('.subtitle').text().trim()
-          const date =  station.find('.date').text().trim()
-          const enddate =  station.next().find('.date').text().trim()
-          this.sendMessage(name + ' - ' + date + ' - ' + enddate + ' Uhr: ' + title + ' - ' + subtitle)
-        })
-      }).then(params ? undefined : getZDF)
     }
   }
 }

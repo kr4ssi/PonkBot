@@ -30,6 +30,7 @@ class HosterList {
           //live,
           ffprobe: {},
           info: {},
+          formats: [],
           //timestamp,
           //user: {},
           getInfo: host.getInfo.bind(this, this.url)
@@ -39,28 +40,29 @@ class HosterList {
       get id() {
         return this.type === 'cm' ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
       }
+      get sources () {
+        return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
+      }
       get manifest() {
         return {
           title: this.title || this.url,
           live: this.live || false,
           duration: this.duration,
           thumbnail: this.thumbnail,
-          sources: [
-            {
-              url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : this.fileurl,
-              quality: [240, 360, 480, 540, 720, 1080, 1440].includes(this.quality) ? this.quality : 720,
-              contentType: ([
-                {type: 'video/mp4', ext: ['.mp4']},
-                {type: 'video/webm', ext: ['.webm']},
-                {type: 'application/x-mpegURL', ext: ['.m3u8']},
-                {type: 'video/ogg', ext: ['.ogv']},
-                {type: 'application/dash+xml', ext: ['.mpd']},
-                {type: 'audio/aac', ext: ['.aac']},
-                {type: 'audio/ogg', ext: ['.ogg']},
-                {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-              ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
-            }
-          ]
+          sources: this.sources.map(({ height: quality, url }) => ({
+            url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : url,
+            quality,
+            contentType: ([
+              {type: 'video/mp4', ext: ['.mp4']},
+              {type: 'video/webm', ext: ['.webm']},
+              {type: 'application/x-mpegURL', ext: ['.m3u8']},
+              {type: 'video/ogg', ext: ['.ogv']},
+              {type: 'application/dash+xml', ext: ['.mpd']},
+              {type: 'audio/aac', ext: ['.aac']},
+              {type: 'audio/ogg', ext: ['.ogg']},
+              {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+            ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+          }))
         }
       }
       download(url) {
@@ -139,13 +141,14 @@ class HosterList {
               this.fileurl = info.display_id
               return resolve(this)
             }
+            if (info.formats.length) this.formats = info.formats.filter(format => [240, 360, 480, 540, 720, 1080, 1440].includes(format.height))
             this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
             if (this.type != 'cm') return resolve(this)
             if (info.manifest_url) this.fileurl = info.manifest_url.replace(/^http:\/\//i, 'https://')
             if (info.thumbnail && info.thumbnail.match(/^https?:\/\//i)) this.thumbnail = info.thumbnail.replace(/^http:\/\//i, 'https://')
             this.duration = info.duration
-            this.quality = info.width;
+            this.quality = info.height;
             return resolve(this)
           })
         })
