@@ -39,7 +39,7 @@ class Emotes {
     this.bot.server.host.get('/emotes.json', (req, res) => {
       res.json(ponk.emotes.map(emote => ({name: emote.name, image: emote.image})))
     })
-    if (process.env.NODE_ENV === 'production') return
+    if (process.env.NODE_ENV === 'production') return this.backupEmotes(ponk.client)
     this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
     this.cleanName = name => (name[0] != '/' ? name : name.slice(1)).replace(/["*/:<>?\\()|]/g, match => ({
       '"': 'gänsefüßchen',
@@ -96,7 +96,10 @@ class Emotes {
       this.removeEmote(oldfilename)
     })
   }
-  checkEmotes (emotes) {
+  backupEmotes(client, emotes) {
+    const chan = client.chan
+  }
+  checkEmotes(emotes) {
     (emotes || this.bot.emotes).forEach(({ name, image }) => {
       const cleanname = this.cleanName(name)
       if (image.startsWith(this.bot.API.keys.emotehost)) {

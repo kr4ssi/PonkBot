@@ -15,7 +15,6 @@ class HosterList {
     class Addition extends EventEmitter {
       constructor(url, hosterList = allowedHosts) {
         super()
-        this.on('queue', () => console.log(this))
         const host = hosterList.find(host => {
           this.match = url.match(host.regex)
           return !!this.match
@@ -375,7 +374,12 @@ class HosterList {
         fikuonly: true,
         getInfo() {
           this.fileurl = this.match[2]
-          console.log(this.match, this.match[0].match(/[?&](?:t|timestamp)=(\d+)/))
+          const match = this.match[0].match(/[?&](?:t|timestamp)=(\d+)/)
+          if (match) {
+            const timestamp = match[1]
+            this.on('play', () => ponk.commands.handlers.settime.call(ponk, ponk.name, timestamp))
+            console.log(this.match, timestamp)
+          }
           return Promise.resolve(this)
         }
       },
@@ -438,18 +442,18 @@ class HosterList {
           this.fileurl = url
           return Promise.resolve(this)
         },
-        'rest': {
-          regex: /.*/,
-          fikuonly: true,
-          getInfo() {
-            const media = parseLink(this.url)
-            if (media.type) {
-              this.type = media.type
-              this.fileurl = media.id
-              return Promise.resolve(this)
-            }
-            return Promise.reject(media.msg)
+      },
+      'rest': {
+        regex: /.*/,
+        fikuonly: true,
+        getInfo() {
+          const media = parseLink(this.url)
+          if (media.type) {
+            this.type = media.type
+            this.fileurl = media.id
+            return Promise.resolve(this)
           }
+          return Promise.reject(media.msg)
         }
       }
     }).map(([name, rules]) => ([
