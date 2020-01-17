@@ -165,7 +165,7 @@ class AddCustom {
       if (req.query.userlink) return userlink(req, res);
       const url = this.fixurl(req.query.url)
       if (!url) return res.send('invalid url');
-      const cmManifest = this.cmAdditions[url];
+      const cmManifest = this.cmAdditions[this.bot.server.weblink + '/add.json?' + (req.query.hasOwnProperty('userscript') ? 'userscript&' : '') + 'url=' + url];
       if (!cmManifest) return res.sendStatus(404);
       res.json(cmManifest.manifest);
     });
