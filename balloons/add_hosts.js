@@ -383,7 +383,7 @@ class HosterList {
                 ponk.assignLeader('')
               })
             })
-            this.assignLeader(ponk.name);
+            ponk.assignLeader(ponk.name);
             console.log(this.match, timestamp)
           }
           return Promise.resolve(this)
