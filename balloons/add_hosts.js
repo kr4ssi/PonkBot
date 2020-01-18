@@ -50,7 +50,7 @@ class HosterList {
           duration: this.duration,
           thumbnail: this.thumbnail,
           sources: this.sources.map(({ height: quality, url }) => ({
-            url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : url,
+            url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
             quality,
             contentType: ([
               {type: 'video/mp4', ext: ['.mp4']},
@@ -377,7 +377,13 @@ class HosterList {
           const match = this.match[0].match(/[?&](?:t|timestamp)=(\d+)/)
           if (match) {
             const timestamp = match[1]
-            this.on('play', () => ponk.commands.handlers.settime.call(ponk, ponk.name, timestamp))
+            ponk.client.once('setLeader', () => {
+              ponk.mediaUpdate(timestamp, false)
+              process.nextTick(() => {
+                ponk.assignLeader('')
+              })
+            })
+            this.assignLeader(ponk.name);
             console.log(this.match, timestamp)
           }
           return Promise.resolve(this)
