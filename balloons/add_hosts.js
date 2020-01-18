@@ -377,13 +377,15 @@ class HosterList {
           const match = this.match[0].match(/[?&](?:t|timestamp)=(\d+)/)
           if (match) {
             const timestamp = match[1]
-            ponk.client.once('setLeader', () => {
-              ponk.mediaUpdate(timestamp, false)
-              process.nextTick(() => {
-                ponk.assignLeader('')
+            this.on('play', () => {
+              ponk.client.once('setLeader', () => {
+                ponk.mediaUpdate(parseInt(timestamp, 10), false)
+                process.nextTick(() => {
+                  ponk.assignLeader('')
+                })
               })
+              ponk.assignLeader(ponk.name)
             })
-            ponk.assignLeader(ponk.name);
             console.log(this.match, timestamp)
           }
           return Promise.resolve(this)
