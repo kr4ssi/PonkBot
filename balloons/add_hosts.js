@@ -47,7 +47,7 @@ class HosterList {
         return {
           title: this.title || this.url,
           live: this.live || false,
-          duration: this.duration,
+          duration: this.duration || 0,
           thumbnail: this.thumbnail,
           sources: this.sources.map(({ height: quality, url }) => ({
             url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
