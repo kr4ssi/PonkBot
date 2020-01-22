@@ -141,7 +141,7 @@ class HosterList {
               this.fileurl = info.display_id
               return resolve(this)
             }
-            if (info.formats.length) this.formats = info.formats.filter(format => [240, 360, 480, 540, 720, 1080, 1440].includes(format.height))
+            if (info.formats && info.formats.length) this.formats = info.formats.filter(format => [240, 360, 480, 540, 720, 1080, 1440].includes(format.height))
             this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
             if (this.type != 'cm') return resolve(this)
