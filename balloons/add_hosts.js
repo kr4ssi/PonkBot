@@ -97,6 +97,7 @@ class HosterList {
           console.log('closed')
           const info = JSON.parse(fs.readFileSync(infofilename))
           const filename = path.basename(info._filename)
+          fs.chmodSync(infofilename, 0644)
           ponk.sendMessage(filename + ' wird addiert')
           ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
         }).on('error', err => {
