@@ -40,7 +40,7 @@ class Emotes {
       res.json(ponk.emotes.map(emote => ({name: emote.name, image: emote.image})))
     })
     if (process.env.NODE_ENV === 'production') return this.backupEmotes(ponk.client)
-    this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public')
+    this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public', ponk.client.chan)
     this.cleanName = name => (name[0] != '/' ? name : name.slice(1)).replace(/["*/:<>?\\()|]/g, match => ({
       '"': 'gänsefüßchen',
       '*': 'sternchen',
