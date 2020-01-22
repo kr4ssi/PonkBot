@@ -80,6 +80,7 @@ class HosterList {
             '--restrict-filenames',
             '--write-info-json',
             '--newline',
+            '--no-mtime',
             url
           ]
         }).on('message', message => {
