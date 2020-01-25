@@ -219,7 +219,7 @@ module.exports = {
       }
       catch (err) {
         console.error(err)
-        title = split.join().trim()
+        title = split.join(' ').trim()
       }
       this.API.fiku.getFiku(id).then(fiku => {
         if (fiku.user != user && this.getUserRank(user) < 3 ) {
