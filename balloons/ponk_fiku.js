@@ -45,7 +45,7 @@ class FikuSystem {
   getTmdbId(title) {
     return new Promise(resolve => {
       const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
-      this.bot.fetch('https://api.themoviedb.org/3/search/movie', {
+      this.bot.fetch('https://api.themoviedb.org/3/search/multi', {
         qs: {
           api_key: this.bot.API.keys.tmdb,
           query: title.replace(/\([^)]+\)/ig, ''),
@@ -55,13 +55,16 @@ class FikuSystem {
         json: true,
         getlist: 'results'
       }).then(({ list }) => {
-        resolve(list[0].id)
+        resolve({
+          id: list[0].id,
+          type: list[0].media_type
+        })
       })
     })
   }
-  getTmdbInfo(id, info, language) {
+  getTmdbInfo({ id, type }, info, language) {
     return new Promise(resolve => {
-      this.bot.fetch('https://api.themoviedb.org/3/movie/' + id + (info ? '/' + info : ''), {
+      this.bot.fetch('https://api.themoviedb.org/3/' + type + '/' + id + (info ? '/' + info : ''), {
         qs: {
           api_key: this.bot.API.keys.tmdb,
           language,
@@ -262,11 +265,14 @@ module.exports = {
             console.log(crew)
             //crew = ''
             this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
-              const rlsdate = new Date(body.release_date)
-              this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" /> ${body.original_title} ` +
+              const rlsdate = new Date(body.release_date || body.first_air_date)
+              this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" /> ${body.original_title || body.original_name} ` +
               `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
-              `${body.production_countries.map(country => country.iso_3166_1 === 'US' ? 'VSA' : ((country.iso_3166_1 === 'UK' | country.iso_3166_1 === 'GB') ? 'England' :
-              ( country.iso_3166_1 === 'RU' ? 'Russland' : countries.getName(country.iso_3166_1, 'de')))).join(' / ')} ${body.runtime} Minuten`, true)
+              `${(body.production_countries || body.origin_country).map(country => {
+                country = country.iso_3166_1 || country
+                return country === 'US' ? 'VSA' : ((country === 'UK' | country === 'GB') ? 'England' :
+                ( country === 'RU' ? 'Russland' : countries.getName(country, 'de')))
+              }).join(' / ')} ${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
               this.sendByFilter('<div class="fikuinfo">' + body.overview + '</div>', true)
               this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ${cast}.\nVon ${crew}. Ratierung: ${body.vote_average}/10`)
             })
@@ -276,7 +282,7 @@ module.exports = {
     },
     trailer: function(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
-        this.API.fiku.getTmdbId(fiku.title).then(id => {
+        this.API.fiku.getTmdbId(fiku.title).then((id) => {
           const addTrailer = lang => {
             this.API.fiku.getTmdbInfo(id, 'videos', lang).then(body => {
               if (body.results.length < 1) return (lang ? addTrailer('') : this.sendMessage('Keine Ergebnisse /elo'))
