@@ -222,7 +222,7 @@ module.exports = {
         title = split.join().trim()
       }
       this.API.fiku.getFiku(id).then(fiku => {
-        if (fiku.user != user && this.bot.getUserRank(user) < 3 ) {
+        if (fiku.user != user && this.getUserRank(user) < 3 ) {
           return this.sendMessage('Du kannst nur deine eigenen Vorschläge ändern')
         }
         const update = { url }
