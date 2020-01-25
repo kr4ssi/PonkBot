@@ -155,7 +155,7 @@ module.exports = {
         if (result.length > 0) {
           const id = result.pop()
           //this.API.fiku.getFikuList().then(push => {
-            this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
+          this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
           //  if (push) this.API.fiku.fikuList.push(Object.assign(fiku, { id }))
           //})
         }
@@ -179,7 +179,14 @@ module.exports = {
       })
     },
     fikuadd: function(user, params, meta) {
-      this.API.fiku.getFiku(params).then(({ url, title, id, user }) => {
+      const split = params.split(' ')
+      const id = split.shift()
+      this.API.fiku.getFiku(id).then(({ url, title, id, user }) => {
+        let newurl = split.shift()
+        if (newurl) {
+          url = validUrl.isHttpsUri(newurl)
+          if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+        }
         this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
       })
     },

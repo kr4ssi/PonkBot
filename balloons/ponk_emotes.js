@@ -39,7 +39,6 @@ class Emotes {
     this.bot.server.host.get('/emotes.json', (req, res) => {
       res.json(ponk.emotes.map(emote => ({name: emote.name, image: emote.image})))
     })
-    if (process.env.NODE_ENV === 'production') return this.backupEmotes(ponk.client)
     this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public', ponk.client.chan)
     this.cleanName = name => (name[0] != '/' ? name : name.slice(1)).replace(/["*/:<>?\\()|]/g, match => ({
       '"': 'gänsefüßchen',
@@ -68,6 +67,7 @@ class Emotes {
       fs.mkdirSync(path.join(this.emotespath, '_bak'))
       this.bakfilenames = []
     }
+    if (process.env.NODE_ENV === 'production') return this.backupEmotes(ponk.client)
     if (this.bot.emotes.length > 0) this.checkEmotes()
     else this.bot.client.once('emoteList', list => this.checkEmotes(list))
     this.bot.client.prependListener('updateEmote', ({ name, image }) => {
