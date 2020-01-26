@@ -237,44 +237,33 @@ module.exports = {
       })
     },
     fikuinfo: function(user, params, meta) {
-      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) : Promise.resolve(params || this.currMedia.title)).then(title => {
+      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) :
+      Promise.resolve(params || this.currMedia.title)).then(title => {
         this.API.fiku.getTmdbId(title).then(id => {
-          this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(body => {
-            const cast = body.cast.filter(row => row.order < 3).map(row => row.name).join(', ')
-            let crew = body.crew.reduce((jobs, item) => {
-              const itemstring = `${item.name}: ${item.job}`
-              if (!jobs.department[item.department]) jobs.department[item.department] = []
-              jobs.department[item.department].push(itemstring)
-              if (!jobs.jobs[item.job]) jobs.jobs[item.job] = []
-              jobs.jobs[item.job].push(itemstring)
-              return jobs
-            }, {
-              department: {},
-              jobs: {},
-            })
-            console.log(crew.department)
-            crew = [...[...new Set([
-              'Executive Producer',
-              'Writer',
-              'Screenplay',
-              'Director',
-              'First Assistant Director'
-            ].reduce((list, job) => list.concat(body.crew.filter(crew => crew.job === job)), [])
-            .concat(body.crew.filter(crew => crew.department === 'Production'))
-            .map(item => item.name))]].slice(0, 3).join(', ')
-            console.log(crew)
-            //crew = ''
+          this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(credits => {
             this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
               const rlsdate = new Date(body.release_date || body.first_air_date)
-              this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" /> ${body.original_title || body.original_name} ` +
+              this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" />` +
+              `${body.original_title || body.original_name} ` +
               `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
               `${(body.production_countries || body.origin_country).map(country => {
                 country = country.iso_3166_1 || country
                 return country === 'US' ? 'VSA' : ((country === 'UK' | country === 'GB') ? 'England' :
                 ( country === 'RU' ? 'Russland' : countries.getName(country, 'de')))
-              }).join(' / ')} ${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
+              }).join(' / ')} ` +
+              `${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
               this.sendByFilter('<div class="fikuinfo">' + body.overview + '</div>', true)
-              this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ${cast}.\nVon ${crew}. Ratierung: ${body.vote_average}/10`)
+              this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ` +
+              `${credits.cast.filter(row => row.order < 3).map(row => row.name).join(', ')}.\n` +
+              `Von ${[...new Set([
+                'Executive Producer',
+                'Writer',
+                'Screenplay',
+                'Director',
+                'First Assistant Director'
+              ].reduce((list, job) => list.concat(credits.crew.filter(crew => crew.job === job)), [])
+              .concat(credits.crew.filter(crew => crew.department === 'Production'))
+              .map(item => item.name))].slice(0, 3).join(', ')}. Ratierung: ${body.vote_average}/10`)
             })
           })
         })
