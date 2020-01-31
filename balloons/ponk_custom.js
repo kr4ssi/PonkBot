@@ -173,7 +173,7 @@ module.exports = {
         password: process.env.ts_pass
       }).then(teamspeak => {
         teamspeak.clientList({ client_type: 0 }).then(clients => {
-          this.sendMessage('Teamspeak: ' + process.env.ts_url + '\nBenutzer anschnur: ' + clients.map(client => client.nickname).join(', '))
+          this.sendMessage('Teamspeak: ' + process.env.ts_showurl + '\nBenutzer anschnur: ' + clients.map(client => client.nickname).join(', '))
         })
       }).catch(error => {
         console.error(error)
