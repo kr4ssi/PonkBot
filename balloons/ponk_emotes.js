@@ -62,8 +62,8 @@ class Emotes {
     else this.bot.client.once('emoteList', list => this.checkEmotes(list))
     this.bot.client.prependListener('updateEmote', ({ name, image }) => {
       const emote = this.bot.emotes.find(emote => emote.name === name)
-      const msg = `wurde geändert von ${emote.image} zu ${image}.pic`
-      this.bot.sendMessage(`Emote ${name} ${emote ? msg : 'addiert.'}`)
+      if (!emote) this.bot.sendMessage(`Emote ${name} addiert.`)
+      else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
       checkEmote({ name, image }, false)
     })
     this.bot.client.on('removeEmote', ({ name, image, source }) => {
