@@ -26,21 +26,61 @@ const waiting = []
 
 class Emotes {
   constructor(ponk) {
+    const chan = ponk.client.chan
     Object.assign(this, {
-      emoteCSS    : '',    // The emote CSS
-      otherEmotes : {},
-      bot         : ponk   // The bot
+      emotespath  : path.join(__dirname, '..', '..', 'emotes', 'public', chan),
+      filenames   : new Set(), // The Emote-filenames
+      emoteCSS    : '',       // The Emote-CSS
+      otherEmotes : {},       // Emotes of other Channels
+      bot         : ponk      // The Bot
     })
+    //const keepnames = new Set()
     this.createEmoteCSS()
     this.bot.server.host.get('/emotes.css', (req, res) => {
       res.setHeader('Content-Type', 'text/css')
       res.send(this.emoteCSS)
     })
     this.bot.server.host.get('/emotes.json', (req, res) => {
-      res.json(ponk.emotes.map(emote => ({name: emote.name, image: emote.image})))
+      res.json(ponk.emotes.map(({ name, image }) => ({ name, image })))
     })
-    this.emotespath = path.join(__dirname, '..', '..', 'emotes', 'public', ponk.client.chan)
-    this.cleanName = name => (name[0] != '/' ? name : name.slice(1)).replace(/["*/:<>?\\()|]/g, match => ({
+    fs.readdirSync(this.emotespath).forEach(filename => {
+      const stat = fs.statSync(path.join(this.emotespath, filename))
+      if (stat.isFile()) this.filenames.add(filename)
+      else if (stat.isDirectory()) {
+        if (filename === 'xmas')
+        this.xmasfilenames = fs.readdirSync(path.join(this.emotespath, 'xmas'))
+        else if (filename === '_bak')
+        this.bakfilenames = fs.readdirSync(path.join(this.emotespath, '_bak'))
+      }
+    })
+    if (!this.bakfilenames) {
+      fs.mkdirSync(path.join(this.emotespath, '_bak'))
+      this.bakfilenames = []
+    }
+    if (process.env.NODE_ENV != 'production') return this.backupEmotes(ponk.client)
+    if (this.bot.emotes.length > 0) this.checkEmotes()
+    else this.bot.client.once('emoteList', list => this.checkEmotes(list))
+    this.bot.client.prependListener('updateEmote', ({ name, image }) => {
+      const emote = this.bot.emotes.find(emote => emote.name === name)
+      const msg = `wurde geändert von ${emote.image} zu ${image}.pic`
+      this.bot.sendMessage(`Emote ${name} ${emote ? msg : 'addiert.'}`)
+      checkEmote({ name, image }, false)
+    })
+    this.bot.client.on('removeEmote', ({ name, image, source }) => {
+      const linkedfilename = path.basename(URL.parse(image).pathname)
+      this.removeEmote(this.cleanName(name) + path.extname(linkedfilename))
+    })
+    this.bot.client.on('renameEmote', ({ name, old, source }) => {
+      const emote = this.bot.emotes.find(emote => emote.name === name)
+      const linkedfilename = path.basename(URL.parse(emote.image).pathname)
+      const shouldfilename = this.cleanName(name) + path.extname(linkedfilename)
+      const oldfilename = this.cleanName(old) + path.extname(linkedfilename)
+      this.renameEmote(oldfilename, shouldfilename)
+      this.removeEmote(oldfilename)
+    })
+  }
+  cleanName(name) {
+    return name.replace(/^\//, '').replace(/["*/:<>?\\()|]/g, match => ({
       '"': 'gänsefüßchen',
       '*': 'sternchen',
       '/': 'schrägstrich',
@@ -53,63 +93,27 @@ class Emotes {
       '\\': 'backslash',
       '|': 'senkrechterstrich'
     })[match])
-    this.filenames = new Set()
-    const keepnames = new Set()
-    fs.readdirSync(this.emotespath).forEach(filename => {
-      const stat = fs.statSync(path.join(this.emotespath, filename))
-      if (stat.isFile()) this.filenames.add(filename)
-      else if (stat.isDirectory()) {
-        if (filename === 'xmas') this.xmasfilenames = fs.readdirSync(path.join(this.emotespath, 'xmas'))
-        else if (filename === '_bak') this.bakfilenames = fs.readdirSync(path.join(this.emotespath, '_bak'))
-      }
-    })
-    if (!this.bakfilenames) {
-      fs.mkdirSync(path.join(this.emotespath, '_bak'))
-      this.bakfilenames = []
-    }
-    if (process.env.NODE_ENV === 'production') return this.backupEmotes(ponk.client)
-    if (this.bot.emotes.length > 0) this.checkEmotes()
-    else this.bot.client.once('emoteList', list => this.checkEmotes(list))
-    this.bot.client.prependListener('updateEmote', ({ name, image }) => {
-      const emote = this.bot.emotes.find(emote => emote.name === name)
-      if (!emote) this.bot.sendMessage(`Emote ${name} addiert.`)
-      else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
-      const linkedfilename = path.basename(URL.parse(image).pathname)
-      const cleanname = this.cleanName(name)
-      const filename = cleanname + path.extname(linkedfilename)
-      if (image.startsWith(this.bot.API.keys.emotehost)) {
-        if (!this.filenames.has(filename)) this.recoverEmote(filename)
-      }
-      else this.downloadEmote(name, image, cleanname)
-    })
-    this.bot.client.on('removeEmote', ({ name, image, source }) => {
-      const linkedfilename = path.basename(URL.parse(image).pathname)
-      const filename = this.cleanName(name) + path.extname(linkedfilename)
-      this.removeEmote(filename)
-    })
-    this.bot.client.on('renameEmote', ({ name, old, source }) => {
-      const emote = this.bot.emotes.find(emote => emote.name === name)
-      const linkedfilename = path.basename(URL.parse(emote.image).pathname)
-      const shouldfilename = this.cleanName(name) + path.extname(linkedfilename)
-      const oldfilename = this.cleanName(old) + path.extname(linkedfilename)
-      this.renameEmote(oldfilename, shouldfilename)
-      this.removeEmote(oldfilename)
-    })
   }
   backupEmotes(client, emotes) {
     const chan = client.chan
   }
   checkEmotes(emotes) {
-    (emotes || this.bot.emotes).forEach(({ name, image }) => {
-      const cleanname = this.cleanName(name)
-      if (image.startsWith(this.bot.API.keys.emotehost)) {
-        const linkedfilename = path.basename(URL.parse(image).pathname)
-        const shouldfilename = cleanname + path.extname(linkedfilename)
-        if (!this.filenames.has(linkedfilename) && !this.recoverEmote(linkedfilename)) return console.log(image)
-        if (shouldfilename != linkedfilename) this.renameEmote(linkedfilename, shouldfilename, false)
+    (emotes || this.bot.emotes).forEach(emote => this.checkEmote(emote))
+  }
+  checkEmote({ name, image }, rename = true) {
+    if (image.startsWith(this.bot.API.keys.emotehost)) {
+      const filename = path.basename(URL.parse(image).pathname)
+      const shouldfilename = this.cleanName(name) + path.extname(filename)
+      if (!this.filenames.has(filename)) {
+        if (!this.bakfilenames.includes(filename))
+        return console.log(filename + ' not found')
+        fs.copyFileSync(path.join(this.emotespath, '_bak', filename), path.join(this.emotespath, filename))
+        this.filenames.add(filename)
       }
-      else this.downloadEmote(name, image, cleanname)
-    })
+      if ((shouldfilename != filename) && rename)
+      this.renameEmote(filename, shouldfilename, false)
+    }
+    else this.downloadEmote(name, image)
   }
   removeEmote(filename) {
     if (!this.filenames.has(filename)) return
@@ -124,36 +128,38 @@ class Emotes {
     //this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
     if (add) this.filenames.add(shouldfilename)
     this.pushToGit('emotes/' + oldfilename)
-    fs.readFile(path.join(this.emotespath, shouldfilename), {encoding: 'base64'}, (err, data) => {
+    fs.readFile(path.join(this.emotespath, shouldfilename), {
+      encoding: 'base64'
+    }, (err, data) => {
       if (err) return console.log(err)
       this.pushToGit('emotes/' + shouldfilename, data, 'base64')
     })
   }
-  recoverEmote(filename) {
-    if (!this.bakfilenames.includes(filename)) return console.log(filename + ' not found')
-    fs.copyFileSync(path.join(this.emotespath, '_bak', filename), path.join(this.emotespath, filename))
-    this.filenames.add(filename)
-    return true
-  }
-  downloadEmote(name, image, cleanname) {
-    cleanname = cleanname || this.cleanName(name)
-    const pass = new stream.PassThrough();
+  downloadEmote(name, image) {
+    const pass = new stream.PassThrough()
     const r = request.get(image).on('error', err => {
       console.error(image, err);
     })
     r.pipe(pass)
     fileType.stream(pass).then(stream => {
-      const filename = cleanname + '.' + stream.fileType.ext
-      stream.pipe(fs.createWriteStream(path.join(this.emotespath, filename)).on('close', () => {
-        this.bot.client.socket.emit('updateEmote', { name, image: this.bot.API.keys.emotehost + '/' + filename})
+      const filename = this.cleanName(name) + '.' + stream.fileType.ext
+      const wstream = fs.createWriteStream(path.join(this.emotespath, filename))
+      wstream.on('close', () => {
+        this.bot.client.socket.emit('updateEmote', {
+          name,
+          image: this.bot.API.keys.emotehost + '/' + filename
+        })
         this.filenames.add(filename)
         console.log(filename + ' written')
-        fs.readFile(path.join(this.emotespath, filename), {encoding: 'base64'}, (err, data) => {
-          if (err) return console.log(err)
+        fs.readFile(path.join(this.emotespath, filename), {
+          encoding: 'base64'
+        }, (err, data) => {
+          if (err) return console.error(err)
           this.pushToGit('emotes/' + filename, data, 'base64')
         })
-      }))
-    }).catch(err => console.log(err))
+      })
+      stream.pipe(wstream)
+    }).catch(console.error)
   }
   pushToGit(filename, content, encoding) {
     if (count > 0) return waiting.push(arguments)

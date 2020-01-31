@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const request = require('request')
 const validUrl = require('valid-url')
+const { TeamSpeak } = require('ts3-nodejs-library')
 
 let lastImages = []
 const cleanban = []
@@ -161,6 +162,23 @@ module.exports = {
     selbstsäge: function(user, params, meta) {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
+    },
+    ts: function(user, params, meta) {
+      TeamSpeak.connect({
+        host: process.env.ts_url,
+        queryport: process.env.ts_query,
+        protocol: 'ssh',
+        serverport: process.env.ts_port,
+        username: process.env.ts_user,
+        password: process.env.ts_pass
+      }).then(teamspeak => {
+        teamspeak.clientList({ client_type: 0 }).then(clients => {
+          this.sendMessage('Teamspeak: ' + process.env.ts_url + '\nBenutzer anschnur: ' + clients.map(client => client.nickname).join(', '))
+        })
+      }).catch(error => {
+        console.error(error)
+        this.sendMessage('Teamspeak-server nicht erreichbar')
+      })
     },
     hintergrund: logoHintergrund,
     logo: logoHintergrund,

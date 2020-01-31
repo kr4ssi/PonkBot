@@ -355,9 +355,9 @@ doku: {
 update: {
   synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
   rank: 4
-}/*,
+},
 ts: {
 synop: '',
 rank: 2
-}*/
+}
 }
