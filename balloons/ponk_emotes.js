@@ -64,7 +64,7 @@ class Emotes {
       const emote = this.bot.emotes.find(emote => emote.name === name)
       if (!emote) this.bot.sendMessage(`Emote ${name} addiert.`)
       else this.bot.sendMessage(`Emote "${name}" wurde geändert von ${emote.image} zu ${image}.pic`)
-      checkEmote({ name, image }, false)
+      this.checkEmote({ name, image }, false)
     })
     this.bot.client.on('removeEmote', ({ name, image, source }) => {
       const linkedfilename = path.basename(URL.parse(image).pathname)
