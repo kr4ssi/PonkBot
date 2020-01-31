@@ -125,7 +125,7 @@ class Emotes {
   renameEmote(oldfilename, shouldfilename, add = true) {
     this.removeEmote(shouldfilename)
     fs.copyFileSync(path.join(this.emotespath, oldfilename), path.join(this.emotespath, shouldfilename))
-    this.bot.client.socket.emit('updateEmote', { name: oldfilename, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
+    //this.bot.client.socket.emit('updateEmote', { name: oldfilename, image: this.bot.API.keys.emotehost + '/' + shouldfilename})
     if (add) this.filenames.add(shouldfilename)
     this.pushToGit('emotes/' + oldfilename)
     fs.readFile(path.join(this.emotespath, shouldfilename), {
