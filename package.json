@@ -46,6 +46,7 @@
     "socket.io": "latest",
     "socket.io-client": "latest",
     "tosource": "latest",
+    "ts3-nodejs-library": "^2.3.3",
     "user-agents": "latest",
     "userscript-meta": "latest",
     "valid-url": "latest"
