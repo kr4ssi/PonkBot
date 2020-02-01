@@ -174,6 +174,7 @@ module.exports = {
       }).then(teamspeak => {
         teamspeak.clientList({ client_type: 0 }).then(clients => {
           this.sendMessage('Teamspeak: ' + process.env.ts_showurl + '\nBenutzer anschnur: ' + clients.map(client => client.nickname).join(', '))
+          teamspeak.quit()
         })
       }).catch(error => {
         console.error(error)
