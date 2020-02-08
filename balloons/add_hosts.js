@@ -90,7 +90,7 @@ class HosterList {
           }
           if (!message.startsWith('[download]')) return ponk.sendMessage(message)
           progress = message
-          if (!timer) timer = setInterval(() => ponk.sendMessage(progress), 10000)
+          if (!timer) timer = setInterval(() => ponk.sendPrivate(progress), 10000)
         }).on('close', () => {
           clearInterval(timer)
           ponk.downloading = false
@@ -272,7 +272,7 @@ class HosterList {
         ...ydlRegEx['VivoIE'],
         userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-          if (!e) return
+          if (e.paused) return
           this.fileurl = e.src
           return this
         }
