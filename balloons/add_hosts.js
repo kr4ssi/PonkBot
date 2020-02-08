@@ -66,12 +66,8 @@ class HosterList {
         }
       }
       download(url) {
-        if (ponk.downloading) return ponk.sendMessage('ladiert schon 1')
-        ponk.downloading = true
-        let progress
-        let timer
         let infofilename
-        new PythonShell('youtube_dl', {
+        return new PythonShell('youtube_dl', {
           cwd: path.join(__dirname, '..', 'youtube-dl'),
           pythonOptions: ['-m'],
           args: [
@@ -88,22 +84,12 @@ class HosterList {
             const match = message.match(/JSON to: (.*)$/)
             if (match) infofilename = match[1]
           }
-          if (!message.startsWith('[download]')) return ponk.sendMessage(message)
-          progress = message
-          if (!timer) timer = setInterval(() => ponk.sendPrivate(progress), 10000)
         }).on('close', () => {
-          clearInterval(timer)
-          ponk.downloading = false
-          console.log('closed')
           const info = JSON.parse(fs.readFileSync(infofilename))
           const filename = path.basename(info._filename)
           fs.chmodSync(infofilename, 0o644)
           ponk.sendMessage(filename + ' wird addiert')
           ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
-        }).on('error', err => {
-          clearInterval(timer)
-          ponk.downloading = false
-          console.error(err)
         })
       }
     }

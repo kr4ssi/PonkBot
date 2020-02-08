@@ -302,7 +302,24 @@ module.exports = {
         return
       }
       url = validUrl.isHttpsUri(url)
-      if (title === 'download') return this.API.add.allowedHosts.hostAllowed(url).then(host => host.download(url))
+      if (title === 'download') return this.API.add.allowedHosts.hostAllowed(url).then(host => {
+        if (this.downloading) return this.sendMessage('ladiert schon 1')
+        this.downloading = true
+        let progress
+        let timer
+        host.download(url).on('message', message => {
+          if (!message.startsWith('[download]')) return this.sendMessage(message)
+          progress = message
+          if (!timer) timer = setInterval(() => this.sendPrivate(progress, user), 10000)
+        }).on('close', () => {
+          clearInterval(timer)
+          this.downloading = false
+        }).on('error', err => {
+          clearInterval(timer)
+          this.downloading = false
+          console.error(err)
+        })
+      })
       if (url) this.API.add.add(url, title, { user, ...meta })
       else this.sendMessage('Ist keine https-Elfe /pfräh')
     },
