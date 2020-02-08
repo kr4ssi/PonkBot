@@ -272,6 +272,7 @@ class HosterList {
         ...ydlRegEx['VivoIE'],
         userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
+          if (!e) return
           if (e.paused) return
           this.fileurl = e.src
           return this
