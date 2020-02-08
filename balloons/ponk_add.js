@@ -307,7 +307,10 @@ module.exports = {
         this.downloading = true
         let progress
         let timer
-        host.download(url).on('message', message => {
+        let message
+        host.download(url).on('message', msg => {
+          if (msg === message) return
+          message = msg
           if (!message.startsWith('[download]')) return this.sendMessage(message)
           progress = message
           if (!timer) timer = setInterval(() => this.sendPrivate(progress, user), 10000)
