@@ -174,7 +174,7 @@ module.exports = {
       }).then(teamspeak => {
         teamspeak.clientList({ client_type: 0 }).then(clients => {
           const [notmuted, muted] = clients.reduce((clients, client) => {
-            clients[client.outputMuted].push(client.nickname)
+            clients[client.inputMuted].push(client.nickname)
             return clients
           }, [[], []])
           this.sendMessage('Teamspeak: ' + process.env.ts_showurl + '\nBenutzer aktiv: ' +
