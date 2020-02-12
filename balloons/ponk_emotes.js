@@ -89,12 +89,12 @@ class Emotes {
       this.renameEmote(oldfilename, shouldfilename)
       this.removeEmote(oldfilename)
     })
-    this.bot.client.socket.prependListener('channelCSSJS', cssjs => {
+    this.bot.client.prependListener('channelCSSJS', cssjs => {
       const stripNoCache = css => css.replace(/\/emotes\.css\?[^"]+/, '')
       if (this.bot.channelCSS && stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS)) this.pushToGit('channel.css', cssjs.css)
       if (this.bot.channelJS && cssjs.js != this.bot.channelJS) this.pushToGit('channel.js', cssjs.js)
     })
-    this.bot.client.socket.prependListener('chatFilters', filers => {
+    this.bot.client.prependListener('chatFilters', filers => {
       if (filters != this.bot.chatFilters) this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
   }
