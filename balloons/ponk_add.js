@@ -30,6 +30,7 @@ class AddCustom {
       bot         : ponk   // The bot
     })
     PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
+      cwd: path.join(__dirname, '..', 'youtube-dl'),
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
         regex = new RegExp(regex.replace(/^(?:\(\?\w+\))/, '').replace(/(?:\(\?P\<(\w+)\>)|(?:\(\?\((\w+)\))|(?:\(\?P=(\w+)\))/g, (match, p1, p2, p3) => {
