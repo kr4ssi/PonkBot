@@ -5,36 +5,150 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const request = require('request')
-const validUrl = require('valid-url')
+const fs = require('fs')
+const path = require('path')
+const bodyParser = require("body-parser")
+const crypto = require('crypto')
 const { TeamSpeak } = require('ts3-nodejs-library')
+const { execFile } = require('child_process')
 
-let lastImages = []
-const cleanban = []
-const lastCSS = {
-  logo: '',
-  hintergrund: ''
+const update = () => {
+  execFile(path.join(__dirname, './deploy.sh'), {
+    cwd: path.join(__dirname, '..')
+  }, (err, stdout, stderr) => {
+    if (err) return console.error(err)
+    console.log(stdout)
+    console.log(stderr)
+  })
 }
 
 module.exports = {
+  helpdata: require('./help.js'),
+  meta: {
+    active: true,
+    type: 'giggle'
+  },
+  giggle(ponk) {
+    return new Promise((resolve, reject) => {
+      ponk.server.host.use(bodyParser.json({
+        verify: (req, res, buf) => {
+          req.rawBody = buf
+        }
+      })).post('/githook', (req, res) => {
+        const sig = req.header('X-Hub-Signature')
+        if (sig && sig.split('=')[1] === crypto.createHmac('sha1', process.env.githooksecret).update(req.rawBody).digest('hex')) {
+          const commit = req.body.commits[0]
+          ponk.sendByFilter(`Neuer commit: <a href="${commit.url}" target="_blank" rel="noopener noreferrer">${commit.message}</a>`, true);
+          update()
+        }
+        res.end('OK');
+      })
+      ponk.logger.log('Registering custom handlers');
+      Object.assign(module.exports.handlers, ...Object.entries(fs.readdirSync(path.join(__dirname, 'quotes')).reduce((quotes, file) => {
+        file = path.join(__dirname, 'quotes', file)
+        const parsed = path.parse(file)
+        const content = ({
+          '.js': () => require(file),
+          '.txt': () => fs.readFileSync(file).toString().split('\n')
+        }[parsed.ext] || (() => null))()
+        return Object.assign(quotes, Array.isArray(content) && {
+          [parsed.name]: content
+        })
+      }, {
+        fut: [
+          'Fut',
+          'Doppelfut',
+          'Labbrige Doppelfut',
+          'Futschlecker',
+          'Garstiger Futlappen'
+        ],
+        armbernd: [
+          '/tarm',
+          '/armmoderiert',
+          '/armbernd',
+          '/sarm',
+          '/fritt'
+        ],
+        saufen: [
+          '/lahey',
+          '/stoss',
+          '/saufi',
+          '/saufen',
+          '/wein',
+          '/lüning',
+          '/stollschluck',
+          '/schluck',
+          '/tschluck',
+          '/tadler',
+          '/schunkel',
+          '/bebe',
+          '/kirk'
+        ]
+      })).map(([command, quotes]) => {
+        module.exports.helpdata[command] = module.exports.helpdata[command] || {
+          synop: 'Zeigt ein Zitat',
+          rank: 0
+        }
+        const quote = (arr = quotes) => arr[Math.floor(Math.random() * arr.length)]
+        return {
+          [command]: {
+            frage(user, params, meta) {
+              this.sendMessage(quote().replace(/\${randuser}/, quote(this.userlist).name))
+            },
+            armbernd(user, params, meta) {
+              this.sendMessage(meta.message.match(/armbernd/g).map(() => quote()).join(' '))
+            },
+            saufen(user, params, meta) {
+              const notafk = this.userlist.filter(user => {
+                return !user.meta.afk && ![this.name, 'kr4ssi', 'hrss'].includes(user.name)
+              })
+              if (!notafk.length) return sendMessage('Keiner da zum saufen')
+              const randuser = quote(notafk).name
+              this.sendMessage(quote([
+                `Ich sage: ${randuser} muss saufen.`,
+                `${randuser} wurde aus allen zum saufen ausgewählt.`,
+                `Heute wird sich totgesoffen, ${randuser}.`,
+                `Verabschiede dich von deine Leber, ${randuser}.`,
+                `${randuser}! Kanalisiere deinen inneren kr4ssi.`,
+                `Lass den Rosé stehen ${randuser} und pack den Männerschnappes aus.`,
+                `Mr. ${randuser}, lassen sie den Schnaps aus Ihnen sprechen.`
+              ]) + ' ' + quote())
+            },
+            tourette(user, params, meta) {
+              if (Math.random() < 0.7) return this.sendMessage(quote())
+              const rah = ['RAH', 'BRU', 'WAH', 'PAM', 'GNA']
+              const ah = ['A', 'H', 'G', 'W', 'R']
+              const rand = (min, max) => Math.floor(Math.random() * (max - min)) + min
+              this.sendMessage([...Array(rand(5, 11))].reduce(msg => {
+                const pos = rand(0, rah.length)
+                return msg.slice(0, pos) + quote(ah) + msg.slice(pos)
+              }, [...Array(rand(3, 6))].map(() => quote(rah)).join('')))
+            }
+          }[command] || function (user, params, meta) {
+            this.sendByFilter(quote())
+          }
+        }
+      }))
+      ponk.cleanban = []
+      resolve()
+    })
+  },
   handlers: {
-    pizza: function(user, params, meta) {
+    pizza(user, params, meta) {
       if (!/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(params)) return this.sendMessage('Du musst eine Zeit unter 100 Minuten angeben /ööäähh')
       this.sendPrivate('Werde dich nach ' +  params + ' Minuten erinnern.', user)
       setTimeout(() => {
         this.sendPrivate('/alarm', user)
       }, params * 1000 * 60)
     },
-    oder: function(user, params, meta) {
+    oder(user, params, meta) {
       const splitParams = params.split(';')
       if (splitParams.length < 2) return this.sendMessage('Zu wenig Parameter gegeben.', user)
       this.sendMessage('Ich habe entschieden: ' + splitParams[Math.floor(Math.random() * splitParams.length)].trim())
     },
-    aufräumen: function(user, params, meta) {
+    aufräumen(user, params, meta) {
       if (!/\w/.test(params)) return this.sendMessage('Es muss ein Nutzer spezifiziert werden.', user)
-      if (cleanban.includes(user)) return this.sendMessage('Aufräumen ist für dich nicht mehr verfügbar.')
+      if (this.cleanban.includes(user)) return this.sendMessage('Aufräumen ist für dich nicht mehr verfügbar.')
       let username = new RegExp('^' + params, 'i')
       const isinplaylist = this.playlist.find(item => item.temp && username.test(item.queueby))
       if (!isinplaylist) return this.sendMessage('Benutzer nicht in der Playlist.')
@@ -48,15 +162,16 @@ module.exports = {
         if (pollvotes[0] <= pollvotes[1]) return this.sendMessage('Es werden keine Videos entfernt /feelsok')
         this.sendMessage('Alle Videos von ' + username + ' werden entfernt /gas')
         //this.sendMessage('/clean ' + username, { ignoremute: true })
-        const playlist = this.playlist.filter(item => item.temp && item.queueby === username)
-        playlist.forEach((item, i) => setTimeout(() => this.mediaDelete(item.uid), i * 200))
-        cleanban.push(user)
+        this.playlist.forEach(item => {
+          if (item.temp && item.queueby === username) this.mediaDelete(item.uid)
+        })
+        this.cleanban.push(user)
         setTimeout(() => {
-          cleanban.splice(cleanban.indexOf(user), 1)
+          this.cleanban.splice(this.cleanban.indexOf(user), 1)
         }, 4 * 1000 * 60 * 60) //Cooldown
       })
     },
-    lastimage: function(user, params, meta) {
+    lastimage(user, params, meta) {
       let backstr = 'Zuletzt'
       let back = 0
       if (params.match(/^[1-9]$/)) {
@@ -67,10 +182,10 @@ module.exports = {
         this.sendMessage(backstr + ' pfostiertes bild: ' + image + '.pic')
       })
     },
-    alle: function(user, params, meta) {
+    alle(user, params, meta) {
       this.sendByFilter(this.userlist.map(user => user.name).sort((a, b) => a.localeCompare(b, undefined, {sensitivity: 'base'})).join(' '))
     },
-    userpoll: function(user, params, meta){
+    userpoll(user, params, meta){
       if(!this.meeseeks('pollctl')){
         return this.sendPrivate(`I lack this capability due to channel permission settings.`, user)
       }
@@ -81,7 +196,7 @@ module.exports = {
         obscured: false
       })
     },
-    rüge: function(user, params, meta) {
+    rüge(user, params, meta) {
       if (!/\w/.test(params)) return this.sendMessage('Wer soll gerügt werden /frage')
       this.pollAction({
         title: 'Soll über ' + params + ' eine öffentliche Rüge ausgesprochen werden?',
@@ -89,10 +204,10 @@ module.exports = {
         opts: ['j', 'n'],
         obscured: false
       }, pollvotes => {
-        if (pollvotes[0] > pollvotes[1]) this.sendMessage(params + ' erhält hiermit eine öffentliche Rüge durch den Krautsynch')
+        if (pollvotes[0] > pollvotes[1]) this.sendMessage(params + ' erhält hiermit eine öffentliche Rüge durch den ' + this.client.chan)
       })
     },
-    willkürpoll: function(user, params, meta){
+    willkürpoll(user, params, meta){
       const playlist = this.playlist.filter(row => row.temp)
       if (playlist.length > 2) {
         this.pollAction({
@@ -105,7 +220,7 @@ module.exports = {
         })
       }
     },
-    springpoll: function(user, params, meta){
+    springpoll(user, params, meta){
       const playlist = this.playlist.filter(row => row.temp)
       if (playlist.length > 0 && !playlist.find(item => item.uid == this.currUID)) {
         this.pollAction({
@@ -119,7 +234,7 @@ module.exports = {
         })
       }
     },
-    mischenpoll: function(user, params, meta){
+    mischenpoll(user, params, meta){
       if(!this.meeseeks('playlistmove')){
         return this.sendPrivate(`I lack this capability due to channel permission settings.`, user)
       }
@@ -143,27 +258,11 @@ module.exports = {
         })
       }
     },
-    rehost: function(user, params, meta) {
-      const rehostImage = image => {
-        this.rehostUrl(image).then(image => {
-          this.sendMessage(image + '.pic')
-        }, (err, msg) => {
-          console.error(err)
-          if (msg) this.sendMessage(msg)
-        })
-      }
-      if (!params || params.match(/^[1-9]$/)) return this.getLastImage(Number(params)).then(rehostImage)
-      const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
-      if (emote) params = emote.image
-      const url = validUrl.isHttpsUri(params)
-      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      rehostImage(url)
-    },
-    selbstsäge: function(user, params, meta) {
+    selbstsäge(user, params, meta) {
       const lastbyuser = this.playlist.filter(item => item.queueby === user && item.temp).pop()
       if (lastbyuser) this.mediaDelete(lastbyuser.uid)
     },
-    ts: function(user, params, meta) {
+    ts(user, params, meta) {
       TeamSpeak.connect({
         host: process.env.ts_url,
         queryport: process.env.ts_query,
@@ -186,350 +285,15 @@ module.exports = {
         this.sendMessage('Teamspeak-server nicht erreichbar')
       })
     },
-    hintergrund: logoHintergrund,
-    logo: logoHintergrund,
-    help: function(user, params, meta) {
+    update(user, params, meta) {
+      update()
+    },
+    help(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
         ((params === 'add' && this.API.add) ? this.API.add.allowedHostsString : '') +
         (this.commands.helpdata[params].rank > 1 ? '. Geht ab Level: ' + this.commands.helpdata[params].rank :
         (this.commands.helpdata[params].rank === 1 ? '. Geht nur für registrierte User' : '')))
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))
-      },
-      update: function(user, params, meta) {
-        this.server.update()
-      }
-    },
-    helpdata: require('./help.js'),
-    meta: {
-      active: true,
-      type: 'giggle'
-    },
-    giggle: function(ponk){
-      return new Promise((resolve, reject) => {
-        Object.assign(ponk, {
-          checkMessageTrigger: function(user, message) {
-            if (![
-              ponk.name,
-              '[server]',
-              'Kommandant'
-            ].includes(user)) {
-              let match
-              let regex = /(?<=^|\s)(\/[a-zA-Z0-9ßäöüÄÖÜ]+)(?=\s|$)/g
-              const emotes = {}
-              while (match = regex.exec(message)) {
-                const emote = ponk.emotes.find(emote => emote.name == match[1])
-                if (!emote) continue
-                if (!emotes[emote.name]) emotes[emote.name] = 1
-                else emotes[emote.name]++
-              }
-              Object.keys(emotes).forEach(emote => {
-                const count = emotes[emote]
-                ponk.db.knex('emotes').insert({ emote, count, lastuser: user}).catch(() => {
-                  return ponk.db.knex('emotes').where({ emote }).increment({ count }).update({ lastuser: user })
-                }).then(() => {
-                  //ponk.logger.log('Emote used: ' + emote + ' ' + count + ' times by ' + user)
-                })
-              })
-              regex = /<img class="image-embed-small" src="(https?:\/\/[^"]+)" \/>/g
-              while (match = regex.exec(message)) {
-                ponk.addLastImage(match[1])
-              }
-              if (message.match(new RegExp('^' + ponk.name + '|[^!.$/]' + ponk.name))) {
-                const quotes = [
-                  'Hiiiiiiii',
-                  'jaaaah?',
-                  'ja morgen',
-                  'w-was?',
-                  'lass mich',
-                  'hihi',
-                  'iiich?'
-                ]
-                if (user === 'melli17') ponk.sendMessage('/knuddeln')
-                else ponk.sendMessage(quotes[Math.floor(Math.random() * quotes.length)])
-              }
-            }
-          },
-          addLastImage: function(image) {
-            return new Promise((resolve, reject) => {
-              if (image === lastImages[0]) return resolve(image)
-              lastImages.unshift(image)
-              ponk.db.knex('lastimage').insert({ image }).then(() => {
-                //ponk.logger.log('Image posted: ' + image)
-                resolve(image)
-              }, error => {
-                ponk.logger.error('Unexpected error', '\n', error);
-                resolve(image)
-              })
-            })
-          },
-          getLastImage: function(back) {
-            if (!back) back = 0
-            return new Promise(resolve => {
-              if (lastImages.length > back + 1) return resolve(lastImages[back])
-              ponk.db.knex('lastimage')
-              .select('image').limit(back + 1).orderBy('id', 'desc').then(result => {
-                if (result.length > back) {
-                  lastImages = result.map(row => row.image)
-                  resolve(lastImages[back])
-                }
-              }, err => resolve(ponk.sendMessage('fehler')))
-            })
-          },
-          rehostUrl: function(url, host = ponk.API.keys.imagehost) {
-            return new Promise((resolve, reject) => {
-              request({
-                url,
-                encoding: null
-              }, (err, res, body) => {
-                if (err || res.statusCode !== 200) return reject(err, 'download failed')
-                const contentType = res.headers['content-type'] || 'image/jpeg'
-                let ext = contentType.split('/').pop()
-                if (ext === 'jpeg') ext = 'jpg'
-                request.post({
-                  url: host,
-                  formData: {
-                    file: {
-                      value: body,
-                      options: {
-                        filename: 'image.' + ext,
-                        contentType
-                      }
-                    },
-                    format: 'json'
-                  }, json: true
-                }, (err, res, body) => {
-                  if (err || res.statusCode !== 200) return reject(err, 'upload failed')
-                  if (!body.msg || !body.msg.short) return reject(body, 'parsing error')
-                  const image = host + body.msg.short
-                  ponk.addLastImage(image).then(image => {
-                    resolve(image)
-                  })
-                })
-              })
-            })
-          },
-          sendByFilter: function(message, force) {
-            if (!ponk.meeseeks('filteredit')) {
-              if (force) return ponk.sendMessage('Für diese Funktion muss ich Filter erstellen dürfen')
-              return ponk.sendMessage(message)
-            }
-            if (message.length < 320 && !force) return ponk.sendMessage(message)
-            const limit = 1000
-            const count = Math.ceil(message.length / limit)
-            for (let i = 0; i < count; i++) {
-              const filterstring = '###' + Math.random().toString(36).slice(2) + '###'
-              ponk.client.socket.emit('updateFilter', {
-                name: 'Bot filter',
-                source: filterstring,
-                replace: message.substr(i * limit, limit),
-                flags: '',
-                active: true
-              })
-              ponk.sendMessage(filterstring)
-              ponk.client.socket.emit('updateFilter', {
-                name: 'Bot filter',
-                source: '',
-                replace: '',
-                flags: ''
-              })
-            }
-          },
-          pollAction: function(poll, callback) {
-            return new Promise((resolve, reject) => {
-              if (!ponk.meeseeks('pollctl')) {
-                return ponk.sendMessage('I lack this capability due to channel permission settings.')
-              }
-              if (callback && typeof callback  === 'function') resolve = callback
-              ponk.client.createPoll(poll)
-              ponk.client.once('newPoll', () => {
-                let timeout = false
-                if (poll.timeout && poll.timeout > 10) {
-                  timeout = setTimeout(() => {
-                    ponk.sendMessage('Noch 10 Sekunden Zeit abzustimmen.', { ignoremute: true })
-                  }, (poll.timeout - 10) * 1000)
-                }
-                ponk.client.once('closePoll', () => {
-                  timeout && clearTimeout(timeout)
-                  resolve(ponk.poll.counts)
-                })
-              })
-            })
-          }
-        })
-        ponk.registerCooldown({
-          type           : 'emit',
-          name           : 'emit',
-          personalType   : 'ignore',
-          personalParams : null,
-          sharedType     : 'bucket',
-          sharedParams   : [10, 1, 'second', null],
-        })
-        const emit = ponk.client.socket.emit.bind(ponk.client.socket)
-        ponk.client.socket.emit = (...params) => {
-          ponk.checkCooldown({ type: 'emit', user: ponk.name, silent: true }).then(() => {
-            emit(...params)
-          }, message => {
-            setTimeout(() => {
-              process.nextTick(() => {
-                ponk.client.socket.emit(...params)
-              })
-            }, 500)
-          })
-        }
-        ponk.logger.log('Registering custom handlers');
-        Object.assign(module.exports.handlers, ...fs.readdirSync(path.join(__dirname, 'quotes')).map(file => {
-          const ext = path.extname(file)
-          const command = path.basename(file, ext)
-          let quotes
-          switch (ext) {
-            case '.js': quotes = require(path.join(__dirname, 'quotes', file))
-            break
-            case '.txt': quotes = fs.readFileSync(path.join(__dirname, 'quotes', file)).toString().split("\n")
-            break
-          }
-          return [
-            command,
-            quotes
-          ]
-        }).filter(obj => !!obj[1]).concat(Object.entries({
-          fut: [
-            'Fut',
-            'Doppelfut',
-            'Labbrige Doppelfut',
-            'Futschlecker',
-            'Garstiger Futlappen'
-          ],
-          armbernd: [
-            '/tarm',
-            '/armmoderiert',
-            '/armbernd',
-            '/sarm',
-            '/fritt'
-          ],
-          saufen: [
-            '/lahey',
-            '/stoss',
-            '/saufi',
-            '/saufen',
-            '/wein',
-            '/lüning',
-            '/stollschluck',
-            '/schluck',
-            '/tschluck',
-            '/tadler',
-            '/schunkel',
-            '/bebe',
-            '/kirk'
-          ]
-        })).map(([command, quotes]) => {
-          module.exports.helpdata[command] = module.exports.helpdata[command] || {
-            synop: 'Zeigt ein Zitat',
-            rank: 0
-          }
-          const quote = () => quotes[Math.floor(Math.random() * quotes.length)]
-          return {
-            [command]: {
-              frage: function(user, params, meta) {
-                const randuser = this.userlist[Math.floor(Math.random() * this.userlist.length)].name
-                this.sendMessage(quote(meta.command).replace(/\${randuser}/, randuser))
-              },
-              armbernd: function(user, params, meta) {
-                this.sendMessage(meta.message.match(/armbernd/g).map(() => quote()).join(' '))
-              },
-              saufen: function(user, params, meta) {
-                const notafk = this.userlist.filter(user => ![this.name, 'kr4ssi', 'hrss'].includes(user.name) && !user.meta.afk)
-                const randuser = notafk[Math.floor(Math.random() * notafk.length)].name
-                const messages = [
-                  `Ich sage: ${randuser} muss saufen.`,
-                  `${randuser} wurde aus allen zum saufen ausgewählt.`,
-                  `Heute wird sich totgesoffen, ${randuser}.`,
-                  `Verabschiede dich von deine Leber, ${randuser}.`,
-                  `${randuser}! Kanalisiere deinen inneren kr4ssi.`,
-                  `Lass den Rosé stehen ${randuser} und pack den Männerschnappes aus.`,
-                  `Mr. ${randuser}, lassen sie den Schnaps aus Ihnen sprechen.`
-                ]
-                this.sendMessage(messages[Math.floor(Math.random() * messages.length)] + ' ' + quote(meta.command))
-              },
-              tourette: function(user, params, meta) {
-                if (Math.random() < 0.7) return this.sendMessage(quote(meta.command))
-                const tourette1 = ['RAH', 'BRU', 'WAH', 'PAM', 'GNA']
-                const tourette2 = ['A', 'H', 'G', 'W', 'R']
-                const rand = (min, max) => Math.floor(Math.random() * (max - min)) + min
-                const rahs = rand(3, 6)
-                const ahs = rand(5, 11)
-                let tourette = ''
-                for (let i = 0; i < rahs; i++) {
-                  tourette += tourette1[rand(0, tourette1.length)]
-                }
-                for (let i = 0; i < ahs; i++) {
-                  const intpos = rand(0, tourette.length)
-                  tourette = tourette.slice(0, intpos) + tourette2[rand(0, tourette2.length)] + tourette.slice(intpos)
-                }
-                this.sendMessage(tourette)
-              }
-            }[command] || function sendquote(user, params, meta) {
-              this.sendByFilter(quotes[Math.floor(Math.random() * quotes.length)])
-            }
-          }
-        }))
-        resolve();
-      })
-    }
-  }
-  function cssReplace(command, addCSS) {
-    let css = this.channelCSS
-    const tagText = `Bot-CSS "${command}" do not edit`
-    const myRegEx = '\\/\\*\\s' + tagText + '\\s\\*\\/'
-    const myMatch = css.match(new RegExp('\\s' + myRegEx + '([\\S\\s]+)' + myRegEx, 'i'))
-    const cssNew = '\n/* ' + tagText + ' */\n' + (addCSS || lastCSS[command]) + '\n/* ' + tagText + ' */'
-    if (myMatch) {
-      const cssOld = myMatch[1].trim()
-      if (cssOld.length > 0 && lastCSS[command] != cssOld) lastCSS[command] = cssOld
-      css = css.replace(myMatch[0], cssNew)
-    }
-    else css += cssNew
-    this.client.socket.emit('setChannelCSS', {css})
-  }
-  function logoHintergrund(user, params, meta) {
-    let css1, css2, options, message, rank
-    const command = meta.command
-    if (command === 'logo') {
-      css1 = '#leftpane-inner:after { background-image:url("',
-      css2 = '"); }',
-      message = 'Verfügbare Logos: '
-      options = {
-        FIKU: 'https://tinyimg.io/i/wVmC0iw.png',
-        KS: 'https://tinyimg.io/i/NF44780.png',
-        Partei: 'https://tinyimg.io/i/JlE5E57.png',
-        Heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
       }
     }
-    else if (command === 'hintergrund') {
-      css1 = 'body { background-image:url("'
-      css2 = '"); }'
-      message = 'Verfügbare Hintergründe: '
-      options = {
-        Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
-        Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
-        Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
-        KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
-        Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
-        Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
-        Nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK'
-      }
-    }
-    if (params) {
-      if (params != 'last') {
-        if (options.hasOwnProperty(params)) params = options[params]
-        else {
-          const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
-          if (emote) params = emote.image
-        }
-        params = validUrl.isHttpsUri(params)
-        if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
-        cssReplace.call(this, command, css1 + params + css2)
-      }
-      else cssReplace.call(this, command)
-    }
-    else this.sendByFilter(message + Object.keys(options).join(', '))
   }

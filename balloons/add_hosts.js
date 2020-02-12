@@ -8,7 +8,7 @@ const fs = require('fs')
 const Entities = require('html-entities').AllHtmlEntities
 const entities = new Entities();
 
-const parseLink = require('./parselink.js')
+const parseLink = require('./add_parselink.js')
 
 class HosterList {
   constructor(ponk, ydlRegEx) {
@@ -124,11 +124,6 @@ class HosterList {
             }
             if (!info.title) info = info[0];
             this.info = info
-            if (info.extractor === 'youtube') {
-              this.type = 'yt'
-              this.fileurl = info.display_id
-              return resolve(this)
-            }
             if (info.formats && info.formats.length) this.formats = info.formats.filter(format => [240, 360, 480, 540, 720, 1080, 1440].includes(format.height))
             this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
             this.fileurl = info.url.replace(/^http:\/\//i, 'https://')
@@ -409,7 +404,17 @@ class HosterList {
       },
       'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
       'gfycat.com': ydlRegEx['GfycatIE'],
-      'liveleak.com': {},
+      'liveleak.com': {
+        getInfo() {
+          return Hoster.prototype.getInfo.call(this, this.url).then(() => {
+            if (this.info.extractor === 'youtube') {
+              this.type = 'yt'
+              this.fileurl = info.display_id
+            }
+            return this
+          })
+        }
+      },
       'imgur.com': {},
       'instagram.com': {},
       'ndr.de': {},

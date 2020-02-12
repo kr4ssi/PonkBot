@@ -1,0 +1,293 @@
+/*!
+**|   PonkBot Replacements
+**@
+*/
+
+'use strict';
+
+module.exports = {
+
+  meta: {
+    active: true,
+    type: 'giggle'
+  },
+  giggle(ponk) {
+    return new Promise((resolve, reject) => {
+      ponk.registerCooldown({
+        type           : 'emit',
+        name           : 'emit',
+        personalType   : 'ignore',
+        personalParams : null,
+        sharedType     : 'bucket',
+        sharedParams   : [10, 1, 'second', null],
+      })
+      const emit = ponk.client.socket.emit.bind(ponk.client.socket)
+      ponk.client.socket.emit = (...params) => {
+        ponk.checkCooldown({ type: 'emit', user: ponk.name, silent: true }).then(() => {
+          emit(...params)
+        }, message => setTimeout(() => {
+          process.nextTick(() => {
+            ponk.client.socket.emit(...params)
+          })
+        }, 500))
+      }
+      ponk.client.socket.on('newPoll',        (poll)=>{ ponk.handleNewPoll(poll) });
+      ponk.client.socket.on('updatePoll',     (poll)=>{ ponk.handleUpdatePoll(poll) });
+      ponk.client.socket.on('closePoll',          ()=>{ ponk.handleClosePoll() });
+      ponk.client.socket.on('channelCSSJS',  (cssjs)=>{ ponk.handleChannelCSSJS(cssjs) });
+      ponk.client.socket.on('chatFilters',  (filers)=>{ ponk.handleChatFilters(filters) });
+      //ponk.client.socket.on('addFilterSuccess', data => console.log('addFilterSuccess', data));
+      //ponk.client.socket.on('deleteChatFilter', data => console.log('deleteChatFilter', data));
+      //ponk.client.socket.on('updateChatFilter', data => console.log('updateChatFilter', data));
+      Object.assign(ponk, {
+        pollactive  : false, // Is a poll running?
+        poll        : {},    // The current running, or last active poll
+        channelCSS  : '',    // The channel CSS
+        channelJS   : '',    // The channel JS
+        channelMotd : '',    // The channel Motd
+        chatFilters : [],    // A list of chat-filtes
+        lastImages  : [],    // A list with lastly posted Images
+        handleNewPoll: function(poll){
+          //console.log(poll)
+          this.logger.log(`Opened Poll`);
+          this.pollactive = true;
+          this.poll = poll;
+        },
+        handleUpdatePoll: function(poll){
+          ///console.log(poll)
+          this.logger.log(`Updated Poll`);
+          this.poll = poll;
+        },
+        handleClosePoll: function(){
+          this.logger.log(`Closed Poll`);
+          this.pollactive = false;
+        },
+        handleChannelCSSJS: function(cssjs) {
+          console.log('Updated Channel-JS/CSS')
+          this.channelCSS = cssjs.css
+          this.channelJS = cssjs.js
+        },
+        handleChatFilters: function(filters){
+          console.log('Requested chatFilters')
+          this.chatFilters = filters
+        },
+        handleChatMessage({ username: user, msg: message, time, meta }) {
+          if (time < this.started) return
+          const triggered = this.commands.trigger.test(this.filterChat(message))
+          if (triggered) this.commandDispatcher(user, message)
+          else if (!this.peers.concat(this.name, '[server]').includes(user)) {
+            let match
+            let regex = /(?<=^|\s)(\/[a-zA-Z0-9ßäöüÄÖÜ]+)(?=\s|$)/g
+            const emotes = {}
+            while (match = regex.exec(message)) {
+              const emote = this.emotes.find(emote => emote.name == match[1])
+              if (!emote) continue
+              if (!emotes[emote.name]) emotes[emote.name] = 1
+              else emotes[emote.name]++
+            }
+            Object.keys(emotes).forEach(emote => {
+              const count = emotes[emote]
+              this.db.knex('emotes').insert({ emote, count, lastuser: user}).catch(() => {
+                return this.db.knex('emotes').where({ emote }).increment({ count }).update({ lastuser: user })
+              }).then(() => {
+                //this.logger.log('Emote used: ' + emote + ' ' + count + ' times by ' + user)
+              })
+            })
+            regex = /<img class="image-embed-small" src="(https?:\/\/[^"]+)" \/>/g
+            while (match = regex.exec(message)) {
+              this.addLastImage(match[1])
+            }
+            if (message.match(new RegExp('^' + this.name + '|[^!.$/]' + this.name))) {
+              const quotes = [
+                'Hiiiiiiii',
+                'jaaaah?',
+                'ja morgen',
+                'w-was?',
+                'lass mich',
+                'hihi',
+                'iiich?'
+              ]
+              if (user === 'melli17') this.sendMessage('/knuddeln')
+              else this.sendMessage(quotes[Math.floor(Math.random() * quotes.length)])
+            }
+          }
+          this.emit('message', { time, user, message });
+        },
+        commandDispatcher(user, message){
+          let split = this.filterChat(message).split(' ');
+          const command = split.shift().slice(1);
+          let params = split.join(' ').trim();
+          if(this.bots.includes(user)){
+            this.logger.debug(`Command ${command} invoked by self or peer.`);
+            return;
+          }
+          if(this.commands.blacklist.includes(user)){
+            this.logger.debug(`Command ${command} invoked by blacklisted user ${user}.`);
+            return;
+          }
+          if(this.commands.disabled.includes(command)){
+            this.logger.debug(`Disabled command ${command} invoked.`);
+            return;
+          }
+          if (command in this.commands.handlers){
+            this.userCheckBarred(user).then((barred)=>{
+              if(barred){
+                return this.sendPrivate('You are barred from issuing commands to this bot.', user);
+              }
+              this.logger.log('Received command dispatch', command);
+              const rank = this.getUserRank(user);
+              const needrank = this.commands.helpdata[command].rank;
+              if (rank < needrank) return this.sendMessage('Geht nur ab lvl ' + needrank);
+              let addnext = this.commands.helpdata[command].addnext
+              if (addnext) {
+                const cleanparams = params.replace(new RegExp(addnext + '$'), '').trim()
+                addnext = params != cleanparams
+                params = cleanparams
+              }
+              let repeat = this.commands.helpdata[command].repeat
+              if (repeat) {
+                repeat = 1
+                params = params.replace(/(?:^|\s)\d{1,2}$/, match => {
+                  if (rank > 3) repeat = Math.min(5, match.trim())
+                  return ''
+                }).trim()
+              }
+              this.logger.command(`${user} invoked ${command} with ${params ? params : 'no params.'}`);
+              this.commands.handlers[command](user, params, { command, message, rank, addnext, repeat });
+            });
+          }
+        },
+        sendMessage(message, meta = {}){
+          if(!this.meeseeks('chat')){
+            this.logger.error('Unable to send chat messages due to restrictive channel permissions');
+            return;
+          }
+          // Future home of other stuff like modflair and color overrides
+          const { ignoremute } = meta;
+          if(this.muted && !ignoremute){ return }
+          //Repeat if Message too long
+          const limit = 320;
+          const count = Math.ceil(message.length / limit);
+          for (let i = 0; i < count; i++)
+          this.client.chat({
+            msg: message.substr(i * limit, limit),
+            meta: Object.assign({}, this.useflair && this.rank <= 2 ? {
+              modflair: this.rank
+            } : {})
+          });
+        },
+        sendByFilter(message, force) {
+          if (!this.meeseeks('filteredit')) {
+            if (force) return this.sendMessage('Für diese Funktion muss ich Filter erstellen dürfen')
+            return this.sendMessage(message)
+          }
+          if (message.length < 320 && !force) return this.sendMessage(message)
+          const limit = 1000
+          const count = Math.ceil(message.length / limit)
+          for (let i = 0; i < count; i++) {
+            const filterstring = '###' + Math.random().toString(36).slice(2) + '###'
+            this.client.socket.emit('updateFilter', {
+              name: 'Bot filter',
+              source: filterstring,
+              replace: message.substr(i * limit, limit),
+              flags: '',
+              active: true
+            })
+            this.sendMessage(filterstring)
+            this.client.socket.emit('updateFilter', {
+              name: 'Bot filter',
+              source: '',
+              replace: '',
+              flags: ''
+            })
+          }
+        },
+        pollAction(poll, callback) {
+          return new Promise((resolve, reject) => {
+            if (!this.meeseeks('pollctl')) {
+              return this.sendMessage('I lack this capability due to channel permission settings.')
+            }
+            if (callback && typeof callback  === 'function') resolve = callback
+            this.client.createPoll(poll)
+            this.client.once('newPoll', () => {
+              let timeout = false
+              if (poll.timeout && poll.timeout > 10) {
+                timeout = setTimeout(() => {
+                  this.sendMessage('Noch 10 Sekunden Zeit abzustimmen.', { ignoremute: true })
+                }, (poll.timeout - 10) * 1000)
+              }
+              this.client.once('closePoll', () => {
+                timeout && clearTimeout(timeout)
+                resolve(this.poll.counts)
+              })
+            })
+          })
+        },
+        addLastImage(image) {
+          return new Promise((resolve, reject) => {
+            if (image === this.lastImages[0]) return resolve(image)
+            this.lastImages.unshift(image)
+            this.db.knex('lastimage').insert({ image }).then(() => {
+              //ponk.logger.log('Image posted: ' + image)
+              resolve(image)
+            }, error => {
+              this.logger.error('Unexpected error', '\n', error);
+              resolve(image)
+            })
+          })
+        },
+        getLastImage(back) {
+          if (!back) back = 0
+          return new Promise(resolve => {
+            if (this.lastImages.length > back + 1) return resolve(this.lastImages[back])
+            this.db.knex('lastimage')
+            .select('image').limit(back + 1).orderBy('id', 'desc').then(result => {
+              if (result.length > back) {
+                this.lastImages = result.map(row => row.image)
+                resolve(this.lastImages[back])
+              }
+            }, err => resolve(this.sendMessage('fehler')))
+          })
+        }
+      })
+      if (!ponk.server) {
+        const { weblink, webport } = require('../config.js').webhost
+        ponk.server = {
+          host: require('express')(),
+          weblink,
+          webport
+        }
+        ponk.server.host.listen(webport)
+      }
+      if (!process.env.PORT) ponk.server.weblink += ':' + ponk.server.webport
+      ponk.db.createTableIfNotExists('lastimage', (table) => {
+        table.increments();
+        table.string('image', 480)
+      })
+      ponk.client.socket.on('announcement', data => console.log('announcement', data));
+      ponk.client.socket.on('cancelNeedPassword', data => console.log('cancelNeedPassword', data));
+      ponk.client.socket.on('channelNotRegistered', data => console.log('channelNotRegistered', data));
+      ponk.client.socket.on('channelRankFail', data => console.log('channelRankFail', data));
+      ponk.client.socket.on('channelRanks', data => console.log('channelRanks', data));
+      ponk.client.socket.on('clearFlag', data => console.log('clearFlag', data));
+      ponk.client.socket.on('clearVoteskipVote', data => console.log('clearVoteskipVote', data));
+      ponk.client.socket.on('cooldown', data => console.log('cooldown', data));
+      ponk.client.socket.on('empty', data => console.log('empty', data));
+      ponk.client.socket.on('errorMsg', data => console.log('errorMsg', data));
+      ponk.client.socket.on('kick', data => console.log('kick', data));
+      ponk.client.socket.on('loadFail', data => console.log('loadFail', data));
+      ponk.client.socket.on('needPassword', data => console.log('needPassword', data));
+      ponk.client.socket.on('noflood', data => console.log('noflood', data));
+      ponk.client.socket.on('pm', data => console.log('pm', data)); // {msg: '', meta: {}, time: 0, to: ''}
+      ponk.client.socket.on('searchResults', data => console.log('searchResults', data));
+      ponk.client.socket.on('setFlag', data => console.log('setFlag', data));
+      ponk.client.socket.on('spamFiltered', data => console.log('spamFiltered', data));
+      ponk.client.socket.on('validationError', data => console.log('validationError', data));
+      ponk.client.socket.on('validationPassed', data => console.log('validationPassed', data));
+      //ponk.client.socket.on('voteskip', data => console.log('voteskip', data));
+      ponk.client.socket.on('warnLargeChandump', data => console.log('warnLargeChandump', data));
+      ponk.client.socket.on('readChanLog', data => console.log('readChanLog', data));
+      resolve()
+    })
+  }
+}

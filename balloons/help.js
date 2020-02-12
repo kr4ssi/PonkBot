@@ -312,52 +312,48 @@ module.exports = {
   dict: {
     synop: 'ist kaputt /tja',
     rank: 1
-  }/*,
-  aip: {
-  synop: 'ist kaputt /tja',
-  rank: 1
-}*/,
-inspire: {
-  synop: 'Zeigt einem ein hilfreiches Motivationsbild und Spruch',
-  rank: 1
-},
-liveleak: {
-  synop: 'addiert was von Liveleak. .liveleak willkür addiert etwas als Nächstes',
-  rank: 0,
-  repeat: true,
-  addnext: 'willkür'
-},
-mutter: {
-  synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
-  rank: 0
-},
-mützen: {
-  synop: '',
-  rank: 4
-},
-getemote: {
-  synop: '',
-  rank: 4
-},
-tv: {
-  synop: '',
-  rank: 1
-},
-gez: {
-  synop: '',
-  rank: 2
-},
-doku: {
-  synop: '',
-  rank: 2,
-  addnext: 'willkür'
-},
-update: {
-  synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
-  rank: 4
-},
-ts: {
-synop: '',
-rank: 2
-}
+  },
+  inspire: {
+    synop: 'Zeigt einem ein hilfreiches Motivationsbild und Spruch',
+    rank: 1
+  },
+  liveleak: {
+    synop: 'addiert was von Liveleak. .liveleak willkür addiert etwas als Nächstes',
+    rank: 0,
+    repeat: true,
+    addnext: 'willkür'
+  },
+  mutter: {
+    synop: 'Generiert einen zufälligen "Deine-Mutter-Witz", um eine enge Debatte letztendlich für sich zu entscheiden',
+    rank: 0
+  },
+  mützen: {
+    synop: '',
+    rank: 4
+  },
+  getemote: {
+    synop: '',
+    rank: 4
+  },
+  tv: {
+    synop: '',
+    rank: 1
+  },
+  gez: {
+    synop: '',
+    rank: 2
+  },
+  doku: {
+    synop: '',
+    rank: 2,
+    addnext: 'willkür'
+  },
+  update: {
+    synop: 'Updatet den Bot. Nur für echte 1337 haxx0r',
+    rank: 4
+  },
+  ts: {
+    synop: '',
+    rank: 2
+  }
 }

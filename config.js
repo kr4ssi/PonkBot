@@ -8,13 +8,13 @@ const client = process.env.db_type
 module.exports = {
   ponk: {
     useflair : false,
-    peers    : ['OtherBot'],
+    peers    : ['Kommandant'],
     audience : ['de'],
     nodisk   : true
   },
   commands: {
     disabled  : ['vodka','taco'],
-    trigger   : /^\$|^\.|^\!/,
+    trigger   : /^[$\.!]/,
     ignorelog : ['8ball'],
   },
   sync: {

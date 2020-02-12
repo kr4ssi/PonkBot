@@ -9,12 +9,19 @@ const validUrl = require('valid-url')
 const date = require('date-and-time')
 const countries = require("i18n-iso-countries")
 
-
 class FikuSystem {
   constructor(ponk){
     Object.assign(this, {
       //fikuList    : [],    // A list of Fiku-suggestions
       bot         : ponk   // The bot
+    })
+    ponk.db.createTableIfNotExists('fiku', (table) => {
+      table.increments();
+      table.string('title', 240)
+      table.string('url', 240)
+      table.string('user', 20)
+      table.boolean('active').defaultTo(true)
+      table.bigint('timestamp').unsigned()
     })
   }
 
@@ -124,7 +131,7 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject)=>{
       ponk.API.fiku = new FikuSystem(ponk);
       ponk.logger.log('Registering Fiku-System');
@@ -132,10 +139,10 @@ module.exports = {
     })
   },
   handlers: {
-    fikupoll: function(user, params, meta) {
+    fikupoll(user, params, meta) {
       this.API.fiku.fikupoll(user, params, meta)
     },
-    ausschussfiku: function(user, params, meta) {
+    ausschussfiku(user, params, meta) {
       this.API.fiku.fikupoll(user, params, meta)
     },
     vorschlag: async function(user, params, meta) {
@@ -164,14 +171,14 @@ module.exports = {
         }
       })
     },
-    fikuliste: function(user, params, meta) {
+    fikuliste(user, params, meta) {
       this.API.fiku.getFikuList().then(fikuList => {
         this.sendByFilter(fikuList.map(row =>  row.id + ': ' + row.title
         + ' (' + (new Date(row.timestamp || 0)).toLocaleDateString() + ')'
         + (row.active ? '' : ' (deaktiviert)')).join('\n'))
       })
     },
-    fikulöschen: function(user, params, meta) {
+    fikulöschen(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         this.db.knex('fiku').where(fiku).del().then(deleted => {
           if (deleted) {
@@ -181,7 +188,7 @@ module.exports = {
         })
       })
     },
-    fikuadd: function(user, params, meta) {
+    fikuadd(user, params, meta) {
       const split = params.split(' ')
       const id = split.shift()
       this.API.fiku.getFiku(id).then(({ url, title, id, user }) => {
@@ -193,12 +200,12 @@ module.exports = {
         this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
       })
     },
-    fikuelfe: function(user, params, meta) {
+    fikuelfe(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         this.sendMessage('Elfe für "' + fiku.title + '": ' + fiku.url)
       })
     },
-    fikuaktiv: function(user, params, meta) {
+    fikuaktiv(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         const active = !fiku.active
         this.db.knex('fiku').where(fiku).update({ active }).then(() => {
@@ -236,7 +243,7 @@ module.exports = {
         })
       })
     },
-    fikuinfo: function(user, params, meta) {
+    fikuinfo(user, params, meta) {
       (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) :
       Promise.resolve(params || this.currMedia.title)).then(title => {
         this.API.fiku.getTmdbId(title).then(id => {
@@ -248,11 +255,15 @@ module.exports = {
               `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
               `${(body.production_countries || body.origin_country).map(country => {
                 country = country.iso_3166_1 || country
-                return country === 'US' ? 'VSA' : ((country === 'UK' | country === 'GB') ? 'England' :
-                ( country === 'RU' ? 'Russland' : countries.getName(country, 'de')))
+                return {
+                  US: 'VSA',
+                  UK: 'England',
+                  GB: 'England',
+                  RU: 'Russland'
+                }[country] || countries.getName(country, 'de')
               }).join(' / ')} ` +
               `${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
-              this.sendByFilter('<div class="fikuinfo">' + body.overview + '</div>', true)
+              this.sendByFilter(`<div class="fikuinfo">${body.overview}</div>`, true)
               this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ` +
               `${credits.cast.filter(row => row.order < 3).map(row => row.name).join(', ')}.\n` +
               `Von ${[...new Set([
@@ -261,22 +272,30 @@ module.exports = {
                 'Screenplay',
                 'Director',
                 'First Assistant Director'
-              ].reduce((list, job) => list.concat(credits.crew.filter(crew => crew.job === job)), [])
-              .concat(credits.crew.filter(crew => crew.department === 'Production'))
-              .map(item => item.name))].slice(0, 3).join(', ')}. Ratierung: ${body.vote_average}/10`)
+              ].reduce((list, job) => {
+                return list.concat(credits.crew.filter(crew => crew.job === job))
+              }, []).concat(credits.crew.filter(crew => {
+                return crew.department === 'Production'
+              })).map(item => item.name))].slice(0, 3).join(', ')}. ` +
+              `Ratierung: ${body.vote_average}/10`)
             })
           })
         })
       })
     },
-    trailer: function(user, params, meta) {
+    trailer(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         this.API.fiku.getTmdbId(fiku.title).then((id) => {
-          const addTrailer = lang => {
-            this.API.fiku.getTmdbInfo(id, 'videos', lang).then(body => {
-              if (body.results.length < 1) return (lang ? addTrailer('') : this.sendMessage('Keine Ergebnisse /elo'))
-              const trailer = body.results.reduce((first, second) => second.size > first.size ? second : first)
-              if (trailer.site == 'YouTube') this.addNetzm(trailer.key, true, user, 'yt')
+          const addTrailer = lng => {
+            this.API.fiku.getTmdbInfo(id, 'videos', lng).then(({ results }) => {
+              if (!results.length) {
+                if (lng) addTrailer('')
+                else this.sendMessage('Keine Ergebnisse /elo')
+                return
+              }
+              const trailer = results.reduce((a, b) => a.size > b.size ? a : b)
+              if (trailer.site != 'YouTube') return
+              this.addNetzm(trailer.key, true, user, 'yt')
             })
           }
           addTrailer('de')

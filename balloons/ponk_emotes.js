@@ -30,20 +30,31 @@ class Emotes {
     Object.assign(this, {
       emotespath  : path.join(__dirname, '..', '..', 'emotes', 'public', chan),
       filenames   : new Set(), // The Emote-filenames
-      emoteCSS    : '',       // The Emote-CSS
-      otherEmotes : {},       // Emotes of other Channels
-      bot         : ponk      // The Bot
+      emoteCSS    : '',        // The Emote-CSS
+      otherEmotes : {},        // Emotes of other Channels
+      lastCSS     : {          // Several recent CSS-options
+        logo: '',
+        hintergrund: ''
+      },
+      bot         : ponk       // The Bot
     })
+    this.bot.db.createTableIfNotExists('emotes', (table) => {
+      table.string('emote', 240).primary()
+      table.integer('count').defaultTo(0);
+      table.string('lastuser', 20)
+      table.integer('width');
+      table.integer('height');
+    }).then(() => this.createEmoteCSS())
     //const keepnames = new Set()
-    this.createEmoteCSS()
     this.bot.server.host.get('/emotes.css', (req, res) => {
       res.setHeader('Content-Type', 'text/css')
       res.send(this.emoteCSS)
     })
     this.bot.server.host.get('/emotes.json', (req, res) => {
-      res.json(ponk.emotes.map(({ name, image }) => ({ name, image })))
+      res.json(this.bot.emotes.map(({ name, image }) => ({ name, image })))
     })
-    fs.readdirSync(this.emotespath).forEach(filename => {
+    if (!fs.existsSync(this.emotespath)) fs.mkdirSync(this.emotespath)
+    else fs.readdirSync(this.emotespath).forEach(filename => {
       const stat = fs.statSync(path.join(this.emotespath, filename))
       if (stat.isFile()) this.filenames.add(filename)
       else if (stat.isDirectory()) {
@@ -57,7 +68,7 @@ class Emotes {
       fs.mkdirSync(path.join(this.emotespath, '_bak'))
       this.bakfilenames = []
     }
-    if (process.env.NODE_ENV != 'production') return this.backupEmotes(ponk.client)
+    if (process.env.NODE_ENV != 'production') return this.backupEmotes(this.bot.client)
     if (this.bot.emotes.length > 0) this.checkEmotes()
     else this.bot.client.once('emoteList', list => this.checkEmotes(list))
     this.bot.client.prependListener('updateEmote', ({ name, image }) => {
@@ -77,6 +88,14 @@ class Emotes {
       const oldfilename = this.cleanName(old) + path.extname(linkedfilename)
       this.renameEmote(oldfilename, shouldfilename)
       this.removeEmote(oldfilename)
+    })
+    this.bot.client.socket.prependListener('channelCSSJS', cssjs => {
+      const stripNoCache = css => css.replace(/\/emotes\.css\?[^"]+/, '')
+      if (this.bot.channelCSS && stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS)) this.pushToGit('channel.css', cssjs.css)
+      if (this.bot.channelJS && cssjs.js != this.bot.channelJS) this.pushToGit('channel.js', cssjs.js)
+    })
+    this.bot.client.socket.prependListener('chatFilters', filers => {
+      if (filters != this.bot.chatFilters) this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
   }
   cleanName(name) {
@@ -195,6 +214,39 @@ class Emotes {
       })
     })
   }
+  rehostUrl(url, host = this.bot.API.keys.imagehost) {
+    return new Promise((resolve, reject) => {
+      request({
+        url,
+        encoding: null
+      }, (err, res, body) => {
+        if (err || res.statusCode !== 200) return reject(err, 'download failed')
+        const contentType = res.headers['content-type'] || 'image/jpeg'
+        let ext = contentType.split('/').pop()
+        if (ext === 'jpeg') ext = 'jpg'
+        request.post({
+          url: host,
+          formData: {
+            file: {
+              value: body,
+              options: {
+                filename: 'image.' + ext,
+                contentType
+              }
+            },
+            format: 'json'
+          }, json: true
+        }, (err, res, body) => {
+          if (err || res.statusCode !== 200) return reject(err, 'upload failed')
+          if (!body.msg || !body.msg.short) return reject(body, 'parsing error')
+          const image = host + body.msg.short
+          this.bot.addLastImage(image).then(image => {
+            resolve(image)
+          })
+        })
+      })
+    })
+  }
   createEmoteCSS() {
     return new Promise((resolve, reject) => this.bot.db.knex('emotes').whereNotNull('width').orWhereNotNull('height').select('emote', 'width', 'height').then(sizes => {
       this.emoteCSS = sizes.filter(size => (((size.width > 0) && (size.width != 100)) || ((size.height > 0) && (size.height != 100)))).map(size => {
@@ -206,6 +258,20 @@ class Emotes {
       resolve()
     }))
   }
+  cssReplace(command, addCSS) {
+    let css = this.bot.channelCSS
+    const tagText = `Bot-CSS "${command}" do not edit`
+    const myRegEx = '\\/\\*\\s' + tagText + '\\s\\*\\/'
+    const myMatch = css.match(new RegExp('\\s' + myRegEx + '([\\S\\s]+)' + myRegEx, 'i'))
+    const cssNew = '\n/* ' + tagText + ' */\n' + (addCSS || this.lastCSS[command]) + '\n/* ' + tagText + ' */'
+    if (myMatch) {
+      const cssOld = myMatch[1].trim()
+      if (cssOld.length > 0 && this.lastCSS[command] != cssOld) this.lastCSS[command] = cssOld
+      css = css.replace(myMatch[0], cssNew)
+    }
+    else css += cssNew
+    this.bot.client.socket.emit('setChannelCSS', {css})
+  }
 }
 
 module.exports = {
@@ -213,7 +279,7 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject) => {
       ponk.API.emotes = new Emotes(ponk);
       ponk.pushToGit = ponk.API.emotes.pushToGit.bind(ponk)
@@ -222,7 +288,23 @@ module.exports = {
     })
   },
   handlers: {
-    addemote: function(user, params, meta) {
+    rehost(user, params, meta) {
+      const rehostImage = image => {
+        this.rehostUrl(image).then(image => {
+          this.sendMessage(image + '.pic')
+        }, (err, msg) => {
+          console.error(err)
+          if (msg) this.sendMessage(msg)
+        })
+      }
+      if (!params || params.match(/^[1-9]$/)) return this.getLastImage(Number(params)).then(rehostImage)
+      const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
+      if (emote) params = emote.image
+      const url = validUrl.isHttpsUri(params)
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      rehostImage(url)
+    },
+    addemote(user, params, meta) {
       if (!params.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
       const split = params.trim().split(' ')
       const name = split.shift()
@@ -234,7 +316,7 @@ module.exports = {
       if (!image) return this.sendMessage('Ist keine https-Elfe /pfräh')
       this.API.emotes.downloadEmote(name, image)
     },
-    emote: function(user, params, meta) {
+    emote(user, params, meta) {
       if (!params.match(/^\/[\wäÄöÖüÜß]+$/) || !this.emotes.some(emote => emote.name == params)) return this.sendMessage('Ist kein emote')
       this.db.knex('emotes')
       .where({ emote: params })
@@ -256,7 +338,7 @@ module.exports = {
         ((height > 0) && (height != 100) ? ('. Maximale Höhe: ' + ((height < 999) ? (height + 'px') : '100%')) : ''))
       })
     },
-    emotesize: function(user, params, meta) {
+    emotesize(user, params, meta) {
       const split = params.trim().split(' ')
       const emote = split.shift().trim()
       if (!emote.match(/^\/[\wäÄöÖüÜß]+$/) || !this.emotes.some(emotelist => emotelist.name == emote)) return this.sendMessage('Ist kein emote')
@@ -274,7 +356,7 @@ module.exports = {
         })))
       })
     },
-    mützen: function(user, params, meta) {
+    mützen(user, params, meta) {
       this.db.getKeyValue('xmasemotes').then(xmasemotes => {
         console.log(xmasemotes)
         if (xmasemotes != 1) {
@@ -307,7 +389,7 @@ module.exports = {
         }
       })
     },
-    getemote: function(user, params, meta) {
+    getemote(user, params, meta) {
       const split = params.trim().split(' ')
       const chan = split.shift()
       let name = split.shift()
@@ -339,6 +421,51 @@ module.exports = {
         if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
         else this.sendMessage(emote.image + '.pic')
       })
+    },
+    hintergrund: logoHintergrund,
+    logo: logoHintergrund
+  }
+}
+function logoHintergrund(user, params, meta) {
+  let css1, css2, options, message, rank
+  const command = meta.command
+  if (command === 'logo') {
+    css1 = '#leftpane-inner:after { background-image:url("',
+    css2 = '"); }',
+    message = 'Verfügbare Logos: '
+    options = {
+      FIKU: 'https://tinyimg.io/i/wVmC0iw.png',
+      KS: 'https://tinyimg.io/i/NF44780.png',
+      Partei: 'https://tinyimg.io/i/JlE5E57.png',
+      Heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
     }
   }
+  else if (command === 'hintergrund') {
+    css1 = 'body { background-image:url("'
+    css2 = '"); }'
+    message = 'Verfügbare Hintergründe: '
+    options = {
+      Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
+      Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
+      Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
+      KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
+      Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
+      Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
+      Nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK'
+    }
+  }
+  if (params) {
+    if (params != 'last') {
+      if (options.hasOwnProperty(params)) params = options[params]
+      else {
+        const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
+        if (emote) params = emote.image
+      }
+      params = validUrl.isHttpsUri(params)
+      if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      this.API.emotes.cssReplace(command, css1 + params + css2)
+    }
+    else this.API.emotes.cssReplace(command)
+  }
+  else this.sendByFilter(message + Object.keys(options).join(', '))
 }

@@ -21,10 +21,10 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject) => {
       Object.assign(ponk, {
-        fetch: function (url, {
+        fetch (url, {
           qs = {},
           form = false,
           method = 'get',
@@ -108,7 +108,7 @@ module.exports = {
             })
           })
         },
-        addNetzm: function(id, willkür, user, type = 'fi', title, url) {
+        addNetzm(id, willkür, user, type = 'fi', title, url) {
           let pos = 'end'
           if (ponk.getUserRank(user) < 3 ) {
             if (ponk.chanopts.playlist_max_per_user && ponk.playlist.filter(item => item.queueby == user).length > ponk.chanopts.playlist_max_per_user) {
@@ -119,12 +119,15 @@ module.exports = {
           ponk.mediaSend({ type, id, pos, title })
         }
       })
+      ponk.db.createTableIfNotExists('netzms', (table) => {
+          table.string('faden', 240).primary();
+      })
       ponk.logger.log('Registering fetch-handlers');
       resolve();
     })
   },
   handlers: {
-    giphy: function(user, params, meta) {
+    giphy(user, params, meta) {
       this.fetch('https://api.giphy.com/v1/gifs/search', {
         qs: {
           api_key: this.API.keys.giphy,
@@ -137,7 +140,7 @@ module.exports = {
         this.sendMessage(image + '.pic')
       }))
     },
-    tenor: function(user, params, meta) {
+    tenor(user, params, meta) {
       this.fetch('https://api.tenor.com/v1/search', {
         qs: {
           api_key: this.API.keys.tenor,
@@ -150,7 +153,7 @@ module.exports = {
         this.sendMessage(image + '.pic')
       }))
     },
-    w0bm: function(user, params, meta) {
+    w0bm(user, params, meta) {
       const getW0bm = (page = '') => {
         this.fetch('https://w0bm.com/index', {
           qs: {
@@ -191,7 +194,7 @@ module.exports = {
       this.sendMessage('Letztes gif als netzm addiert')
       w0bm = false
     },
-    pr0: function(user, params, meta) {
+    pr0(user, params, meta) {
       let video = false
       params = params.replace(/(?:^| )video(?: |$)/, () => ((video = true) && '')).trim()
       if (params.length < 1 && pr0) {
@@ -219,7 +222,7 @@ module.exports = {
         this.sendByFilter(imageHtml('https://thumb.pr0gramm.com/' + item.thumb, 'https://img.pr0gramm.com/' + item.image), true)
       })
     },
-    netzm: function(user, params, meta) {
+    netzm(user, params, meta) {
       this.db.knex('netzms').select('faden').then(result => {
         const faden = params.match(/^(https:\/\/(?:(?:www|nocsp|backdoor)\.)?kohlchan\.net\/\w+\/res\/\d+\.html)/i)
         const faeden = faden ? [faden[1]] : result.map(row => row.faden)
@@ -263,7 +266,7 @@ module.exports = {
         }))
       })
     },
-    lauer: function(user, params, meta) {
+    lauer(user, params, meta) {
       const url = params.match(/^(https:\/\/(?:(?:www|nocsp|backdoor)\.)?kohlchan\.net)\/(\w+)\/res\/(\d+)\.html(?:#q?(\d+))?/i)
       if (!url) return this.sendMessage('Lauere nur auf KC!')
       const siteurl = url[1]//'https://kohlchan.net'
@@ -290,7 +293,7 @@ module.exports = {
         }
       })
     },
-    wiki: function(user, params, meta) {
+    wiki(user, params, meta) {
       this.fetch('https://de.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(params), {
         json: true,
         customerr: [404]
@@ -300,7 +303,7 @@ module.exports = {
         this.sendByFilter('<div class="wikiinfo">' + (body.thumbnail ? `<img class="fikuimage" src="${body.thumbnail.source}" />` : '') + body.extract_html + '</div>', true)
       })
     },
-    pic: function(user, params, meta) {
+    pic(user, params, meta) {
       const url = validUrl.isHttpsUri(params.split(' ').shift())
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       if (/https:\/\/(?:www\.)?instagram\.com\/p\/[\w-]+\/?/i.test(url)) this.fetch(url + '?__a=1', {
@@ -318,7 +321,7 @@ module.exports = {
         this.sendMessage($('.screenshot-image').attr('src') + '.pic')
       })
     },
-    anagramde: function(user, params, meta) {
+    anagramde(user, params, meta) {
       const text = params.toLowerCase().trim()
       if (text.length > 17) this.sendMessage('Nur 17 Zeichen /elo')
       this.fetch('http://www.sibiller.de/anagramme/cgi-bin/CallWP.cgi', {
@@ -342,7 +345,7 @@ module.exports = {
         this.sendMessage(anagram.charAt(0).toUpperCase() + anagram.slice(1))
       })
     },
-    waskochen: function(user, params, meta) {
+    waskochen(user, params, meta) {
       params = params.replace(/;/g, ',').split(',').map(param => param.trim()).join(',')
       .replace(/ö/g, 'o')
       .replace(/ä/g, 'a')
@@ -365,7 +368,7 @@ module.exports = {
         'Zutaten: ' + body.ingredients.map(row => row.name).join(', ') + '<br><br>' + 'Tags: ' + body.tags_channelized.join(', ')  + '</div>', true)
       })
     },
-    wetter: function(user, params, meta) {
+    wetter(user, params, meta) {
       let day = -1
       let min
       params = params.replace(/ (heute)|(morgen)|(übermorgen)$/, function() {
@@ -394,7 +397,7 @@ module.exports = {
         if (min) this.sendByFilter(imageHtml('https://openweathermap.org/img/w/' + min.weather[0].icon + '.png') + ' ' + min.weather[0].description + ' ' + min.main.temp + '°C', true)
       })
     },
-    urban: function(user, params, meta) {
+    urban(user, params, meta) {
       this.fetch('https://mashape-community-urban-dictionary.p.rapidapi.com/define', {
         headers: {
           'X-RapidAPI-Key' : this.API.keys.rapidapi,
@@ -408,7 +411,7 @@ module.exports = {
         this.sendByFilter('<div class="wikiinfo">' + list[0].definition + '</div>', true)
       })
     },
-    dict: function(user, params, meta) {
+    dict(user, params, meta) {
       this.fetch('https://systran-systran-platform-for-language-processing-v1.p.rapidapi.com/translation/text/translate', {
         headers: {
           'X-RapidAPI-Key' : this.API.keys.rapidapi,
@@ -424,12 +427,12 @@ module.exports = {
         this.sendMessage(list[0].output)
       })
     },
-    inspire: function(user, params, meta) {
+    inspire(user, params, meta) {
       this.fetch('https://inspirobot.me/api?generate=true').then(({ body }) => {
         this.sendMessage(body + '.pic')
       })
     },
-    liveleak: function(user, params, meta) {
+    liveleak(user, params, meta) {
       this.fetch('https://www.liveleak.com/browse?page=9999', {
         match: />(\d+)<\/a>\s+<\/li>\s+<\/ul>/
       }).then(({ match, headers }) => {

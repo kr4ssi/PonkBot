@@ -44,7 +44,7 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject)=>{
       ponk.API.autoadd = new autoAdd(ponk);
       ponk.logger.log('Registering auto-add');
@@ -52,7 +52,7 @@ module.exports = {
     })
   },
   handlers: {
-    //autoadd: function(user, params, meta) {
+    //autoadd(user, params, meta) {
 
     //}
   }

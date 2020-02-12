@@ -62,7 +62,7 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject) => {
       ponk.API.gez = new gezStations(ponk);
       ponk.logger.log('Registering GEZ-Stations');
@@ -70,7 +70,7 @@ module.exports = {
     })
   },
   handlers: {
-    gez: function(user, params, meta) {
+    gez(user, params, meta) {
       let chan
       if (/keller$/.test(params)) {
         chan = 'keller'
@@ -115,7 +115,7 @@ module.exports = {
         }
       })
     },
-    tv: function(user, params, meta) {
+    tv(user, params, meta) {
       const getZDF = (params = '') => this.fetch('https://www.zdf.de/live-tv', {
         $: true
       }).then(({ $ }) => {
@@ -153,7 +153,7 @@ module.exports = {
         })
       }).then(params ? undefined : getZDF)
     },
-    doku: function(user, params, meta) {
+    doku(user, params, meta) {
       this.fetch('https://mediathekviewweb.de/api/query', {
         method: 'post',
         json: false,

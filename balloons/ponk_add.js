@@ -7,6 +7,7 @@
 
 const HosterList = require('./add_hosts.js')
 
+const path = require('path')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
@@ -28,7 +29,7 @@ class AddCustom {
       userScripts : {},    // Different userscripts
       bot         : ponk   // The bot
     })
-    PythonShell.run('./youtube-dl_get-regex.py', {
+    PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
       parser: data => {
         let [name, regex, groups] = JSON.parse(data)
         regex = new RegExp(regex.replace(/^(?:\(\?\w+\))/, '').replace(/(?:\(\?P\<(\w+)\>)|(?:\(\?\((\w+)\))|(?:\(\?P=(\w+)\))/g, (match, p1, p2, p3) => {
@@ -72,7 +73,7 @@ class AddCustom {
   }
 
   setupUserScript() {
-    const userscript = require('fs').readFileSync('ks.user.js', {
+    const userscript = require('fs').readFileSync(path.join(__dirname, 'add.user.js'), {
       encoding: "utf-8"
     }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst allowedHosts[^\n\r]+\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
     if (!userscript) throw new Error('Userscript broken');
@@ -281,7 +282,7 @@ module.exports = {
     active: true,
     type: 'giggle'
   },
-  giggle: function(ponk){
+  giggle(ponk){
     return new Promise((resolve, reject) => {
       ponk.API.add = new AddCustom(ponk);
       ponk.logger.log('Registering custom .add');
@@ -289,7 +290,7 @@ module.exports = {
     })
   },
   handlers: {
-    add: function(user, params, meta) {
+    add(user, params, meta) {
       const split = params.split(' ')
       let url = split.shift()
       let title = split.join(' ').trim()
@@ -326,7 +327,7 @@ module.exports = {
       if (url) this.API.add.add(url, title, { user, ...meta })
       else this.sendMessage('Ist keine https-Elfe /pfräh')
     },
-    readd: function(user, params, meta) {
+    readd(user, params, meta) {
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       this.API.add.add(url, this.currMedia.title, { user,
