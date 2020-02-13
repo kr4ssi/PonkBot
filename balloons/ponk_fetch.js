@@ -412,18 +412,21 @@ module.exports = {
       })
     },
     dict(user, params, meta) {
+      const [ , source = 'auto', target = 'de', input] = params.match(/^(?:([a-z]{1,2})(?:-([a-z]{1,2}))? )?(.*)/)
       this.fetch('https://systran-systran-platform-for-language-processing-v1.p.rapidapi.com/translation/text/translate', {
         headers: {
           'X-RapidAPI-Key' : this.API.keys.rapidapi,
           'X-RapidAPI-Host': 'systran-systran-platform-for-language-processing-v1.p.rapidapi.com'
         },
         qs: {
-          source: 'auto',
-          target: 'de',
-          input: params
+          source,
+          target,
+          input
         }, json: true,
-        getlist: 'outputs'
-      }).then(({ list }) => {
+        getlist: 'outputs',
+        customerr: [500]
+      }).then(({ statusCode, list }) => {
+        if (statusCode === 500) return this.sendMessage('Keine Ergebnisse /elo')
         this.sendMessage(list[0].output)
       })
     },
