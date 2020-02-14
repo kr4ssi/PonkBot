@@ -299,7 +299,7 @@ module.exports = {
   handlers: {
     rehost(user, params, meta) {
       const rehostImage = image => {
-        this.rehostUrl(image).then(image => {
+        this.API.emotes.rehostUrl(image).then(image => {
           this.sendMessage(image + '.pic')
         }, (err, msg) => {
           console.error(err)
