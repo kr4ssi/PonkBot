@@ -31,14 +31,14 @@ module.exports = {
           })
         }, 500))
       }
-      ponk.client.socket.on('newPoll',        (poll)=>{ ponk.handleNewPoll(poll) });
-      ponk.client.socket.on('updatePoll',     (poll)=>{ ponk.handleUpdatePoll(poll) });
-      ponk.client.socket.on('closePoll',          ()=>{ ponk.handleClosePoll() });
-      ponk.client.socket.on('channelCSSJS',  (cssjs)=>{ ponk.handleChannelCSSJS(cssjs) });
-      ponk.client.socket.on('chatFilters',  (filers)=>{ ponk.handleChatFilters(filters) });
-      //ponk.client.socket.on('addFilterSuccess', data => console.log('addFilterSuccess', data));
-      //ponk.client.socket.on('deleteChatFilter', data => console.log('deleteChatFilter', data));
-      //ponk.client.socket.on('updateChatFilter', data => console.log('updateChatFilter', data));
+      ponk.client.socket.on('newPoll',            (poll)=>{ ponk.handleNewPoll(poll) });
+      ponk.client.socket.on('updatePoll',         (poll)=>{ ponk.handleUpdatePoll(poll) });
+      ponk.client.socket.on('closePoll',              ()=>{ ponk.handleClosePoll() });
+      ponk.client.socket.on('channelCSSJS',      (cssjs)=>{ ponk.handleChannelCSSJS(cssjs) });
+      ponk.client.socket.on('setMotd',            (motd)=>{ ponk.handleMotd(filters) });
+      ponk.client.socket.on('chatFilters',     (filters)=>{ ponk.handleChatFilters(filters) });
+      ponk.client.socket.on('updateChatFilter', (filter)=>{ ponk.handleFilterUpdate(filter) });
+      ponk.client.socket.on('deleteChatFilter', (filter)=>{ ponk.handleFilterRemove(filter) });
       Object.assign(ponk, {
         pollactive  : false, // Is a poll running?
         poll        : {},    // The current running, or last active poll
@@ -47,29 +47,64 @@ module.exports = {
         channelMotd : '',    // The channel Motd
         chatFilters : [],    // A list of chat-filtes
         lastImages  : [],    // A list with lastly posted Images
-        handleNewPoll: function(poll){
-          //console.log(poll)
+        // { counts: [], initiator: <String>, options: [], timestamp: <Int>, title: <String> }
+        handleNewPoll: function(poll) {
           this.logger.log(`Opened Poll`);
           this.pollactive = true;
           this.poll = poll;
         },
-        handleUpdatePoll: function(poll){
-          ///console.log(poll)
-          this.logger.log(`Updated Poll`);
+        // { counts: [], initiator: <String>, options: [], timestamp: <Int>, title: <String> }
+        handleUpdatePoll: function(poll) {
           this.poll = poll;
+          this.logger.log(`Updated Poll`);
         },
-        handleClosePoll: function(){
-          this.logger.log(`Closed Poll`);
+        handleClosePoll: function() {
           this.pollactive = false;
+          this.logger.log(`Closed Poll`);
         },
+        // { css: <String>, js: <String> }
         handleChannelCSSJS: function(cssjs) {
-          console.log('Updated Channel-JS/CSS')
           this.channelCSS = cssjs.css
           this.channelJS = cssjs.js
+          this.logger.log(`Updated Channel-JS/CSS`)
         },
-        handleChatFilters: function(filters){
-          console.log('Requested chatFilters')
+        // <String>
+        handleMotd: function(motd) {
+          this.channelMotd = motd
+          this.logger.log(`Updated Channel-Motd`)
+        },
+        // [ { name: <String>, source: <String>, replace: <String>, flags: <String>, active: <Boolean>, filterlinks: <Boolean> }, ... ]
+        handleChatFilters: function(filters) {
           this.chatFilters = filters
+          this.logger.log(`Received Chat-Filters`)
+        },
+        // { name: <String>, source: <String>, replace: <String>, flags: <String>, active: <Boolean>, filterlinks: <Boolean> }
+        handleFilterUpdate: function(filter){
+          let found = false;
+          for(const old of this.chatFilters){
+            if(old.name !== filter.name){ continue }
+            this.chatFilters.splice(this.chatFilters.indexOf(old), 1, filter);
+            const changes = Object.keys(filter).reduce((changes, key) => {
+              if (old[key] != filter[key]) changes[key] = filter[key]
+              return changes
+            }, {});
+            this.logger.log(`Filter "${filter.name}" updated: ${JSON.stringify(changes)}`);
+            found = true;
+            break;
+          }
+          if(!found){
+            this.chatFilters.push(filter);
+            this.logger.log(`Filter "${filter.name}" added.`);;
+          }
+        },
+        // { name: <String>, source: <String>, replace: <String>, flags: <String>, active: <Boolean>, filterlinks: <Boolean> }
+        handleFilterRemove: function({ name }){
+          for(const filter of this.chatFilters){
+            if(filter.name !== name){ continue }
+            this.chatFilters.splice(this.chatFilters.indexOf(filter), 1);
+            this.logger.log(`Filter "${name}" removed.`);
+            break;
+          }
         },
         handleChatMessage({ username: user, msg: message, time, meta }) {
           if (time < this.started) return
@@ -250,6 +285,8 @@ module.exports = {
           })
         }
       })
+      ponk.client.socket.emit('requestChatFilters')
+      ponk.logger.log(`Requested Chat-Filters`)
       if (!ponk.server) {
         const { weblink, webport } = require('../config.js').webhost
         ponk.server = {
@@ -264,29 +301,30 @@ module.exports = {
         table.increments();
         table.string('image', 480)
       })
-      ponk.client.socket.on('announcement', data => console.log('announcement', data));
-      ponk.client.socket.on('cancelNeedPassword', data => console.log('cancelNeedPassword', data));
-      ponk.client.socket.on('channelNotRegistered', data => console.log('channelNotRegistered', data));
-      ponk.client.socket.on('channelRankFail', data => console.log('channelRankFail', data));
-      ponk.client.socket.on('channelRanks', data => console.log('channelRanks', data));
-      ponk.client.socket.on('clearFlag', data => console.log('clearFlag', data));
-      ponk.client.socket.on('clearVoteskipVote', data => console.log('clearVoteskipVote', data));
-      ponk.client.socket.on('cooldown', data => console.log('cooldown', data));
-      ponk.client.socket.on('empty', data => console.log('empty', data));
-      ponk.client.socket.on('errorMsg', data => console.log('errorMsg', data));
-      ponk.client.socket.on('kick', data => console.log('kick', data));
-      ponk.client.socket.on('loadFail', data => console.log('loadFail', data));
-      ponk.client.socket.on('needPassword', data => console.log('needPassword', data));
-      ponk.client.socket.on('noflood', data => console.log('noflood', data));
-      ponk.client.socket.on('pm', data => console.log('pm', data)); // {msg: '', meta: {}, time: 0, to: ''}
-      ponk.client.socket.on('searchResults', data => console.log('searchResults', data));
-      ponk.client.socket.on('setFlag', data => console.log('setFlag', data));
-      ponk.client.socket.on('spamFiltered', data => console.log('spamFiltered', data));
-      ponk.client.socket.on('validationError', data => console.log('validationError', data));
-      ponk.client.socket.on('validationPassed', data => console.log('validationPassed', data));
-      //ponk.client.socket.on('voteskip', data => console.log('voteskip', data));
-      ponk.client.socket.on('warnLargeChandump', data => console.log('warnLargeChandump', data));
-      ponk.client.socket.on('readChanLog', data => console.log('readChanLog', data));
+      ponk.client.socket.on('announcement',         data => console.log('announcement', data))
+      ponk.client.socket.on('cancelNeedPassword',   data => console.log('cancelNeedPassword', data))
+      ponk.client.socket.on('channelNotRegistered', data => console.log('channelNotRegistered', data))
+      ponk.client.socket.on('channelRankFail',      data => console.log('channelRankFail', data))
+      ponk.client.socket.on('channelRanks',         data => console.log('channelRanks', data))
+      ponk.client.socket.on('clearFlag',            data => console.log('clearFlag', data))
+      ponk.client.socket.on('clearVoteskipVote',    data => console.log('clearVoteskipVote', data))
+      ponk.client.socket.on('cooldown',             data => console.log('cooldown', data))
+      ponk.client.socket.on('empty',                data => console.log('empty', data))
+      ponk.client.socket.on('errorMsg',             data => console.log('errorMsg', data))
+      ponk.client.socket.on('kick',                 data => console.log('kick', data))
+      ponk.client.socket.on('loadFail',             data => console.log('loadFail', data))
+      ponk.client.socket.on('needPassword',         data => console.log('needPassword', data))
+      ponk.client.socket.on('noflood',              data => console.log('noflood', data))
+      ponk.client.socket.on('pm',                   data => console.log('pm', data)) // {msg: '', meta: {}, time: 0, to: ''}
+      ponk.client.socket.on('searchResults',        data => console.log('searchResults', data))
+      ponk.client.socket.on('setFlag',              data => console.log('setFlag', data))
+      ponk.client.socket.on('spamFiltered',         data => console.log('spamFiltered', data))
+      ponk.client.socket.on('validationError',      data => console.log('validationError', data))
+      ponk.client.socket.on('validationPassed',     data => console.log('validationPassed', data))
+      //ponk.client.socket.on('voteskip',             data => console.log('voteskip', data))
+      ponk.client.socket.on('warnLargeChandump',    data => console.log('warnLargeChandump', data))
+      ponk.client.socket.on('readChanLog',          data => console.log('readChanLog', data))
+      ponk.client.socket.on('addFilterSuccess',     data => console.log('addFilterSuccess', data))
       resolve()
     })
   }

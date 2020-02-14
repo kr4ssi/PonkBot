@@ -68,8 +68,8 @@ class Emotes {
       fs.mkdirSync(path.join(this.emotespath, '_bak'))
       this.bakfilenames = []
     }
-    if (process.env.NODE_ENV != 'production') return this.backupEmotes(this.bot.client)
-    if (this.bot.emotes.length > 0) this.checkEmotes()
+    if (process.env.NODE_ENV != 'production') this.backupEmotes(this.bot.client)
+    else if (this.bot.emotes.length > 0) this.checkEmotes()
     else this.bot.client.once('emoteList', list => this.checkEmotes(list))
     this.bot.client.prependListener('updateEmote', ({ name, image }) => {
       const emote = this.bot.emotes.find(emote => emote.name === name)
@@ -94,8 +94,11 @@ class Emotes {
       if (this.bot.channelCSS && stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS)) this.pushToGit('channel.css', cssjs.css)
       if (this.bot.channelJS && cssjs.js != this.bot.channelJS) this.pushToGit('channel.js', cssjs.js)
     })
-    this.bot.client.prependListener('chatFilters', filers => {
+    this.bot.client.prependListener('chatFilters', filters => {
       if (filters != this.bot.chatFilters) this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
+    })
+    this.bot.client.prependListener('setMotd', motd => {
+      if (motd != this.bot.channelMotd) this.pushToGit('motd.html', motd)
     })
   }
   cleanName(name) {
