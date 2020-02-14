@@ -97,6 +97,12 @@ class Emotes {
     this.bot.client.prependListener('chatFilters', filters => {
       if (filters != this.bot.chatFilters) this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
+    this.bot.client.on('updateChatFilter', filter => {
+      this.pushToGit('filters.json', JSON.stringify(this.bot.chatFilters, null, 2))
+    })
+    this.bot.client.on('deleteChatFilter', filter => {
+      this.pushToGit('filters.json', JSON.stringify(this.bot.chatFilters, null, 2))
+    })
     this.bot.client.prependListener('setMotd', motd => {
       if (motd != this.bot.channelMotd) this.pushToGit('motd.html', motd)
     })
