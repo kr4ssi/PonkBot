@@ -24,7 +24,17 @@ class FikuSystem {
       table.bigint('timestamp').unsigned()
     })
   }
-
+  checkFiku(url, title) {
+    return new Promise((resolve, reject) => {
+      url = validUrl.isHttpsUri(url)
+      if (!url) throw 'Ist keine https-Elfe /pfräh'
+      if (title) return resolve(title)
+      this.bot.API.add.allowedHosts.hostAllowed(url).then(host => {
+        if (host.name != 'kinox.to') return resolve(title)
+        host.getInfo(url, true).then(({ title }) => resolve(title))
+      })
+    })
+  }
   getFikuList() {
     return new Promise(resolve => {
       //if (this.fikuList.length) return resolve(true)
@@ -71,7 +81,7 @@ class FikuSystem {
   }
   getTmdbInfo({ id, type }, info, language) {
     return new Promise(resolve => {
-      this.bot.fetch('https://api.themoviedb.org/3/' + type + '/' + id + (info ? '/' + info : ''), {
+      this.bot.fetch(`https://api.themoviedb.org/3/${type}/${id}${info ? '/' + info : ''}`, {
         qs: {
           api_key: this.bot.API.keys.tmdb,
           language,
@@ -145,31 +155,21 @@ module.exports = {
     ausschussfiku(user, params, meta) {
       this.API.fiku.fikupoll(user, params, meta)
     },
-    vorschlag: async function(user, params, meta) {
-      const split = params.trim().split(';')
-      let url = validUrl.isHttpsUri(split.pop().trim())
-      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      let title = split.join().trim()
-      if (!title) try {
-        ({ title, location: url } = await this.API.add.allowedHosts.hostAllowed(url).then(host => {
-          if (host.name != 'kinox.to') reject()
-          else return host
-        }).then(host => host.getInfo(url, true)))
+    vorschlag(user, params, meta) {
+      if (params.includes(';')) {
+        const legacy = params.trim().split(';')
+        params = legacy.pop().trim() + ' ' + legacy.join(' ')
       }
-      catch (err) {
-        console.error(err)
-      }
-      if (!/\w/.test(title)) return this.sendMessage('Kein Titel /lobodoblörek')
-      const fiku = { title, url, user, active: true, timestamp: Date.now() }
-      this.db.knex('fiku').insert(fiku).returning('id').then(result => {
-        if (result.length > 0) {
+      const [url, ...title] = params.trim().split(' ')
+      this.API.fiku.checkFiku(url, title.join(' ')).then(title => {
+        if (!/\w/.test(title)) throw 'Kein Titel /lobodoblörek'
+        const fiku = { title, url, user, active: true, timestamp: Date.now() }
+        this.db.knex('fiku').insert(fiku).returning('id').then(result => {
+          if (!result.length) throw 'Unexpected Error'
           const id = result.pop()
-          //this.API.fiku.getFikuList().then(push => {
           this.sendMessage('ID: ' + id + ' "' + title + '" zur fiku-liste addiert')
-          //  if (push) this.API.fiku.fikuList.push(Object.assign(fiku, { id }))
-          //})
-        }
-      })
+        })
+      }, err => this.sendMessage(err))
     },
     fikuliste(user, params, meta) {
       this.API.fiku.getFikuList().then(fikuList => {
@@ -182,7 +182,6 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         this.db.knex('fiku').where(fiku).del().then(deleted => {
           if (deleted) {
-            //this.API.fiku.fikuList.splice(this.API.fiku.fikuList.indexOf(fiku), 1);
             this.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
           }
         })
@@ -209,43 +208,27 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         const active = !fiku.active
         this.db.knex('fiku').where(fiku).update({ active }).then(() => {
-          //this.API.fiku.fikuList.find(row => row === fiku).active = active
           this.sendMessage('Eintrag ' + fiku.title + ' ' + (active ? '' : 'de') + 'aktiviert')
         })
       })
     },
-    fikuändern: async function(user, params, meta) {
-      const split = params.split(' ')
-      let id = split.shift()
-      let url = split.shift()
-      let title = split.join(' ').trim()
-      url = validUrl.isHttpsUri(url)
-      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      try {
-        ({ title, location: url } = await this.API.add.allowedHosts.hostAllowed(url).then(host => {
-          if (host.name != 'kinox.to') reject()
-          else return host
-        }).then(host => host.getInfo(url, true)))
-      }
-      catch (err) {
-        console.error(err)
-        title = split.join(' ').trim()
-      }
-      this.API.fiku.getFiku(id).then(fiku => {
-        if (fiku.user != user && this.getUserRank(user) < 3 ) {
-          return this.sendMessage('Du kannst nur deine eigenen Vorschläge ändern')
-        }
-        const update = { url }
-        if (title) update.title = title
-        this.db.knex('fiku').where(fiku).update(update).then(() => {
-          //this.API.fiku.fikuList.find(row => row === fiku).active = active
-          this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title)
+    fikuändern(user, params, meta) {
+      const [id, url, ...title] = params.trim().split(' ')
+      this.API.fiku.checkFiku(url, title.join(' ')).then(title => {
+        this.API.fiku.getFiku(id).then(fiku => {
+          if (fiku.user != user && this.getUserRank(user) < 3)
+          throw 'Du kannst nur deine eigenen Vorschläge ändern'
+          const update = { url }
+          if (title) update.title = title
+          this.db.knex('fiku').where(fiku).update(update).then(() => {
+            this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title)
+          })
         })
-      })
+      }, err => this.sendMessage(err))
     },
     fikuinfo(user, params, meta) {
-      (/^\d+$/.test(params) ? this.API.fiku.getFiku(params).then(({ title }) => title) :
-      Promise.resolve(params || this.currMedia.title)).then(title => {
+      Promise.resolve(/^\d+$/.test(params) ? this.API.fiku.getFiku(params) :
+      { title: params || this.currMedia.title }).then(({ title }) => {
         this.API.fiku.getTmdbId(title).then(id => {
           this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(credits => {
             this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
