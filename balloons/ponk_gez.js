@@ -36,9 +36,9 @@ class gezStations {
           live: true
         }))
       }).toArray().concat([
-        'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
-        'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
-        'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
+        //'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
+        //'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
+        //'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
       ].map(url => this.bot.API.add.allowedHosts.hostAllowed(url).then(host => {
         return host.getInfo()
       }).then(result => Object.assign(result, {

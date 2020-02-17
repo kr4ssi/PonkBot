@@ -10,90 +10,92 @@ const entities = new Entities();
 
 const parseLink = require('./add_parselink.js')
 
-class HosterList {
-  constructor(ponk, ydlRegEx) {
-    class Addition extends EventEmitter {
-      constructor(url, hosterList = allowedHosts) {
-        super()
-        const host = hosterList.find(host => {
-          this.match = url.match(host.regex)
-          return !!this.match
-        })
-        if (!host) throw new Error('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
-        this.url = this.match[0]
-        Object.assign(this, host, {
-          //fileurl,
-          //title,
-          //duration,
-          //quality,
-          //thumbnail,
-          //live,
-          ffprobe: {},
-          info: {},
-          formats: [],
-          //timestamp,
-          //user: {},
-          getInfo: host.getInfo.bind(this, this.url)
-        })
-        this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
-      }
-      get id() {
-        return this.type === 'cm' ? (ponk.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
-      }
-      get sources () {
-        return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
-      }
-      get manifest() {
-        return {
-          title: this.title || this.url,
-          live: this.live || false,
-          duration: this.duration || 0,
-          thumbnail: this.thumbnail,
-          sources: this.sources.map(({ height: quality, url }) => ({
-            url: this.needUserScript ? ponk.server.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
-            quality,
-            contentType: ([
-              {type: 'video/mp4', ext: ['.mp4']},
-              {type: 'video/webm', ext: ['.webm']},
-              {type: 'application/x-mpegURL', ext: ['.m3u8']},
-              {type: 'video/ogg', ext: ['.ogv']},
-              {type: 'application/dash+xml', ext: ['.mpd']},
-              {type: 'audio/aac', ext: ['.aac']},
-              {type: 'audio/ogg', ext: ['.ogg']},
-              {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-            ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
-          }))
-        }
-      }
-      download(url) {
-        let infofilename
-        return new PythonShell('youtube_dl', {
-          cwd: path.join(__dirname, '..', 'youtube-dl'),
-          pythonOptions: ['-m'],
-          args: [
-            '-o', path.join(ponk.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
-            '-f', 'mp4',
-            '--restrict-filenames',
-            '--write-info-json',
-            '--newline',
-            '--no-mtime',
-            url
-          ]
-        }).on('message', message => {
-          if (!infofilename && message.startsWith('[info]')) {
-            const match = message.match(/JSON to: (.*)$/)
-            if (match) infofilename = match[1]
-          }
-        }).on('close', () => {
-          const info = JSON.parse(fs.readFileSync(infofilename))
-          const filename = path.basename(info._filename)
-          fs.chmodSync(infofilename, 0o644)
-          ponk.sendMessage(filename + ' wird addiert')
-          ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
-        })
-      }
+class Addition extends EventEmitter {
+  constructor(ponk, url, hosterList) {
+    super()
+    hosterList = hosterList || ponk.API.add.allowedHosts.allowedHosts
+    const host = hosterList.find(host => {
+      this.match = url.match(host.regex)
+      return !!this.match
+    })
+    if (!host) throw new Error('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
+    this.url = this.match[0]
+    Object.assign(this, host, {
+      weblink: ponk.server.weblink,
+      //fileurl,
+      //title,
+      //duration,
+      //quality,
+      //thumbnail,
+      //live,
+      ffprobe: {},
+      info: {},
+      formats: [],
+      //timestamp,
+      //user: {},
+      getInfo: host.getInfo.bind(this, this.url)
+    })
+    this.matchGroup = id => this.match[this.groups.indexOf(id) + 1]
+  }
+  get id() {
+    return this.type === 'cm' ? (this.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
+  }
+  get sources () {
+    return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
+  }
+  get manifest() {
+    return {
+      title: this.title || this.url,
+      live: this.live || false,
+      duration: this.duration || 0,
+      thumbnail: this.thumbnail,
+      sources: this.sources.map(({ height: quality, url }) => ({
+        url: this.needUserScript ? this.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
+        quality,
+        contentType: ([
+          {type: 'video/mp4', ext: ['.mp4']},
+          {type: 'video/webm', ext: ['.webm']},
+          {type: 'application/x-mpegURL', ext: ['.m3u8']},
+          {type: 'video/ogg', ext: ['.ogv']},
+          {type: 'application/dash+xml', ext: ['.mpd']},
+          {type: 'audio/aac', ext: ['.aac']},
+          {type: 'audio/ogg', ext: ['.ogg']},
+          {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+        ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+      }))
     }
-    class Hoster {
+  }
+  download(url) {
+    let infofilename
+    return new PythonShell('youtube_dl', {
+      cwd: path.join(__dirname, '..', 'youtube-dl'),
+      pythonOptions: ['-m'],
+      args: [
+        '-o', path.join(ponk.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
+        '-f', 'mp4',
+        '--restrict-filenames',
+        '--write-info-json',
+        '--newline',
+        '--no-mtime',
+        url
+      ]
+    }).on('message', message => {
+      if (!infofilename && message.startsWith('[info]')) {
+        const match = message.match(/JSON to: (.*)$/)
+        if (match) infofilename = match[1]
+      }
+    }).on('close', () => {
+      const info = JSON.parse(fs.readFileSync(infofilename))
+      const filename = path.basename(info._filename)
+      fs.chmodSync(infofilename, 0o644)
+      ponk.sendMessage(filename + ' wird addiert')
+      ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
+    })
+  }
+}
+class HosterList {
+  constructor(ponk, ytdlRegex) {
+    class Provider {
       constructor(name, rules = {}) {
         Object.assign(this, {
           name,
@@ -137,7 +139,7 @@ class HosterList {
         })
       }
     }
-    const allowedHosts = Object.entries({
+    this.allowedHosts = Object.entries({
       'kinox.to': {
         regex: /https?:\/\/(?:www\.)?kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
         allowedHosts: this,
@@ -197,7 +199,7 @@ class HosterList {
                   console.log(match[0], mirrorindex, mirrorcount, date)
                 }
                 ponk.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
-                return new Addition(mirrorurl, [host.host]).getInfo().then(result => {
+                return new Addition(ponk, mirrorurl, [host.host]).getInfo().then(result => {
                   result.title = title
                   return result
                 }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
@@ -222,7 +224,7 @@ class HosterList {
       'vidshare.tv',
       'vup.to',
       'xvideosharing.com'].join(', ')]: {
-        ...ydlRegEx['XFileShareIE'],
+        ...ytdlRegex['XFileShareIE'],
         getInfo() {
           if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
           let args = []
@@ -241,7 +243,7 @@ class HosterList {
         }
       },
       'vshare.io': {
-        ...ydlRegEx['VShareIE'],
+        ...ytdlRegex['VShareIE'],
         userScript: function() {
           const e = document.querySelector('video').firstElementChild || document.querySelector('video')
           if (!e) return
@@ -250,7 +252,7 @@ class HosterList {
         }
       },
       'vivo.sx': {
-        ...ydlRegEx['VivoIE'],
+        ...ytdlRegex['VivoIE'],
         userScript: function() {
           const e = document.querySelector('video').lastElementChild || document.querySelector('video')
           if (!e) return
@@ -353,7 +355,7 @@ class HosterList {
         type: 'cm'
       },
       'youtube.com': {
-        ...ydlRegEx['YoutubeIE'],
+        ...ytdlRegex['YoutubeIE'],
         type: 'yt',
         fikuonly: true,
         getInfo() {
@@ -376,7 +378,7 @@ class HosterList {
         }
       },
       'googledrive': {
-        ...ydlRegEx['GoogleDriveIE'],
+        ...ytdlRegex['GoogleDriveIE'],
         type: 'gd',
         fikuonly: true,
         getInfo() {
@@ -385,7 +387,7 @@ class HosterList {
         }
       },
       'dailymotion.com': {
-        ...ydlRegEx['DailymotionIE'],
+        ...ytdlRegex['DailymotionIE'],
         type: 'dm',
         fikuonly: true,
         getInfo() {
@@ -394,7 +396,7 @@ class HosterList {
         }
       },
       'vimeo.com': {
-        ...ydlRegEx['VimeoIE'],
+        ...ytdlRegex['VimeoIE'],
         type: 'vi',
         fikuonly: true,
         getInfo() {
@@ -402,8 +404,8 @@ class HosterList {
           return Promise.resolve(this)
         }
       },
-      'chilloutzone.net': ydlRegEx['ChilloutzoneIE'],
-      'gfycat.com': ydlRegEx['GfycatIE'],
+      'chilloutzone.net': ytdlRegex['ChilloutzoneIE'],
+      'gfycat.com': ytdlRegex['GfycatIE'],
       'liveleak.com': {
         getInfo() {
           return Hoster.prototype.getInfo.call(this, this.url).then(() => {
@@ -421,18 +423,18 @@ class HosterList {
       'arte.tv': {},
       'bandcamp.com': {},
       'mixcloud.com': {},
-      'archive.org': ydlRegEx['ArchiveOrgIE'],
+      'archive.org': ytdlRegex['ArchiveOrgIE'],
       'ccc.de': {},
       'bitchute.com': {},
-      'prosieben.de': ydlRegEx['ProSiebenSat1IE'],
-      'peertube': ydlRegEx['PeerTubeIE'],
+      'prosieben.de': ytdlRegex['ProSiebenSat1IE'],
+      'peertube': ytdlRegex['PeerTubeIE'],
       'f0ck.me': {}
     }).concat(Object.entries({
       'twitter.com': {},
-      'ARDMediathek': ydlRegEx['ARDMediathekIE'],
+      'ARDMediathek': ytdlRegex['ARDMediathekIE'],
       'zdf.de': {},
-      'wdr.de': ydlRegEx['WDRPageIE'],
-      'WDRElefant': ydlRegEx['WDRElefantIE'],
+      'wdr.de': ytdlRegex['WDRPageIE'],
+      'WDRElefant': ytdlRegex['WDRElefantIE'],
       'mdr.de': {},
       'br.de': {},
       'bild.de': {},
@@ -464,23 +466,24 @@ class HosterList {
         type: 'cm'
       }
     ]))).map(([name, rules = {}]) => {
-      return new Hoster(name, rules)
+      const provider = new Provider(name, rules)
+      return provider
     })
-    const userScriptHosts = allowedHosts.filter(host => host.needUserScript)
+    const userScriptHosts = this.allowedHosts.filter(host => host.needUserScript)
     const kinoxIds = host => (Array.isArray(host.kinoxids) ? host.kinoxids : Object.keys(host.kinoxids))
-    this.kinoxHosts = allowedHosts.filter(host => host.kinoxids && kinoxIds(host).length > 0)
+    this.kinoxHosts = this.allowedHosts.filter(host => host.kinoxids && kinoxIds(host).length > 0)
     this.fromKinoxId = id => this.kinoxHosts.find(host => kinoxIds(host).includes(id))
     const kinoxPriority = id => {
       const host = this.fromKinoxId(id)
       return host && (host.priority || host.kinoxids[id])
     }
     this.kinoxIds = this.kinoxHosts.reduce((arr, host) => arr.concat(kinoxIds(host) || []), []).sort((a, b) => kinoxPriority(a) - kinoxPriority(b))
-    //console.log(allowedHosts)
+    //console.log(this.allowedHosts)
     this.hostAllowed = url => new Promise((resolve, reject) => {
-      resolve(new Addition(url))
+      resolve(new Addition(ponk, url))
     })
     this.kinoxAllowed = url => new Promise((resolve, reject) => {
-      resolve(new Addition(url, this.kinoxHosts))
+      resolve(new Addition(ponk, url, this.kinoxHosts))
     })
     //this.kinoxhost = id => this.kinoxHosts.find
     this.userScripts = {
@@ -491,7 +494,7 @@ class HosterList {
         getInfo: userScript
       }))
     }
-    this.allowedHostsString = allowedHosts.filter(host => !host.fikuonly).map(host => host.name).join(', ')
+    this.allowedHostsString = this.allowedHosts.filter(host => !host.fikuonly).map(host => host.name).join(', ')
   }
 }
 module.exports =  HosterList

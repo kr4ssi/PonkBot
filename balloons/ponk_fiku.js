@@ -91,7 +91,7 @@ class FikuSystem {
       })
     })
   }
-  fikupoll(user, params, meta) {
+  fikuPoll(user, params, meta) {
     this.getFikuList().then(fikuList => {
       const split = params.split(' ')
       let timeout = 0
@@ -150,10 +150,10 @@ module.exports = {
   },
   handlers: {
     fikupoll(user, params, meta) {
-      this.API.fiku.fikupoll(user, params, meta)
+      this.API.fiku.fikuPoll(user, params, meta)
     },
     ausschussfiku(user, params, meta) {
-      this.API.fiku.fikupoll(user, params, meta)
+      this.API.fiku.fikuPoll(user, params, meta)
     },
     vorschlag(user, params, meta) {
       if (params.includes(';')) {
