@@ -22,6 +22,7 @@ class Addition extends EventEmitter {
     this.url = this.match[0]
     Object.assign(this, host, {
       weblink: ponk.server.weblink,
+      bot: ponk
       //fileurl,
       //title,
       //duration,
@@ -88,8 +89,8 @@ class Addition extends EventEmitter {
       const info = JSON.parse(fs.readFileSync(infofilename))
       const filename = path.basename(info._filename)
       fs.chmodSync(infofilename, 0o644)
-      ponk.sendMessage(filename + ' wird addiert')
-      ponk.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
+      this.bot.sendMessage(filename + ' wird addiert')
+      this.bot.addNetzm(ponk.API.keys.filehost + '/files/' + filename, false, ponk.name, 'fi', info.title)
     })
   }
 }
@@ -98,6 +99,7 @@ class HosterList {
     class Provider {
       constructor(name, rules = {}) {
         Object.assign(this, {
+          bot: ponk,
           name,
           regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
           groups: [],
@@ -113,7 +115,7 @@ class HosterList {
             args: ['--dump-json', '-f', 'best', '--restrict-filenames', ...moreargs,  url]
           }, (err, data) => {
             if (err) {
-              ponk.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
+              this.bot.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
               return reject(err)
             }
             let info

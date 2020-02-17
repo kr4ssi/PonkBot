@@ -272,7 +272,7 @@ class Emotes {
         const setwidth = (size.width > 0) && (size.width != 100)
         const setheight = (size.height > 0) && (size.height != 100)
         if (!setwidth && !setheight) return css
-        css += `.channel-emote[title="${size.emote}"] {\r\n`
+        css += `.channel-emote[title="${size.emote}"]` + '{\r\n'
         if (setwidth)
         css += `  max-width: ${(size.width < 999) ? (size.width + 'px') : '100%'} !important;\r\n`
         if (setheight)
@@ -392,106 +392,106 @@ module.exports = {
             console.log(filenames)
             let i = 0
             this.emotes.forEach(({ name, image }) => {
-              if (/\/xmas\//.test(image)) return
-                const filename = filenames.find(filename => new RegExp('^' + name.slice(1).replace(/[:()]/g, '\\$&') + '\\.[^.]+$').test(filename))
-                if (!filename) return
-                const newfilename = image.replace(filename, 'xmas/' + filename)
-                console.log(filename, newfilename)
-                setTimeout(() => {
-                  this.client.socket.emit('updateEmote', { name, image: newfilename})
-                }, i++ * 300)
-              })
+              if (/(?:\/xmas\/)/.test(image)) return
+              const filename = filenames.find(filename => new RegExp('^' + name.slice(1).replace(/[:()]/g, '\\$&') + '\\.[^.]+$').test(filename))
+              if (!filename) return
+              const newfilename = image.replace(filename, 'xmas/' + filename)
+              console.log(filename, newfilename)
+              setTimeout(() => {
+                this.client.socket.emit('updateEmote', { name, image: newfilename})
+              }, i++ * 300)
             })
-          }
-          else {
-            this.db.setKeyValue('xmasemotes', 0)
-            let i = 0
-            this.emotes.forEach(({ name, image }) => {
-              if (!/\/xmas\//.test(image)) return
-                setTimeout(() => {
-                  this.client.socket.emit('updateEmote', { name, image: image.replace('/xmas', '')})
-                }, i++ * 300)
-              })
-            }
           })
-        },
-        getemote(user, params, meta) {
-          const split = params.trim().split(' ')
-          const chan = split.shift()
-          let name = split.shift()
-          const getEmotes = (chan, update) => new Promise((resolve, reject) => {
-            if (this.API.emotes.otherEmotes[chan] && !update) return resolve(this.API.emotes.otherEmotes[chan])
-            const { host, port, secure, user, auth } = this.client
-            const tempclient = new CyTubeClient({
-              host, port, secure, user, auth, chan
-            }, this.log).once('ready', function() {
-              this.connect()
-            }).once('connected', function() {
-              this.start()
-            }).once('emoteList', function(emotelist) {
-              resolve(emotelist)
-              this.socket.close()
-            }).on('error', reject)
+        }
+        else {
+          this.db.setKeyValue('xmasemotes', 0)
+          let i = 0
+          this.emotes.forEach(({ name, image }) => {
+            if (!/(?:\/xmas\/)/.test(image)) return
+            setTimeout(() => {
+              this.client.socket.emit('updateEmote', { name, image: image.replace('/xmas', '')})
+            }, i++ * 300)
           })
-          if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
-          let add
-          if (name === 'add') {
-            name = split.shift()
-            add = true
-          }
-          if (!name || !name.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
-          getEmotes(chan).then(emotes => {
-            this.API.emotes.otherEmotes[chan] = emotes
-            const emote = emotes.find(emote => emote.name == name)
-            if (!emote) return this.sendMessage('Emote nicht gefunden')
-            if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
-            else this.sendMessage(emote.image + '.pic')
-          })
-        },
-        hintergrund: logoHintergrund,
-        logo: logoHintergrund
+        }
+      })
+    },
+    getemote(user, params, meta) {
+      const split = params.trim().split(' ')
+      const chan = split.shift()
+      let name = split.shift()
+      const getEmotes = (chan, update) => new Promise((resolve, reject) => {
+        if (this.API.emotes.otherEmotes[chan] && !update) return resolve(this.API.emotes.otherEmotes[chan])
+        const { host, port, secure, user, auth } = this.client
+        const tempclient = new CyTubeClient({
+          host, port, secure, user, auth, chan
+        }, this.log).once('ready', function() {
+          this.connect()
+        }).once('connected', function() {
+          this.start()
+        }).once('emoteList', function(emotelist) {
+          resolve(emotelist)
+          this.socket.close()
+        }).on('error', reject)
+      })
+      if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
+      let add
+      if (name === 'add') {
+        name = split.shift()
+        add = true
       }
+      if (!name || !name.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
+      getEmotes(chan).then(emotes => {
+        this.API.emotes.otherEmotes[chan] = emotes
+        const emote = emotes.find(emote => emote.name == name)
+        if (!emote) return this.sendMessage('Emote nicht gefunden')
+        if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
+        else this.sendMessage(emote.image + '.pic')
+      })
+    },
+    hintergrund: logoHintergrund,
+    logo: logoHintergrund
+  }
+}
+function logoHintergrund(user, params, meta) {
+  let css1, css2, options, message, rank
+  const command = meta.command
+  if (command === 'logo') {
+    css1 = '#leftpane-inner:after { background-image:url("',
+    css2 = '"); }',
+    message = 'Verfügbare Logos: '
+    options = {
+      FIKU: 'https://tinyimg.io/i/wVmC0iw.png',
+      KS: 'https://tinyimg.io/i/NF44780.png',
+      Partei: 'https://tinyimg.io/i/JlE5E57.png',
+      Heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
     }
-    function logoHintergrund(user, params, meta) {
-      let css1, css2, options, message, rank
-      const command = meta.command
-      if (command === 'logo') {
-        css1 = '#leftpane-inner:after { background-image:url("',
-        css2 = '"); }',
-        message = 'Verfügbare Logos: '
-        options = {
-          FIKU: 'https://tinyimg.io/i/wVmC0iw.png',
-          KS: 'https://tinyimg.io/i/NF44780.png',
-          Partei: 'https://tinyimg.io/i/JlE5E57.png',
-          Heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
-        }
-      }
-      else if (command === 'hintergrund') {
-        css1 = 'body { background-image:url("'
-        css2 = '"); }'
-        message = 'Verfügbare Hintergründe: '
-        options = {
-          Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
-          Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
-          Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
-          KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
-          Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
-          Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
-          Nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK'
-        }
-      }
-      if (params) {
-        if (params != 'last') {
-          if (options.hasOwnProperty(params)) params = options[params]
-          else {
-            const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
-            if (emote) params = emote.image
-          }
-          params = validUrl.isHttpsUri(params)
-          if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
-          this.API.emotes.cssReplace(command, css1 + params + css2)
-        }
-        else this.API.emotes.cssReplace(command)
-      }
-      else this.sendByFilter(message + Object.keys(options).join(', '))
+  }
+  else if (command === 'hintergrund') {
+    css1 = 'body { background-image:url("'
+    css2 = '"); }'
+    message = 'Verfügbare Hintergründe: '
+    options = {
+      Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
+      Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
+      Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
+      KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
+      Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
+      Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
+      Nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK'
     }
+  }
+  if (params) {
+    if (params != 'last') {
+      if (options.hasOwnProperty(params)) params = options[params]
+      else {
+        const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
+        if (emote) params = emote.image
+      }
+      params = validUrl.isHttpsUri(params)
+      if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      this.API.emotes.cssReplace(command, css1 + params + css2)
+    }
+    else this.API.emotes.cssReplace(command)
+  }
+  else this.sendByFilter(message + Object.keys(options).join(', '))
+}
