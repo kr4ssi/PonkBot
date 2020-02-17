@@ -58,9 +58,6 @@ class Emotes {
     this.bot.server.host.get('/emotes.json', (req, res) => {
       res.json(this.bot.emotes.map(({ name, image }) => ({ name, image })))
     })
-    this.bot.server.host.get('/emotefilter.json', (req, res) => {
-      res.json(this.emoteFilter)
-    })
     if (!fs.existsSync(this.emotespath)) fs.mkdirSync(this.emotespath)
     else fs.readdirSync(this.emotespath).forEach(filename => {
       const stat = fs.statSync(path.join(this.emotespath, filename))
@@ -285,8 +282,8 @@ class Emotes {
     })
   }
   cssReplace(command, addCSS) {
-    //let css = this.bot.channelCSS
-    let css = this.bot.API.emotes.botCSS
+    let css = this.bot.channelCSS
+    //let css = this.bot.API.emotes.botCSS
     const tagText = `Bot-CSS "${command}" do not edit`
     const myRegEx = '\\/\\*\\s' + tagText + '\\s\\*\\/'
     const myMatch = css.match(new RegExp('\\s' + myRegEx + '([\\S\\s]+)' + myRegEx, 'i'))
@@ -297,9 +294,9 @@ class Emotes {
       css = css.replace(myMatch[0], cssNew)
     }
     else css += cssNew
-    //this.bot.client.socket.emit('setChannelCSS', {css})
-    this.bot.API.emotes.botCSS = css
-    this.bot.client.socket.emit('setChannelCSS', {css: this.bot.channelCSS.replace(/\/bot\.css\?[^"]+/, '/bot.css?' + Date.now())})
+    this.bot.client.socket.emit('setChannelCSS', {css})
+    //this.bot.API.emotes.botCSS = css
+    //this.bot.client.socket.emit('setChannelCSS', {css: this.bot.channelCSS.replace(/\/bot\.css\?[^"]+/, '/bot.css?' + Date.now())})
   }
 }
 
