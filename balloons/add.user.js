@@ -1,14 +1,3 @@
-// ==UserScript==
-// @name openload fürn KS
-// @namespace https://github.com/kr4ssi/PonkBot/
-// @version 1.0.7
-// @author kr4ssi
-// ==/UserScript==
-
-const allowedHosts = [{regex: /./}]
-
-const config = {}
-
 const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?userscript&url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
 
 const host = allowedHosts.find(host => host.regex.test(window.location.href) && typeof host.getInfo === 'function')

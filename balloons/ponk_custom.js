@@ -290,7 +290,7 @@ module.exports = {
     },
     help(user, params, meta) {
       if (this.commands.helpdata.hasOwnProperty(params)) this.sendByFilter(this.commands.helpdata[params].synop +
-        ((params === 'add' && this.API.add) ? this.API.add.allowedHostsString : '') +
+        ((params === 'add' && this.API.add) ? this.API.add.supportedProviders : '') +
         (this.commands.helpdata[params].rank > 1 ? '. Geht ab Level: ' + this.commands.helpdata[params].rank :
         (this.commands.helpdata[params].rank === 1 ? '. Geht nur für registrierte User' : '')))
         else this.sendByFilter('Verfügbare Befehle: ' + Object.keys(this.commands.handlers).join(', '))

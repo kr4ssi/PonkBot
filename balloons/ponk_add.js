@@ -5,36 +5,97 @@
 
 'use strict';
 
-const HosterList = require('./add_hosts.js')
+const ProviderList = require('./add_provider.js')
 
+const EventEmitter = require('events')
 const path = require('path')
+const URL = require('url')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
 const forwarded = require('forwarded');
 const userscriptmeta = require('userscript-meta')
 const crypto = require('crypto')
 const { execFile } = require('child_process')
-const { PythonShell } = require('python-shell')
 
 const toSource = source => require('js-beautify').js(require('tosource')(source), {
   indent_size: 2,
   keep_array_indentation: true
 })
 
+class Addition extends EventEmitter {
+  constructor(...args) {
+    super()
+    this.matchUrl(...args)
+    Object.assign(this, {
+      //fileurl,
+      //title,
+      //duration,
+      //quality,
+      //thumbnail,
+      //live,
+      ffprobe: {},
+      info: {},
+      formats: [],
+      //timestamp,
+      //user: {},
+      matchGroup: id => this.match[this.groups.indexOf(id) + 1]
+    })
+  }
+  matchUrl(url, providerList) {
+    if (providerList) {
+      const provider = providerList.find(provider => {
+        return !!(this.match = url.match(provider.regex))
+      })
+      if (!provider) throw new Error('Can\'t find a supported provider')
+      Object.assign(this, provider, {
+        getInfo: () => provider.getInfo.call(this, this.url),
+        download: () => provider.download.call(this, this.url)
+      })
+    }
+    return this.match
+  }
+  get url() {
+    return this.match[0]
+  }
+  get id() {
+    return this.type === 'cm' ? (this.bot.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
+  }
+  get sources () {
+    return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
+  }
+  get manifest() {
+    return {
+      title: this.title || this.url,
+      live: this.live || false,
+      duration: this.duration || 0,
+      thumbnail: this.thumbnail,
+      sources: this.sources.map(({ height: quality, url }) => ({
+        url: this.needUserScript ? this.bot.server.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
+        quality,
+        contentType: ([
+          {type: 'video/mp4', ext: ['.mp4']},
+          {type: 'video/webm', ext: ['.webm']},
+          {type: 'application/x-mpegURL', ext: ['.m3u8']},
+          {type: 'video/ogg', ext: ['.ogv']},
+          {type: 'application/dash+xml', ext: ['.mpd']},
+          {type: 'audio/aac', ext: ['.aac']},
+          {type: 'audio/ogg', ext: ['.ogg']},
+          {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
+        ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+      }))
+    }
+  }
+}
+
 class AddCustom {
   constructor(ponk) {
     Object.assign(this, {
       cmAdditions : {},    // Custom Additions
-      userLinks   : {},    // Userlinks for IP-Bound hosters
+      userLinks   : {},    // Userlinks for IP-Bound providers
       userScripts : {},    // Different userscripts
       bot         : ponk   // The bot
     })
-    this.ytdlGetRegex().then(ytdlRegex => {
-      this.allowedHosts = new HosterList(ponk, ytdlRegex)
-      this.allowedHostsString = this.allowedHosts.allowedHostsString
-      this.setupUserScript()
-      this.setupServer()
-    })
+    this.setupProviderList()
     this.bot.client.on('queue', ({ item }) => {
       if (item.queueby != this.bot.name) return
       this.cmAdditions[item.media.id] && this.cmAdditions[item.media.id].emit('queue')
@@ -55,38 +116,19 @@ class AddCustom {
       this.cmAdditions[ponk.currMedia.id] && this.cmAdditions[ponk.currMedia.id].emit('mediaUpdate')
     })
   }
-  ytdlGetRegex() {
-    return new Promise((resolve, reject) => {
-      PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
-        cwd: path.join(__dirname, '..', 'youtube-dl'),
-        parser: data => {
-          let [name, regex, groups] = JSON.parse(data)
-          regex = new RegExp(regex.replace(/^(?:\(\?\w+\))/, '').replace(/(?:\(\?P\<(\w+)\>)|(?:\(\?\((\w+)\))|(?:\(\?P=(\w+)\))/g, (match, p1, p2, p3) => {
-            if (p1) {
-              groups.push(p1)
-              return '('
-            }
-            const p = p2 || p3
-            if (p && !groups.includes(p) && !Number(p)) throw new Error('error')
-            groups.push(p)
-            return p2 ? '(' : ''
-          }))
-          return { [name]: { regex, groups } }
-        }
-      }, (err, result) => {
-        if (err) throw err.message
-        resolve(Object.assign(...result))
-      })
-    })
+  async setupProviderList() {
+    this.providerList = await new ProviderList(this.bot)
+    const priority = ({ id, provider }) => provider.priority || provider.kinoxids[id]
+    this.providerList.kinoxHosts = this.providerList.kinoxHosts.sort((a, b) =>  priority(a) - priority(b))
+    this.supportedProviders = this.providerList.supportedProviders
+    this.setupUserScript()
+    this.setupServer()
   }
   setupUserScript() {
     const userscript = require('fs').readFileSync(path.join(__dirname, 'add.user.js'), {
       encoding: "utf-8"
-    }).match(/\B(\/\/ ==UserScript==\r?\n(?:[\S\s]*?)\r?\n\/\/ ==\/UserScript==)\r?\n\r?\nconst allowedHosts[^\n\r]+\r?\n\r?\nconst config[^\n\r]+(\r?\n[\S\s]*)/);
-    if (!userscript) throw new Error('Userscript broken');
-    const weblink = this.bot.server.weblink
-    const allowedHosts = this.allowedHosts
-    const allowedHostsSource = toSource(allowedHosts.userScripts.allowedHostsSource)
+    })
+    const self = this
     const packageObj = require('../package.json')
     class UserScript {
       constructor(filename, descr = '', opt = {}, meta = {}) {
@@ -99,14 +141,14 @@ class AddCustom {
             version: packageObj.version + '.1.0.7',
             author: packageObj.author,
             ...meta,
-            include: allowedHosts.userScripts.includes.concat(meta.include || [])
+            include: self.providerList.userScriptIncludes.concat(meta.include || [])
           })
         })
-        const hosts = '\nconst allowedHosts = ' + allowedHostsSource
-        const config = '\n\nconst config = ' + toSource(Object.assign({
-          weblink,
-        }, opt))
-        this.userscript = this.meta + hosts + config + userscript[2]
+        this.userscript = this.meta + '\nconst allowedHosts = '
+        this.userscript += toSource(self.providerList.userScriptSources)
+        this.userScript += '\n\nconst config = ' + toSource(Object.assign({
+          weblink: self.bot.server.weblink,
+        }, opt)) + userscript
       }
     }
     this.userScripts = [
@@ -197,7 +239,7 @@ class AddCustom {
     })
   }
 
-  getDuration(host) {
+  getDuration(addition) {
     let tries = 0
     const tryToGetDuration = err => {
       return new Promise((resolve, reject) => {
@@ -210,11 +252,11 @@ class AddCustom {
         }
         tries++
         let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
-        if (host.info.http_headers) {
-          const headers = Object.entries(host.info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
+        if (addition.info.http_headers) {
+          const headers = Object.entries(addition.info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
           params = [...params, '-headers', headers]
         }
-        execFile('ffprobe', [...params, host.fileurl], (err, stdout, stderr) => {
+        execFile('ffprobe', [...params, addition.fileurl], (err, stdout, stderr) => {
           if (err) return tryToGetDuration(err)
           console.log(stderr)
           let info
@@ -224,10 +266,10 @@ class AddCustom {
           catch(err) {
             return console.error(err)
           }
-          host.ffprobe = info
+          addition.ffprobe = info
           if (info.format && info.format.duration) {
-            host.duration = parseFloat(info.format.duration)
-            resolve(host)
+            addition.duration = parseFloat(info.format.duration)
+            resolve(addition)
           }
           else return tryToGetDuration(info)
         })
@@ -237,28 +279,29 @@ class AddCustom {
   }
 
   add(url, title, meta) {
-    this.allowedHosts.hostAllowed(url).then(host => host.getInfo()).then(async result => {
-      //if (!meta.fiku && result.fikuonly) throw new Error('not addable')
-      if (this.bot.playlist.some(item => item.media.id === result.id)) return this.bot.sendMessage('Ist schon in der playlist')
-      if (title) result.title = title
-      if (result.type === 'cm' && !result.duration) try {
-        result = await this.getDuration(result)
+    new Addition(url, this.providerList).getInfo().then(async addition => {
+      addition.on('message', msg => this.bot.sendMessage(msg))
+      //if (!meta.fiku && addition.fikuonly) throw new Error('not addable')
+      if (this.bot.playlist.some(item => item.media.id === addition.id)) return this.bot.sendMessage('Ist schon in der playlist')
+      if (title) addition.title = title
+      if (addition.type === 'cm' && !addition.duration) try {
+        addition = await this.getDuration(addition)
       } catch (err) {
         throw err
       }
-      this.cmAdditions[result.id] = result
-      if (meta.onPlay && typeof meta.onPlay === 'function') result.on('play', meta.onPlay)
-      if (meta.onQueue && typeof meta.onQueue === 'function') result.on('queue', meta.onQueue)
-      if (result.needUserScript) result.on('queue', () => {
+      this.cmAdditions[addition.id] = addition
+      if (meta.onPlay && typeof meta.onPlay === 'function') addition.on('play', meta.onPlay)
+      if (meta.onQueue && typeof meta.onQueue === 'function') addition.on('queue', meta.onQueue)
+      if (addition.needUserScript) addition.on('queue', () => {
         let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
             userScriptPollId = poll.timestamp
           })
           this.bot.client.createPoll({
-            title: result.title,
+            title: addition.title,
             opts: [
-              result.url,
+              addition.url,
               'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ') (ks*.user.js bitte löschen)',
               ...this.userScriptPollOpts
             ],
@@ -266,20 +309,20 @@ class AddCustom {
           })
         }
         userScriptPoll()
-        result.once('delete', () => {
+        addition.once('delete', () => {
           if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
         })
-        result.on('play', data => {
+        addition.on('play', data => {
           if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
           this.bot.client.once('changeMedia', () => {
             if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
           })
         })
       })
-      this.bot.addNetzm(result.id, meta.addnext, meta.user, result.type, title || result.title, result.url)
+      this.bot.addNetzm(addition.id, meta.addnext, meta.user, addition.type, title || addition.title, addition.url)
     }).catch(err => {
       console.log(err)
-      this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.allowedHostsString)
+      this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.supportedProviders)
     })
   }
 }
@@ -302,21 +345,23 @@ module.exports = {
       let url = split.shift()
       let title = split.join(' ').trim()
       if (url === 'regex') {
-        const host = this.API.add.allowedHosts.allowedHosts.find(host => host.name.includes(title))
-        if (host) this.sendByFilter(JSON.stringify({
-          ...host,
-          regex: host.regex.source
+        const provider = this.API.add.providerList.find(provider => provider.name.includes(title))
+        if (provider) this.sendByFilter(JSON.stringify({
+          ...provider,
+          regex: provider.regex.source
         }))
         return
       }
       url = validUrl.isHttpsUri(url)
-      if (title === 'download') return this.API.add.allowedHosts.hostAllowed(url).then(host => {
+      if (!url) this.sendMessage('Ist keine https-Elfe /pfräh')
+      if (title === 'download') {
         if (this.downloading) return this.sendMessage('ladiert schon 1')
+        const provider = new Addition(url, this.API.add.providerList)
         this.downloading = true
         let progress
         let timer
         let message
-        host.download(url).on('message', msg => {
+        provider.download(url).on('message', msg => {
           if (msg === message) return
           message = msg
           if (!message.startsWith('[download]')) return this.sendMessage(message)
@@ -330,9 +375,8 @@ module.exports = {
           this.downloading = false
           console.error(err)
         })
-      })
-      if (url) this.API.add.add(url, title, { user, ...meta })
-      else this.sendMessage('Ist keine https-Elfe /pfräh')
+      }
+      else this.API.add.add(url, title, { user, ...meta })
     },
     readd(user, params, meta) {
       const url = validUrl.isHttpsUri(params)
