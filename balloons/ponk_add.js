@@ -55,23 +55,22 @@ class Addition extends EventEmitter {
     return this.match
   }
   get url() {
-    return this.match[0]
+    return this.match[0].replace('http://', 'https://')
   }
   get id() {
-    return this.type === 'cm' ? (this.bot.server.weblink + '/add.json?' + (this.needUserScript ? 'userscript&' : '') + 'url=' + this.url) : this.fileurl
+    return this.type === 'cm' ? `${this.bot.server.weblink}/add.json?${this.needUserScript ? 'userscript&' : ''}url=${this.url}` : this.fileurl
   }
   get sources () {
     return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
   }
   get manifest() {
-    contentType = type => type.ext.includes(path.extname(URL.parse(this.fileurl).pathname))
     return {
       title: this.title || this.url,
       live: this.live || false,
       duration: this.duration || 0,
       thumbnail: this.thumbnail,
       sources: this.sources.map(({ height: quality, url }) => ({
-        url: this.needUserScript ? this.bot.server.weblink + '/redir?url=' + this.url : url.replace('http://', 'https://'),
+        url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.url}` : url,
         quality,
         contentType: ([
           {type: 'video/mp4', ext: ['.mp4']},
@@ -82,7 +81,9 @@ class Addition extends EventEmitter {
           {type: 'audio/aac', ext: ['.aac']},
           {type: 'audio/ogg', ext: ['.ogg']},
           {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-        ].find(contentType) || {}).type || 'video/mp4'
+        ].find(contentType => {
+          contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))
+        }) || {}).type || 'video/mp4'
       }))
     }
   }
