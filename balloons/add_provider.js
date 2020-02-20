@@ -71,7 +71,7 @@ class Provider {
     Object.assign(this, {
       bot: ponk,
       name,
-      regex: new RegExp('^https?:\\/\\/([-\\w]+\\.)*' + name.replace('.', '\\.') + '\\/.+'),
+      regex: new RegExp(`^https?:\\/\\/([-\\w]+\\.)*${name.replace('.', '\\.')}\\/.+`),
       groups: [],
       type: rules.type || (typeof rules.userScript === 'function' ? 'cm' : 'fi'),
       needUserScript: typeof rules.userScript === 'function'

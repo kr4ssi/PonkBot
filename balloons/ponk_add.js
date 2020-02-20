@@ -64,6 +64,7 @@ class Addition extends EventEmitter {
     return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
   }
   get manifest() {
+    contentType = type => type.ext.includes(path.extname(URL.parse(this.fileurl).pathname))
     return {
       title: this.title || this.url,
       live: this.live || false,
@@ -81,7 +82,7 @@ class Addition extends EventEmitter {
           {type: 'audio/aac', ext: ['.aac']},
           {type: 'audio/ogg', ext: ['.ogg']},
           {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
-        ].find(contentType => contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))) || {}).type || 'video/mp4'
+        ].find(contentType) || {}).type || 'video/mp4'
       }))
     }
   }
@@ -105,7 +106,8 @@ class AddCustom {
     })
     this.bot.client.on('queueFail', data => {
       this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-      if (data.msg === 'This item is already on the playlist') return this.bot.sendMessage('Das darf garnicht passieren')
+      if (data.msg === 'This item is already on the playlist')
+      return this.bot.sendMessage('Das darf garnicht passieren')
       this.cmAdditions[data.id] && this.cmAdditions[data.id].emit('queueFail') && this.cmAdditions[data.id].removeAllListeners()
     })
     this.bot.client.prependListener('delete', ({ uid }) => {
@@ -146,7 +148,7 @@ class AddCustom {
         })
         this.userscript = this.meta + '\nconst allowedHosts = '
         this.userscript += toSource(self.providerList.userScriptSources)
-        this.userScript += '\n\nconst config = ' + toSource(Object.assign({
+        this.userscript += '\n\nconst config = ' + toSource(Object.assign({
           weblink: self.bot.server.weblink,
         }, opt)) + userscript
       }
@@ -279,10 +281,12 @@ class AddCustom {
   }
 
   add(url, title, meta) {
-    new Addition(url, this.providerList).getInfo().then(async addition => {
-      addition.on('message', msg => this.bot.sendMessage(msg))
+    new Addition(url, this.providerList).on('message', msg => {
+      this.bot.sendMessage(msg)
+    }).getInfo().then(async addition => {
       //if (!meta.fiku && addition.fikuonly) throw new Error('not addable')
-      if (this.bot.playlist.some(item => item.media.id === addition.id)) return this.bot.sendMessage('Ist schon in der playlist')
+      if (this.bot.playlist.some(item => item.media.id === addition.id))
+      return this.bot.sendMessage('Ist schon in der playlist')
       if (title) addition.title = title
       if (addition.type === 'cm' && !addition.duration) try {
         addition = await this.getDuration(addition)
