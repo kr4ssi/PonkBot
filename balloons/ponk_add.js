@@ -150,7 +150,7 @@ class AddCustom {
         this.userscript += toSource(self.providerList.userScriptSources)
         this.userscript += '\n\nconst config = ' + toSource(Object.assign({
           weblink: self.bot.server.weblink,
-        }, opt)) '\n\n' + userscript
+        }, opt)) + '\n\n' + userscript
       }
     }
     this.userScripts = [
