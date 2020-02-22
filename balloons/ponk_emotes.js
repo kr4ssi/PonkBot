@@ -43,8 +43,10 @@ class Emotes {
       table.string('emote', 240).primary()
       table.integer('count').defaultTo(0);
       table.string('lastuser', 20)
-      table.integer('width');
-      table.integer('height');
+      table.integer('width').defaultTo(null);
+      table.integer('height').defaultTo(null);
+      table.boolean('flip').defaultTo(null);
+      table.boolean('flop').defaultTo(null);
     }).then(() => this.createEmoteCSS())
     //const keepnames = new Set()
     this.bot.server.host.get('/emotes.css', (req, res) => {
@@ -266,13 +268,17 @@ class Emotes {
     })
   }
   createEmoteCSS() {
-    return this.bot.db.knex('emotes').whereNotNull('width').orWhereNotNull('height')
-    .select('emote', 'width', 'height').then(sizes => {
+    return this.bot.db.knex('emotes').whereNotNull('width').orWhereNotNull('height').orWhereNotNull('flip').orWhereNotNull('flop')
+    .select('emote', 'width', 'height', 'flip', 'flop').then(sizes => {
       this.emoteCSS = sizes.reduce((css, size) => {
         const setwidth = (size.width > 0) && (size.width != 100)
         const setheight = (size.height > 0) && (size.height != 100)
-        if (!setwidth && !setheight) return css
+        if (!setwidth && !setheight && !size.flip && !size.flop) return css
         css += `.channel-emote[title="${size.emote}"]` + '{\r\n'
+        if (size.flip)
+        css += `transform: scaleY(-1);\r\n`
+        if (size.flop)
+        css += `transform: rotate(180deg);\r\n`
         if (setwidth)
         css += `  max-width: ${(size.width < 999) ? (size.width + 'px') : '100%'} !important;\r\n`
         if (setheight)
@@ -369,17 +375,34 @@ module.exports = {
       const emote = split.shift().trim()
       if (!emote.match(/^\/[\wäÄöÖüÜß]+$/) || !this.emotes.some(emotelist => emotelist.name == emote)) return this.sendMessage('Ist kein emote')
       const size = {};
-      while (params = split.shift()) if (params = params.trim().match(/(w|h)(\d{1,4})/)) {
-        if (params[1] === 'w') size.width = params[2]
-        else if (params[1] === 'h') size.height = params[2]
+      let flip
+      let flop
+      let param
+      while (params = split.shift()) {
+        if (param = params.trim().match(/(w|h)(\d{1,4})/)) {
+          if (param[1] === 'w') size.width = params[2]
+          else if (param[1] === 'h') size.height = params[2]
+        }
+        else if (params.trim() === 'flip') flip = true
+        else if (params.trim() === 'flop') flop = true
       }
-      if (!size.width && !size.height) return this.sendMessage('Zu wenig parameter')
-      this.db.knex('emotes').insert({ emote, ...size }).catch(() => {
-        return this.db.knex('emotes').where({ emote }).update(size)
-      }).then(() => {
-        this.API.emotes.createEmoteCSS().then(() => this.pushToGit('emotes.css', this.API.emotes.emoteCSS).then(() => this.client.socket.emit('setChannelCSS', {
-          css: this.channelCSS.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Math.random().toString(36).slice(2))
-        })))
+      if (!size.width && !size.height && !flip && !flop) return this.sendMessage('Zu wenig parameter')
+      ;((flip || flop) ? this.db.knex('emotes').where({ emote }).select('flip', 'flop').then(result => {
+        console.log(result)
+
+        result = result.pop() || {}
+        if (flip) size.flip = !result.flip
+        if (flop) size.flop = !result.flop
+      }) : Promise.resolve()).then(() => {
+        console.log(size)
+
+        this.db.knex('emotes').insert({ emote, ...size }).catch(() => {
+          return this.db.knex('emotes').where({ emote }).update(size)
+        }).then(() => {
+          this.API.emotes.createEmoteCSS().then(() => this.pushToGit('emotes.css', this.API.emotes.emoteCSS).then(() => this.client.socket.emit('setChannelCSS', {
+            css: this.channelCSS.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Math.random().toString(36).slice(2))
+          })))
+        })
       })
     },
     mützen(user, params, meta) {
