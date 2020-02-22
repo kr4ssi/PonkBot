@@ -131,6 +131,7 @@ class Provider {
         '--write-info-json',
         '--newline',
         '--no-mtime',
+        '--no-part',
         url
       ]
     }).on('message', message => {
