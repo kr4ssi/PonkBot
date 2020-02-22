@@ -240,7 +240,6 @@ const providers = Object.entries({
     regex: 'XFileShareIE',
     getInfo() {
       if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
-      if (this.matchGroup('host') === 'gounlimited.to') this.type = 'fi'
       let args = []
       if (['gounlimited.to'].includes(this.matchGroup('host'))) args = ['--no-check-certificate']
       return Provider.prototype.getInfo.call(this, this.url, args)
