@@ -396,14 +396,13 @@ module.exports = {
           if (!timer) timer = setInterval(() => {
             this.sendPrivate(progress, user)
           }, 10000)
+        }).on('info', info => {
+          this.sendMessage(addition.info._filename + ' wird addiert')
+          addition.add()
         }).on('close', () => {
           clearInterval(timer)
           this.downloading = false
-          if (this.fileurl) {
-            this.sendPrivate(progress, user)
-            this.sendMessage(addition.info.filename + ' wird addiert')
-            addition.add()
-          }
+          if (progress) this.sendPrivate(progress, user)
         }).on('error', err => {
           this.sendMessage(err.message || err)
         })

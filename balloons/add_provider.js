@@ -149,6 +149,7 @@ class Provider {
           this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.info._filename)
           fs.chmod(match[1], 0o644, err => {
             if (err) pyshell.emit('error', err)
+            pyshell.emit('info')
           })
         })
       })
