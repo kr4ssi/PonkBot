@@ -269,8 +269,8 @@ class AddCustom {
       '-icy', '0',
       '-print_format', 'json'
     ]
-    const headers = Object.entries(addition.info.http_headers)
-    if (headers) params.push('-headers', headers.map(([key, value]) => {
+    const headers = Object.entries(addition.info.http_headers || {})
+    if (headers.length) params.push('-headers', headers.map(([key, value]) => {
       return `${key}: ${value}`
     }).join('\r\n'))
     const tryToGetDuration = () => new Promise((resolve, reject) => {
