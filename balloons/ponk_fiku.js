@@ -58,26 +58,6 @@ class FikuSystem {
       })
     })
   }
-  getTmdbId(title) {
-    return new Promise(resolve => {
-      const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
-      this.bot.fetch('https://api.themoviedb.org/3/search/multi', {
-        qs: {
-          api_key: this.bot.API.keys.tmdb,
-          query: title.replace(/\([^)]+\)/ig, ''),
-          year: year ? year[1] : '',
-          language: 'de'
-        },
-        json: true,
-        getlist: 'results'
-      }).then(({ list }) => {
-        resolve({
-          id: list[0].id,
-          type: list[0].media_type
-        })
-      })
-    })
-  }
   addFiku(id, newuser, newurl) {
     return this.getFiku(id).then(({ url, title, id, user }) => {
       if (newurl) {
@@ -102,6 +82,26 @@ class FikuSystem {
         if (deleted) {
           this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
         }
+      })
+    })
+  }
+  getTmdbId(title) {
+    return new Promise(resolve => {
+      const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
+      this.bot.fetch('https://api.themoviedb.org/3/search/multi', {
+        qs: {
+          api_key: this.bot.API.keys.tmdb,
+          query: title.replace(/\([^)]+\)/ig, ''),
+          year: year ? year[1] : '',
+          language: 'de'
+        },
+        json: true,
+        getlist: 'results'
+      }).then(({ list }) => {
+        resolve({
+          id: list[0].id,
+          type: list[0].media_type
+        })
       })
     })
   }

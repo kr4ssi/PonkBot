@@ -396,7 +396,7 @@ module.exports = {
           if (!timer) timer = setInterval(() => {
             this.sendPrivate(progress, user)
           }, 10000)
-        }).on('info', info => {
+        }).on('info', () => {
           this.sendMessage(addition.info._filename + ' wird addiert')
           addition.add()
         }).on('close', () => {
