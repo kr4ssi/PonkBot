@@ -309,6 +309,7 @@ class AddCustom {
       if (addition.type === 'cm' && !addition.duration)
       return this.getDuration(addition)
     }).then(() => {
+      this.cmAdditions[addition.id] = addition
       if (addition.needUserScript) addition.on('queue', () => {
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
@@ -340,7 +341,7 @@ class AddCustom {
           })
         })
       })
-      this.cmAdditions[addition.id] = addition.add(meta.addnext)
+      addition.add(meta.addnext)
     }).catch(err => this.bot.sendByFilter(err))
     return addition
   }
