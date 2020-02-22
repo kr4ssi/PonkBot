@@ -380,22 +380,18 @@ module.exports = {
       let param
       while (params = split.shift()) {
         if (param = params.trim().match(/(w|h)(\d{1,4})/)) {
-          if (param[1] === 'w') size.width = params[2]
-          else if (param[1] === 'h') size.height = params[2]
+          if (param[1] === 'w') size.width = param[2]
+          else if (param[1] === 'h') size.height = param[2]
         }
         else if (params.trim() === 'flip') flip = true
         else if (params.trim() === 'flop') flop = true
       }
       if (!size.width && !size.height && !flip && !flop) return this.sendMessage('Zu wenig parameter')
       ;((flip || flop) ? this.db.knex('emotes').where({ emote }).select('flip', 'flop').then(result => {
-        console.log(result)
-
         result = result.pop() || {}
         if (flip) size.flip = !result.flip
         if (flop) size.flop = !result.flop
       }) : Promise.resolve()).then(() => {
-        console.log(size)
-
         this.db.knex('emotes').insert({ emote, ...size }).catch(() => {
           return this.db.knex('emotes').where({ emote }).update(size)
         }).then(() => {
