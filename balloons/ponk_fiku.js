@@ -29,10 +29,7 @@ class FikuSystem {
       url = validUrl.isHttpsUri(url)
       if (!url) throw 'Ist keine https-Elfe /pfräh'
       if (title) return resolve(title)
-      this.bot.API.add.allowedHosts.hostAllowed(url).then(host => {
-        if (host.name != 'kinox.to') return resolve(title)
-        host.getInfo(url, true).then(({ title }) => resolve(title))
-      })
+      this.bot.API.add.add(url, title, { gettitle: true }).getInfo(true).then(resolve)
     })
   }
   getFikuList() {

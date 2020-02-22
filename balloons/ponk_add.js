@@ -16,7 +16,6 @@ const forwarded = require('forwarded');
 const userscriptmeta = require('userscript-meta')
 const crypto = require('crypto')
 const { execFile } = require('child_process')
-
 const toSource = source => require('js-beautify').js(require('tosource')(source), {
   indent_size: 2,
   keep_array_indentation: true
@@ -27,48 +26,38 @@ class Addition extends EventEmitter {
     super()
     this.matchUrl(...args)
     Object.assign(this, {
-      //fileurl,
-      //title,
-      //duration,
-      //quality,
-      //thumbnail,
-      //live,
+      user: '',
+      timestamp: 0,
+      duration: 0,
+      fileurl: '',
+      title: '',
+      thumbnail: '',
+      live: false,
       ffprobe: {},
       info: {},
       formats: [],
-      //timestamp,
-      //user: {},
       matchGroup: id => this.match[this.groups.indexOf(id) + 1]
     })
-  }
-  matchUrl(url, providerList) {
-    if (providerList) {
-      const provider = providerList.find(provider => {
-        return !!(this.match = url.match(provider.regex))
-      })
-      if (!provider) throw new Error('Can\'t find a supported provider')
-      Object.assign(this, provider, {
-        getInfo: () => provider.getInfo.call(this, this.url),
-        download: () => provider.download.call(this, this.url)
-      })
-    }
-    return this.match
   }
   get url() {
     return this.match[0].replace('http://', 'https://')
   }
   get id() {
-    return this.type === 'cm' ? `${this.bot.server.weblink}/add.json?${this.needUserScript ? 'userscript&' : ''}url=${this.url}` : this.fileurl
+    if (this.type !='cm') return this.fileurl.replace(/(?:^http:\/\/)/i, 'https://')
+    let id = `${this.bot.server.weblink}/add.json?`
+    if (this.needUserScript) id += 'userscript&'
+    return id += `url=${this.url}`
   }
   get sources () {
-    return (this.live && this.formats.length) ? this.formats : [{ height: 720, url: this.fileurl }]
+    if (this.live && this.formats.length) return this.formats
+    return [{ height: 720, url: this.fileurl }]
   }
   get manifest() {
     return {
       title: this.title || this.url,
       live: this.live || false,
       duration: this.duration || 0,
-      thumbnail: this.thumbnail,
+      thumbnail: this.thumbnail.replace(/(?:^http:\/\/)/i, 'https://') || undefined,
       sources: this.sources.map(({ height: quality, url }) => ({
         url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.url}` : url,
         quality,
@@ -86,6 +75,27 @@ class Addition extends EventEmitter {
         }) || {}).type || 'video/mp4'
       }))
     }
+  }
+  matchUrl(url, providerList) {
+    if (providerList) {
+      const provider = providerList.find(provider => {
+        return !!(this.match = url.match(provider.regex))
+      })
+      if (!provider) throw new Error('Can\'t find a supported provider')
+      Object.assign(this, provider, {
+        getInfo: (...args) => provider.getInfo.call(this, this.url, ...args),
+        download: (...args) => provider.download.call(this, this.url, ...args)
+      })
+    }
+    return this.match
+  }
+  add(next) {
+    this.bot.client.socket.emit('queue', {
+      type : this.type,
+      id : this.id,
+      pos : next ? 'next' : 'end',
+      temp : true,
+    })
   }
 }
 
@@ -244,91 +254,85 @@ class AddCustom {
 
   getDuration(addition) {
     let tries = 0
-    const tryToGetDuration = err => {
-      return new Promise((resolve, reject) => {
-        if (err) {
-          console.error(err)
-          if (tries > 1) {
-            this.bot.sendMessage('Can\'t get duration')
-            return reject()
-          }
+    const params = [
+      '-v', 'error',
+      '-show_format',
+      '-show_streams',
+      '-icy', '0',
+      '-print_format', 'json'
+    ]
+    const headers = Object.entries(addition.info.http_headers)
+    if (headers) params.push('-headers', headers.map(([key, value]) => {
+      return `${key}: ${value}`
+    }).join('\r\n'))
+    const tryToGetDuration = () => new Promise((resolve, reject) => {
+      execFile('ffprobe', [...params, addition.fileurl], (err, stdout, stderr) => {
+        if (err) return reject(err)
+        try {
+          addition.ffprobe = JSON.parse(stdout)
         }
-        tries++
-        let params = ['-v', 'error', '-show_format', '-show_streams', '-icy', '0', '-print_format', 'json']
-        if (addition.info.http_headers) {
-          const headers = Object.entries(addition.info.http_headers).map(([key, value]) => key + ': ' + value).join('\r\n')
-          params = [...params, '-headers', headers]
+        catch(err) {
+          return reject(err)
         }
-        execFile('ffprobe', [...params, addition.fileurl], (err, stdout, stderr) => {
-          if (err) return tryToGetDuration(err)
-          console.log(stderr)
-          let info
-          try {
-            info = JSON.parse(stdout)
-          }
-          catch(err) {
-            return console.error(err)
-          }
-          addition.ffprobe = info
-          if (info.format && info.format.duration) {
-            addition.duration = parseFloat(info.format.duration)
-            resolve(addition)
-          }
-          else return tryToGetDuration(info)
-        })
+        if (addition.ffprobe.format && addition.ffprobe.format.duration) {
+          addition.duration = parseFloat(addition.ffprobe.format.duration)
+          resolve(addition)
+        }
+        else reject(info)
       })
-    }
+    }).catch(err => {
+      console.error(err)
+      if (++tries > 1) throw 'Can\'t get duration'
+      return tryToGetDuration()
+    })
     return tryToGetDuration()
   }
 
   add(url, title, meta) {
-    new Addition(url, this.providerList).on('message', msg => {
+    const addition = new Addition(url, this.providerList)
+    if (!meta.gettitle) addition.on('message', msg => {
       this.bot.sendMessage(msg)
-    }).getInfo().then(async addition => {
+    }).getInfo().then(() => {
       //if (!meta.fiku && addition.fikuonly) throw new Error('not addable')
       if (this.bot.playlist.some(item => item.media.id === addition.id))
-      return this.bot.sendMessage('Ist schon in der playlist')
+      throw 'Ist schon in der playlist'
       if (title) addition.title = title
-      if (addition.type === 'cm' && !addition.duration) try {
-        addition = await this.getDuration(addition)
-      } catch (err) {
-        throw err
-      }
+      if (addition.type === 'cm' && !addition.duration)
+      return this.getDuration(addition)
+    }).then(() => {
       this.cmAdditions[addition.id] = addition
-      if (meta.onPlay && typeof meta.onPlay === 'function') addition.on('play', meta.onPlay)
-      if (meta.onQueue && typeof meta.onQueue === 'function') addition.on('queue', meta.onQueue)
       if (addition.needUserScript) addition.on('queue', () => {
-        let userScriptPollId
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
-            userScriptPollId = poll.timestamp
+            addition.userScriptPollId = poll.timestamp
           })
           this.bot.client.createPoll({
             title: addition.title,
             opts: [
               addition.url,
-              'Geht nur mit Userscript (Letztes update: ' + this.userscriptdate + ') (ks*.user.js bitte löschen)',
+              `Geht nur mit Userscript (Letztes update: ${this.userscriptdate}) (ks*.user.js bitte löschen)`,
               ...this.userScriptPollOpts
             ],
             obscured: false
           })
+          addition.once('delete', () => {
+            if (this.bot.poll.timestamp === addition.userScriptPollId) this.bot.client.closePoll()
+          })
         }
         userScriptPoll()
-        addition.once('delete', () => {
-          if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
-        })
         addition.on('play', data => {
-          if (!this.bot.pollactive || this.bot.poll.timestamp != userScriptPollId) userScriptPoll()
+          if (!this.bot.pollactive || this.bot.poll.timestamp != addition.userScriptPollId) userScriptPoll()
           this.bot.client.once('changeMedia', () => {
-            if (this.bot.poll.timestamp === userScriptPollId) this.bot.client.closePoll()
+            if (this.bot.poll.timestamp === addition.userScriptPollId) this.bot.client.closePoll()
           })
         })
       })
-      this.bot.addNetzm(addition.id, meta.addnext, meta.user, addition.type, title || addition.title, addition.url)
+      addition.add(meta.addnext)
     }).catch(err => {
-      console.log(err)
-      this.bot.sendByFilter('Kann ' + url + ' nicht addieren. Addierbare Hosts: ' + this.supportedProviders)
+      this.bot.sendMessage(err)
+      this.bot.sendByFilter(`Addierbare Hosts: ${this.supportedProviders}`)
     })
+    return addition
   }
 }
 
@@ -350,35 +354,37 @@ module.exports = {
       let url = split.shift()
       let title = split.join(' ').trim()
       if (url === 'regex') {
-        const provider = this.API.add.providerList.find(provider => provider.name.includes(title))
-        if (provider) this.sendByFilter(JSON.stringify({
-          ...provider,
-          regex: provider.regex.source
-        }))
+        const provider = this.API.add.providerList.byName(title)
+        if (provider) this.sendByFilter(provider.overview, true)
         return
       }
       url = validUrl.isHttpsUri(url)
-      if (!url) this.sendMessage('Ist keine https-Elfe /pfräh')
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       if (title === 'download') {
         if (this.downloading) return this.sendMessage('ladiert schon 1')
-        const provider = new Addition(url, this.API.add.providerList)
+        const addition = new Addition(url, this.API.add.providerList)
+        if (addition.fikuonly) throw new Error('not addable')
         this.downloading = true
         let progress
         let timer
-        let message
-        provider.download(url).on('message', msg => {
-          if (msg === message) return
-          message = msg
-          if (!message.startsWith('[download]')) return this.sendMessage(message)
+        addition.download(url).prependListener('message', message => {
+          if (message === this.downloadmsg) return
+          if (!message.startsWith('[download]'))
+          return this.sendMessage(message)
           progress = message
-          if (!timer) timer = setInterval(() => this.sendPrivate(progress, user), 10000)
+          if (!timer) timer = setInterval(() => {
+            this.sendPrivate(progress, user)
+          }, 10000)
         }).on('close', () => {
           clearInterval(timer)
           this.downloading = false
+          if (this.fileurl) {
+            this.sendPrivate(progress, user)
+            this.sendMessage(addition.info.filename + ' wird addiert')
+            addition.add()
+          }
         }).on('error', err => {
-          clearInterval(timer)
-          this.downloading = false
-          console.error(err)
+          this.sendMessage(err.message || err)
         })
       }
       else this.API.add.add(url, title, { user, ...meta })
@@ -386,15 +392,14 @@ module.exports = {
     readd(user, params, meta) {
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      this.API.add.add(url, this.currMedia.title, { user,
+      this.API.add.add(url, this.currMedia.title, {
         ...meta,
+        user,
         addnext: true,
-        onQueue: () => {
-          this.mediaDelete(this.currUID)
-        },
-        onPlay: () => {
-          this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
-        }
+      }).on('queue', () => {
+        this.mediaDelete(this.currUID)
+      }).on('play', () => {
+        this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
       })
     }
   }

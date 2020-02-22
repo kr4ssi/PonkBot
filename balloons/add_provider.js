@@ -1,69 +1,70 @@
 'use-scrict';
 
-const { PythonShell } = require('python-shell')
-const path = require('path')
-const URL = require('url')
 const fs = require('fs')
-const Entities = require('html-entities').AllHtmlEntities
-const entities = new Entities();
+const URL = require('url')
+const path = require('path')
+const { PythonShell } = require('python-shell')
 
 const parseLink = require('./add_parselink.js')
 
 module.exports = class ProviderList extends Array {
   constructor(ponk) {
     super()
-    const grpregex = /(^\(\?\w+\))|\(\?P\<(\w+)\>|\(\?\((\w+)\)|\(\?P=(\w+)\)/g
     Object.assign(this, {
-      ytdlRegex: new Promise((resolve, reject) => {
-        PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
-          cwd: path.join(__dirname, '..', 'youtube-dl'),
-          parser: data => {
-            let [name, regex, groups] = JSON.parse(data)
-            regex = regex.replace(grpregex, (match, p1, p2, p3, p4) => {
-              if (p1) return ''
-              if (p2) return groups.push(p2) && '('
-              const p = p3 || p4
-              if (p && (groups.includes(p) || Number(p)))
-              return groups.push(p) && (p3 ? '(' : '')
-              reject('error')
-            })
-            return { [name]: { regex: new RegExp(regex), groups } }
-          }
-        }, (err, result) => {
-          if (err) throw err.message
-          resolve(Object.assign(...result))
-        })
-      }).then(ytdlRegex => {
-        return Object.assign(this, providers.reduce((acc, [name, rules = {}]) => {
-          const provider = new Provider(ponk, name, rules, ytdlRegex)
-          this.push(provider)
-          if (provider.kinoxids) {
-            let kinoxids
-            if (Array.isArray(provider.kinoxids)) kinoxids = provider.kinoxids
-            else kinoxids = Object.keys(provider.kinoxids)
-            kinoxids.forEach(id => acc.kinoxHosts.push({ id, provider }))
-          }
-          if (provider.needUserScript) {
-            acc.userScriptIncludes.push(provider.regex)
-            acc.userScriptSources.push({
-              regex: provider.regex,
-              groups: provider.groups,
-              getInfo: provider.userScript
-            })
-          }
-          if (!provider.fikuonly) {
-            acc.supportedProviders += (acc.supportedProviders ? ', ' : '') + name
-          }
-          return acc
-        }, {
-          kinoxHosts: [],
-          userScriptIncludes: [],
-          userScriptSources: [],
-          supportedProviders: ''
-        }))
-      }),
-      then: (...args) => this.then = this.ytdlRegex.then(...args)
+      bot: ponk,
+      kinoxHosts: [],
+      userScriptIncludes: [],
+      userScriptSources: [],
+      supportedProviders: ''
     })
+  }
+  then(...args) {
+    const grpregex = /(^\(\?\w+\))|\(\?P\<(\w+)\>|\(\?\((\w+)\)|\(\?P=(\w+)\)/g
+    return this.then = new Promise((resolve, reject) => {
+      PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
+        cwd: path.join(__dirname, '..', 'youtube-dl'),
+        parser: data => {
+          let [name, regex, groups] = JSON.parse(data)
+          regex = regex.replace(grpregex, (match, p1, p2, p3, p4) => {
+            if (p1) return ''
+            if (p2) return groups.push(p2) && '('
+            const p = p3 || p4
+            if (p && (groups.includes(p) || Number(p)))
+            return groups.push(p) && (p3 ? '(' : '')
+            reject('error')
+          })
+          return { [name]: { regex: new RegExp(regex), groups } }
+        }
+      }, (err, result) => {
+        if (err) throw err.message
+        resolve(Object.assign(...result))
+      })
+    }).then(ytdlRegex => {
+      providers.forEach(([name, rules = {}]) => {
+        const provider = new Provider(this.bot, name, rules, ytdlRegex)
+        this.push(provider)
+        if (provider.kinoxids) {
+          let kinoxids
+          if (Array.isArray(provider.kinoxids)) kinoxids = provider.kinoxids
+          else kinoxids = Object.keys(provider.kinoxids)
+          kinoxids.forEach(id => this.kinoxHosts.push({ provider, id }))
+        }
+        if (provider.needUserScript) {
+          this.userScriptIncludes.push(provider.regex)
+          this.userScriptSources.push({
+            regex: provider.regex,
+            groups: provider.groups,
+            getInfo: provider.userScript
+          })
+        }
+        if (!provider.fikuonly)
+        this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
+      })
+      return this
+    }).then(...args)
+  }
+  byName(name) {
+    return this.find(provider => (new RegExp('^' + name, 'i')).test(provider.name))
   }
 }
 class Provider {
@@ -76,6 +77,12 @@ class Provider {
       type: rules.type || (typeof rules.userScript === 'function' ? 'cm' : 'fi'),
       needUserScript: typeof rules.userScript === 'function'
     }, rules, (typeof rules.regex === 'string') && ytdlRegex[rules.regex])
+    this.overview = Object.entries(this).reduce((acc, [key, value]) => {
+      if (!['bot', 'regex'].includes(key) && typeof value != 'function')
+      acc[key] = value
+      return acc
+    }, { regex: this.regex.source })
+    this.overview = JSON.stringify(this.overview, undefined, 2)
   }
   getInfo(url, moreargs = []) {
     return new Promise((resolve, reject) => {
@@ -85,7 +92,6 @@ class Provider {
         args: ['--dump-json', '-f', 'best', '--restrict-filenames', ...moreargs,  url]
       }, (err, data) => {
         if (err) {
-          this.bot.sendMessage(url + ' ' + (err.message && err.message.split('\n').filter(line => /^ERROR: /.test(line)).join('\n')))
           return reject(err)
         }
         let info
@@ -98,12 +104,15 @@ class Provider {
         }
         if (!info.title) info = info[0];
         this.info = info
-        if (info.formats && info.formats.length) this.formats = info.formats.filter(format => [240, 360, 480, 540, 720, 1080, 1440].includes(format.height))
+        if (info.formats && info.formats.length)
+        this.formats = info.formats.filter(format => {
+          return [240, 360, 480, 540, 720, 1080, 1440].includes(format.height)
+        })
         this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
-        this.fileurl = info.url.replace(/(?:^http:\/\/)/i, 'https://')
+        this.fileurl = info.url
         if (this.type != 'cm') return resolve(this)
-        if (info.manifest_url) this.fileurl = info.manifest_url.replace(/(?:^http:\/\/)/i, 'https://')
-        if (info.thumbnail && info.thumbnail.match(/(?:^http:\/\/)/i)) this.thumbnail = info.thumbnail.replace(/(?:^http:\/\/)/i, 'https://')
+        if (info.manifest_url) this.fileurl = info.manifest_url
+        if (info.thumbnail && info.thumbnail.match(/(?:^http:\/\/)/i)) this.thumbnail = info.thumbnail
         this.duration = info.duration
         this.quality = info.height;
         return resolve(this)
@@ -111,8 +120,8 @@ class Provider {
     })
   }
   download(url) {
-    let infofilename
-    return new PythonShell('youtube_dl', {
+    let pyshell
+    return pyshell = new PythonShell('youtube_dl', {
       cwd: path.join(__dirname, '..', 'youtube-dl'),
       pythonOptions: ['-m'],
       args: [
@@ -125,83 +134,92 @@ class Provider {
         url
       ]
     }).on('message', message => {
-      if (!infofilename && message.startsWith('[info]')) {
-        const match = message.match(/JSON to: (.*)$/)
-        if (match) infofilename = match[1]
-      }
-    }).on('close', () => {
-      const info = JSON.parse(fs.readFileSync(infofilename))
-      const filename = path.basename(info._filename)
-      fs.chmodSync(infofilename, 0o644)
-      this.bot.sendMessage(filename + ' wird addiert')
-      this.bot.addNetzm(this.bot.API.keys.filehost + '/files/' + filename, false, this.bot.name, 'fi', info.title)
+      this.downloadmsg = message
+      const match = message.match(/JSON to: (.*)$/)
+      if (match) pyshell.once('message', () => {
+        fs.readFile(match[1], (err, info) => {
+          if (err) return pyshell.emit('error', err)
+          try {
+            this.info = JSON.parse(info)
+          }
+          catch (err) {
+            return pyshell.emit('error', err)
+          }
+          this.type = 'fi'
+          this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.info._filename)
+          fs.chmod(match[1], 0o644, err => {
+            if (err) pyshell.emit('error', err)
+          })
+        })
+      })
     })
   }
 }
 const providers = Object.entries({
   'kinox.to': {
-    regex: /https?:\/\/(?:www\.)?kino(?:[sz]\.to|x\.(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click|tube|club|digital|direct|pub|express|party|space))\/(?:Tipp|Stream\/.+)\.html/,
+    regex: new RegExp(/https?:\/\/(?:www\.)?kino/.source + '(?:[sz]\\.to|x\\.' +
+    '(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click' +
+    '|tube|club|digital|direct|pub|express|party|space|lc|ms|mu|gs|bz|gy|af))' +
+    /\/(?:Tipp|Stream\/.+)\.html/.source),
     getInfo(url, gettitle) {
       return this.bot.fetch(url, {
         cloud: true,
-        match: /<title>(.*) Stream/,
         $: true
       }).then(({ match, $, headers }) => {
         const hostname = 'https://' + URL.parse(url).hostname
         const location = hostname + $('.Grahpics a').attr('href')
-        if (/\/Tipp\.html$/.test(url)) this.bot.sendMessage('Addiere: ' + location)
-        const title = entities.decode(match[1])
-        if (gettitle) return { title, location }
-        const kinoxIds = $('#HosterList').children().map((i, e) => (e.attribs.id.match(/_(\d+)/) || [])[1]).toArray()
+        if (/\/Tipp\.html$/.test(url))
+        this.emit('message', `Addiere: ${location}`)
+        const title = ($('title').text().match(/(.*) Stream/) || [])[1]
+        const kinoxIds = $('#HosterList').children().map((i, e) => {
+          return (e.attribs.id.match(/_(\d+)/) || [])[1]
+        }).toArray()
         const kinoxHosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
           return kinoxIds.includes(host.id)
         })
-        console.log(kinoxHosts)
-        const getHost = () => {
-          let kinoxHost = kinoxHosts.shift()
-          if (!kinoxHost) {
-            this.bot.sendMessage('Kein addierbarer Hoster gefunden')
-            return Promise.reject()
-          }
-          const hostdiv = $('#Hoster_' + kinoxHost.id)
+        const getHost = ({ provider, id } = kinoxHosts.shift()) => {
+          if (!provider) return Promise.reject('Kein addierbarer Hoster gefunden')
+          const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
+          /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
+          const hostdiv = $('#Hoster_' + id)
           const data = hostdiv.children('.Data').html()
-          console.log(kinoxHost, hostdiv, data)
-          const match = data.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
+          console.log(provider, id, hostdiv, data)
+          const match = data.match(regex)
           if (!match) return console.log(data)
           let [, initialindex, mirrorcount, date] = match
           console.log(initialindex, mirrorcount, date)
           const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
-          console.log(filename)
-          const getMirror = mirrorindex => this.bot.fetch(hostname + '/aGET/Mirror/' + filename, {
-            headers,
-            cloud: true,
-            json: true,
-            qs: {
-              Hoster: kinoxHost.id,
-              Mirror: mirrorindex
-            }
-          }).then(({ body }) => {
-            if (!body.Stream) return console.error(kinoxHost.provider) // || !body.Replacement
-            const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
-            let match
-            if (body.Replacement) {
-              match = body.Replacement.match(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/)
-              if (!match) return console.log(body.Replacement)
-              mirrorindex = match[1]
-              mirrorcount = match[2]
-              date = match[3]
-              console.log(match[0], mirrorindex, mirrorcount, date)
-            }
-            this.bot.sendMessage('Addiere Mirror ' + mirrorindex + '/' + mirrorcount + ': ' + mirrorurl + ' Vom: ' + date)
-            this.matchUrl(mirrorurl, [kinoxHost.provider])
-            return this.getInfo().then(result => {
-              result.title = title
-              return result
-            }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
-          })
+          const getMirror = mirrorindex => {
+            return this.bot.fetch(hostname + '/aGET/Mirror/' + filename, {
+              headers,
+              cloud: true,
+              json: true,
+              qs: {
+                Hoster: id,
+                Mirror: mirrorindex
+              }
+            }).then(({ body }) => {
+              if (!body.Stream) return console.error(provider, id) // || !body.Replacement
+              const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+              if (body.Replacement) {
+                const match = body.Replacement.match(regex)
+                if (!match) return console.log(body.Replacement)
+                mirrorindex = match[1]
+                mirrorcount = match[2]
+                date = match[3]
+                console.log(match[0], mirrorindex, mirrorcount, date)
+              }
+              this.emit('message', `Addiere Mirror ${mirrorindex}/${mirrorcount}: ${mirrorurl} Vom: ${date}`)
+              this.matchUrl(mirrorurl, [provider])
+              return this.getInfo().then(result => {
+                result.title = title
+                return result
+              }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
+            })
+          }
           return getMirror(initialindex)
         }
-        return getHost()
+        return gettitle ? title : getHost()
       })
     }
   },
@@ -260,7 +278,7 @@ const providers = Object.entries({
     regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
     groups: ['id'],
     getInfo() {
-      this.match(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) \| Your streaming service/,
         unpack: /src:\\\'([^\\]+)\\'/
@@ -276,7 +294,7 @@ const providers = Object.entries({
     regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
     groups: ['host', 'id'],
     getInfo() {
-      this.match(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
       }).then(({ match }) => {
@@ -293,7 +311,7 @@ const providers = Object.entries({
     regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
     groups: ['id'],
     getInfo() {
-      this.match(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
       }).then(({ match }) => {
@@ -367,7 +385,6 @@ const providers = Object.entries({
           })
           this.bot.assignLeader(this.bot.name)
         })
-        console.log(this.match, timestamp)
       }
       return Promise.resolve(this)
     }
