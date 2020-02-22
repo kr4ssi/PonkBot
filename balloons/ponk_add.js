@@ -96,6 +96,7 @@ class Addition extends EventEmitter {
       pos : next ? 'next' : 'end',
       temp : true,
     })
+    return this
   }
 }
 
@@ -110,7 +111,8 @@ class AddCustom {
     this.setupProviderList()
     this.bot.client.on('queue', ({ item }) => {
       if (item.queueby != this.bot.name) return
-      this.cmAdditions[item.media.id] && this.cmAdditions[item.media.id].emit('queue')
+      if (this.cmAdditions[item.media.id])
+      this.cmAdditions[item.media.id].emit('queue')
     })
     this.bot.client.on('changeMedia', media => {
       this.cmAdditions[media.id] && this.cmAdditions[media.id].emit('play')
@@ -119,20 +121,26 @@ class AddCustom {
       this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
       if (data.msg === 'This item is already on the playlist')
       return this.bot.sendMessage('Das darf garnicht passieren')
-      this.cmAdditions[data.id] && this.cmAdditions[data.id].emit('queueFail') && this.cmAdditions[data.id].removeAllListeners()
+      if (this.cmAdditions[data.id]) {
+        this.cmAdditions[data.id].emit('queueFail')
+        this.cmAdditions[data.id].removeAllListeners()
+      }
     })
     this.bot.client.prependListener('delete', ({ uid }) => {
       const id = this.bot.playlist.find(({ uid: vid }) => uid === vid).media.id
-      this.cmAdditions[id] && this.cmAdditions[id].emit('delete') && this.cmAdditions[id].removeAllListeners()
+      if (this.cmAdditions[id]) {
+        this.cmAdditions[id].emit('delete')
+        this.cmAdditions[id].removeAllListeners()
+      }
     })
     this.bot.client.on('mediaUpdate', ({ currentTime }) => {
-      this.cmAdditions[ponk.currMedia.id] && this.cmAdditions[ponk.currMedia.id].emit('mediaUpdate')
+      if (this.cmAdditions[ponk.currMedia.id]) {
+        this.cmAdditions[ponk.currMedia.id].emit('mediaUpdate')
+      }
     })
   }
   async setupProviderList() {
     this.providerList = await new ProviderList(this.bot)
-    const priority = ({ id, provider }) => provider.priority || provider.kinoxids[id]
-    this.providerList.kinoxHosts = this.providerList.kinoxHosts.sort((a, b) =>  priority(a) - priority(b))
     this.supportedProviders = this.providerList.supportedProviders
     this.setupUserScript()
     this.setupServer()
@@ -266,7 +274,7 @@ class AddCustom {
       return `${key}: ${value}`
     }).join('\r\n'))
     const tryToGetDuration = () => new Promise((resolve, reject) => {
-      execFile('ffprobe', [...params, addition.fileurl], (err, stdout, stderr) => {
+      execFile('ffprobe', [...params, addition.fileurl], (err, stdout) => {
         if (err) return reject(err)
         try {
           addition.ffprobe = JSON.parse(stdout)
@@ -293,14 +301,14 @@ class AddCustom {
     if (!meta.gettitle) addition.on('message', msg => {
       this.bot.sendMessage(msg)
     }).getInfo().then(() => {
-      //if (!meta.fiku && addition.fikuonly) throw new Error('not addable')
+      if (!meta.fiku && addition.fikuonly)
+      throw `Kein Hoster gefunden. Addierbare Hosts: ${this.supportedProviders}`
       if (this.bot.playlist.some(item => item.media.id === addition.id))
       throw 'Ist schon in der playlist'
       if (title) addition.title = title
       if (addition.type === 'cm' && !addition.duration)
       return this.getDuration(addition)
     }).then(() => {
-      this.cmAdditions[addition.id] = addition
       if (addition.needUserScript) addition.on('queue', () => {
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
@@ -310,28 +318,30 @@ class AddCustom {
             title: addition.title,
             opts: [
               addition.url,
-              `Geht nur mit Userscript (Letztes update: ${this.userscriptdate}) (ks*.user.js bitte löschen)`,
+              `Geht nur mit Userscript (Letztes update: ${this.userscriptdate})`,
+              '(ks*.user.js bitte löschen)',
               ...this.userScriptPollOpts
             ],
             obscured: false
           })
           addition.once('delete', () => {
-            if (this.bot.poll.timestamp === addition.userScriptPollId) this.bot.client.closePoll()
+            if (this.bot.poll.timestamp === addition.userScriptPollId)
+            this.bot.client.closePoll()
           })
         }
         userScriptPoll()
         addition.on('play', data => {
-          if (!this.bot.pollactive || this.bot.poll.timestamp != addition.userScriptPollId) userScriptPoll()
+          if (!this.bot.pollactive) userScriptPoll()
+          if (this.bot.poll.timestamp != addition.userScriptPollId)
+          userScriptPoll()
           this.bot.client.once('changeMedia', () => {
-            if (this.bot.poll.timestamp === addition.userScriptPollId) this.bot.client.closePoll()
+            if (this.bot.poll.timestamp === addition.userScriptPollId)
+            this.bot.client.closePoll()
           })
         })
       })
-      addition.add(meta.addnext)
-    }).catch(err => {
-      this.bot.sendMessage(err)
-      this.bot.sendByFilter(`Addierbare Hosts: ${this.supportedProviders}`)
-    })
+      this.cmAdditions[addition.id] = addition.add(meta.addnext)
+    }).catch(err => this.bot.sendByFilter(err))
     return addition
   }
 }
@@ -399,7 +409,8 @@ module.exports = {
       }).on('queue', () => {
         this.mediaDelete(this.currUID)
       }).on('play', () => {
-        this.commands.handlers.settime(user, (this.currMedia.currentTime - 30).toString(), meta)
+        const jumpto = (this.currMedia.currentTime - 30)
+        this.commands.handlers.settime(user, jumpto.toString(), meta)
       })
     }
   }

@@ -29,7 +29,8 @@ class FikuSystem {
       url = validUrl.isHttpsUri(url)
       if (!url) throw 'Ist keine https-Elfe /pfräh'
       if (title) return resolve(title)
-      this.bot.API.add.add(url, title, { gettitle: true }).getInfo(true).then(resolve)
+      const addition = this.bot.API.add.add(url, title, { gettitle: true })
+      addition.getInfo(true).then(resolve)
     })
   }
   getFikuList() {

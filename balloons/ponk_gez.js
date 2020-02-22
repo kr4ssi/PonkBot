@@ -18,41 +18,49 @@ class gezStations {
     })
   }
   setupManifests() {
-    return this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
-      $: true
-    }).then(({ $ }) => {
-      return Promise.all($('.button._focusable').filter((i, e) => /devicetype=pc/.test(e.attribs.href)).map((i, e) => {
-        return this.bot.API.add.allowedHosts.hostAllowed('https://www.ardmediathek.de' + e.attribs.href).then(host => {
-          return host.getInfo()
-        }).then(result => Object.assign(result, {
-          formats: result.formats.filter(format => {
-            if (/hr/.test(e.attribs.title)) {
-              if (/sub/.test(format.url)) return false
-            }
-            else if (format.manifest_url != result.info.manifest_url) return false
-            return true
-          }),
-          title: e.attribs.title,
-          live: true
-        }))
-      }).toArray().concat([
-        //'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
-        //'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
-        //'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
-      ].map(url => this.bot.API.add.allowedHosts.hostAllowed(url).then(host => {
-        return host.getInfo()
-      }).then(result => Object.assign(result, {
-        title: result.info.title.replace(' Livestream', ''),
-        live: true
-      }))))).then(results => results.forEach(({ manifest, title }) => {
-        this.bot.server.host.get('/mediathek/' + encodeURIComponent(title) + '.json', (req, res) => {
-          res.json(manifest)
+    return new Promise((resolve, reject) => {
+      this.bot.fetch('https://www.ardmediathek.de/ard/live/Y3JpZDovL2Rhc2Vyc3RlLmRlL0xpdmVzdHJlYW0tRGFzRXJzdGU', {
+        $: true
+      }).then(({ $ }) => {
+        const stations = $('.button._focusable').filter((i, e) => {
+          return /devicetype=pc/.test(e.attribs.href)
         })
-        this.manifests.push({
-          title,
-          id: this.bot.server.weblink + '/mediathek/' + encodeURIComponent(title) + '.json'
-        })
-      }))
+        Promise.all(stations.map((i, e) => {
+          const url = 'https://www.ardmediathek.de' + e.attribs.href
+          const addition = this.bot.API.add.add(url, null, { gettitle: true })
+          return addition.getInfo().then(() => Object.assign(addition, {
+            formats: addition.formats.filter(format => {
+              if (/hr/.test(e.attribs.title)) return !/sub/.test(format.url)
+              return (format.manifest_url === addition.info.manifest_url)
+            }),
+            live: true,
+            title: e.attribs.title
+          }))
+        }).toArray().concat([
+          //'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
+          //'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
+          //'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
+        ].map(url => {
+          const addition = this.bot.API.add.add(url, null, { gettitle: true })
+          return addition.getInfo().then(() => Object.assign(addition, {
+            title: addition.info.title.replace(' Livestream', ''),
+            live: true
+          }))
+        }))).then(results => {
+          results.forEach(({ manifest, title }) => {
+            console.log(title)
+            const filepath = `/mediathek/${encodeURIComponent(title)}.json`
+            this.bot.server.host.get(filepath, (req, res) => {
+              res.json(manifest)
+            })
+            this.manifests.push({
+              title,
+              id: this.bot.server.weblink + filepath
+            })
+          })
+          resolve()
+        }, console.error)
+      })
     })
   }
 }

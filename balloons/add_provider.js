@@ -20,6 +20,7 @@ module.exports = class ProviderList extends Array {
   }
   then(...args) {
     const grpregex = /(^\(\?\w+\))|\(\?P\<(\w+)\>|\(\?\((\w+)\)|\(\?P=(\w+)\)/g
+    const priority = ({ id, provider }) => provider.priority || provider.kinoxids[id]
     return this.then = new Promise((resolve, reject) => {
       PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
         cwd: path.join(__dirname, '..', 'youtube-dl'),
@@ -60,6 +61,7 @@ module.exports = class ProviderList extends Array {
         if (!provider.fikuonly)
         this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
       })
+      this.kinoxHosts = this.kinoxHosts.sort((a, b) =>  priority(a) - priority(b))
       return this
     }).then(...args)
   }
@@ -102,7 +104,7 @@ class Provider {
         catch (err) {
           return console.error(err)
         }
-        if (!info.title) info = info[0];
+        if (!info.title) info = info[0]
         this.info = info
         if (info.formats && info.formats.length)
         this.formats = info.formats.filter(format => {
