@@ -211,9 +211,11 @@ const providers = Object.entries({
               }
               this.emit('message', `Addiere Mirror ${mirrorindex}/${mirrorcount}: ${mirrorurl} Vom: ${date}`)
               this.matchUrl(mirrorurl, [provider])
-              return this.getInfo().then(result => {
-                result.title = title
-                return result
+              return this.getInfo().then(addition => {
+                addition.title = title
+                if (addition.type === 'cm' && !addition.duration)
+                return this.bot.API.add.getDuration(addition)
+                return addition
               }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
             })
           }
