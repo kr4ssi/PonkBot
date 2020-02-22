@@ -318,6 +318,8 @@ class AddCustom {
       if (title) addition.title = title
       if (addition.type === 'cm' && !addition.duration)
       return this.getDuration(addition)
+    }).catch(err => {
+      throw err
     }).then(() => {
       this.cmAdditions[addition.id] = addition
       if (addition.needUserScript) addition.on('queue', () => {
@@ -352,7 +354,7 @@ class AddCustom {
         })
       })
       addition.add(meta.addnext)
-    }).catch(err => this.bot.sendByFilter(err))
+    }).catch(err => this.bot.sendByFilter(err.message || err))
     return addition
   }
 }

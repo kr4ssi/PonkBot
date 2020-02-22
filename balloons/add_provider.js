@@ -448,7 +448,6 @@ const providers = Object.entries({
   },
   'ccc.de': {},
   'bitchute.com': {},
-  'banned.video': {},
   'prosieben.de': {
     regex: 'ProSiebenSat1IE'
   },
