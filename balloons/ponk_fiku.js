@@ -13,6 +13,7 @@ class FikuSystem {
   constructor(ponk){
     Object.assign(this, {
       //fikuList    : [],    // A list of Fiku-suggestions
+      fikupoll: false, //poll running?
       bot         : ponk   // The bot
     })
     ponk.db.createTableIfNotExists('fiku', (table) => {
@@ -77,6 +78,33 @@ class FikuSystem {
       })
     })
   }
+  addFiku(id, newuser, newurl) {
+    return this.getFiku(id).then(({ url, title, id, user }) => {
+      if (newurl) {
+        url = newurl
+        user = newuser
+      }
+      this.bot.API.add.add(url, title + ' (ID: ' + id + ')', {
+        user,
+        addnext: true,
+        fiku: true
+      }).on('closetoend', () => {
+        this.delFiku(id).then(() => {
+          if (!this.fikupoll) this.fikuPoll(user, '')
+        })
+      })
+      return { url, title, id, user }
+    })
+  }
+  delFiku(id) {
+    return this.getFiku(id).then(fiku => {
+      return this.bot.db.knex('fiku').where(fiku).del().then(deleted => {
+        if (deleted) {
+          this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
+        }
+      })
+    })
+  }
   getTmdbInfo({ id, type }, info, language) {
     return new Promise(resolve => {
       this.bot.fetch(`https://api.themoviedb.org/3/${type}/${id}${info ? '/' + info : ''}`, {
@@ -98,28 +126,33 @@ class FikuSystem {
         timeout = split.shift() * 60
         runoff = timeout
       }
-      if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0])) runoff = split.shift() * 60
+      if (/^[1-9][0-9]?(\.[0-9]{1-3})?$/.test(split[0]))
+      runoff = split.shift() * 60
       let title = split.join(' ').trim()
       if (!title) title = 'Fiku'
       //const date = new Date()
       //const hour = date.getHours()
-      const opts = fikuList.filter((row, i, arr) => row.active && (meta.command === 'ausschussfiku' ? (i < 8) : true)).map(row => row.title + ' (ID: ' + row.id + ')').concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+      let opts = fikuList.filter(row => row.active)
+      if (meta && meta.command === 'ausschussfiku') opts.filter((row, i) => i < 8)
+      opts = opts.map(row => `${row.title} (ID: ${row.id})`).concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
       const fikuPoll = (title, opts, timeout) => {
-        const settings = {
+        this.fikupoll = true
+        this.bot.pollAction({
           title,
           opts,
-          obscured: false
-        }
-        if (timeout) settings.timeout = timeout
-        this.bot.pollAction(settings).then(pollvotes => {
+          obscured: false,
+          timeout: timeout || undefined
+        }).then(pollvotes => {
+          this.fikupoll = false
           const max = Math.max(...pollvotes)
-          if (max < 1 && title === 'Stichwahl') return setFiku('Niemand hat abgestimmt. Partei!')
+          if (max < 1 && title === 'Stichwahl')
+          return setFiku('Niemand hat abgestimmt. Partei!')
           const winner = opts.filter((opt, i) => pollvotes[i] === max)
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
           if (winner[0] === 'Partei') return setFiku('Partei!')
-          this.getFiku(winner[0].match(/ \(ID: (\d+)\)/)[1]).then(({ url, title, id, user }) => {
-            this.bot.sendMessage(title + ' (ID: ' + id + ')' + ' wird addiert')
-            this.bot.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
+          const id = winner[0].match(/ \(ID: (\d+)\)/)[1]
+          this.addFiku(id).then(({ title }) => {
+            this.bot.sendMessage(`${title} (ID: ${id}) wird addiert`)
           })
         })
       }
@@ -177,25 +210,18 @@ module.exports = {
       })
     },
     fikulöschen(user, params, meta) {
-      this.API.fiku.getFiku(params).then(fiku => {
-        this.db.knex('fiku').where(fiku).del().then(deleted => {
-          if (deleted) {
-            this.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
-          }
-        })
-      })
+      this.API.fiku.delFiku(params)
     },
     fikuadd(user, params, meta) {
       const split = params.split(' ')
       const id = split.shift()
-      this.API.fiku.getFiku(id).then(({ url, title, id, user }) => {
-        let newurl = split.shift()
-        if (newurl) {
-          url = validUrl.isHttpsUri(newurl)
-          if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-        }
-        this.API.add.add(url, title + ' (ID: ' + id + ')', { user, addnext: true, fiku: true })
-      })
+      let newurl = split.shift()
+      if (newurl) {
+        newurl = validUrl.isHttpsUri(newurl)
+        if (!newurl)
+        return this.sendMessage('Ist keine https-Elfe /pfräh')
+      }
+      this.API.fiku.addFiku(id, user, newurl)
     },
     fikuelfe(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
@@ -212,12 +238,12 @@ module.exports = {
     },
     fikuändern(user, params, meta) {
       const [id, url, ...title] = params.trim().split(' ')
-      this.API.fiku.checkFiku(url, title.join(' ')).then(title => {
+      this.API.fiku.checkFiku(url, 'title').then(() => {
         this.API.fiku.getFiku(id).then(fiku => {
           if (fiku.user != user && this.getUserRank(user) < 3)
           throw 'Du kannst nur deine eigenen Vorschläge ändern'
           const update = { url }
-          if (title) update.title = title
+          if (title.length) update.title = title.join(' ')
           this.db.knex('fiku').where(fiku).update(update).then(() => {
             this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title)
           })

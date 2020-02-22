@@ -91,6 +91,7 @@ class Addition extends EventEmitter {
   }
   add(next) {
     this.bot.client.socket.emit('queue', {
+      title: this.title,
       type : this.type,
       id : this.id,
       pos : next ? 'next' : 'end',
@@ -111,11 +112,14 @@ class AddCustom {
     this.setupProviderList()
     this.bot.client.on('queue', ({ item }) => {
       if (item.queueby != this.bot.name) return
-      if (this.cmAdditions[item.media.id])
-      this.cmAdditions[item.media.id].emit('queue')
+      if (this.cmAdditions[item.media.id]) {
+        this.cmAdditions[item.media.id].emit('queue')
+        this.cmAdditions[item.media.id].duration = item.media.seconds
+        this.cmAdditions[item.media.id].closetoend = item.media.seconds * 0.8
+      }
     })
     this.bot.client.on('changeMedia', media => {
-      this.cmAdditions[media.id] && this.cmAdditions[media.id].emit('play')
+      if (this.cmAdditions[media.id]) this.cmAdditions[media.id].emit('play')
     })
     this.bot.client.on('queueFail', data => {
       this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
@@ -135,7 +139,13 @@ class AddCustom {
     })
     this.bot.client.on('mediaUpdate', ({ currentTime }) => {
       if (this.cmAdditions[ponk.currMedia.id]) {
-        this.cmAdditions[ponk.currMedia.id].emit('mediaUpdate')
+        if (currentTime > this.cmAdditions[ponk.currMedia.id].closetoend) {
+          if (!this.cmAdditions[ponk.currMedia.id].closetoended) {
+            this.cmAdditions[ponk.currMedia.id].closetoended = true
+            this.cmAdditions[ponk.currMedia.id].emit('closetoend')
+          }
+        }
+        this.cmAdditions[ponk.currMedia.id].emit('update')
       }
     })
   }

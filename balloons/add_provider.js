@@ -1,10 +1,8 @@
 'use-scrict';
-
 const fs = require('fs')
 const URL = require('url')
 const path = require('path')
 const { PythonShell } = require('python-shell')
-
 const parseLink = require('./add_parselink.js')
 
 module.exports = class ProviderList extends Array {
@@ -242,6 +240,7 @@ const providers = Object.entries({
     regex: 'XFileShareIE',
     getInfo() {
       if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
+      if (this.matchGroup('host') === 'gounlimited.to') this.type = 'fi'
       let args = []
       if (['gounlimited.to'].includes(this.matchGroup('host'))) args = ['--no-check-certificate']
       return Provider.prototype.getInfo.call(this, this.url, args)
@@ -298,7 +297,7 @@ const providers = Object.entries({
     getInfo() {
       this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
-        match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+sources:\s\[\{file:"([^"]+)/
+        match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+\{src: \"([^"]+)/
       }).then(({ match }) => {
         this.title = match[1]
         this.fileurl = match[2]
