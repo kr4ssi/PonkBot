@@ -71,7 +71,7 @@ class Addition extends EventEmitter {
           {type: 'audio/ogg', ext: ['.ogg']},
           {type: 'audio/mpeg', ext: ['.mp3', '.m4a']}
         ].find(contentType => {
-          contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))
+          return contentType.ext.includes(path.extname(URL.parse(this.fileurl).pathname))
         }) || {}).type || 'video/mp4'
       }))
     }
