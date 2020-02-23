@@ -449,29 +449,28 @@ module.exports = {
           //this.socket.emit = socket.emit.bind(this.socket)
           this.start()
         }).once('emoteList', function(emotelist) {
-          this.socket.emit('pm', { to: 'kr4ssi', msg: 'sup', meta: {} })
           resolve(emotelist)
           this.socket.close()
         }).on('error', reject)
       }).catch(console.error)
-      if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
-      let add
-      if (name === 'add') {
-        name = split.shift()
-        add = true
-      }
-      if (!name || !name.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
-      getEmotes(chan).then(emotes => {
-        this.API.emotes.otherEmotes[chan] = emotes
-        const emote = emotes.find(emote => emote.name == name)
-        if (!emote) return this.sendMessage('Emote nicht gefunden')
-        if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
-        else this.sendMessage(emote.image + '.pic')
-      })
-    },
-    hintergrund: logoHintergrund,
-    logo: logoHintergrund
-  }
+    if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
+    let add
+    if (name === 'add') {
+      name = split.shift()
+      add = true
+    }
+    if (!name || !name.match(/^\/[\wäÄöÖüÜß]+/)) return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
+    getEmotes(chan).then(emotes => {
+      this.API.emotes.otherEmotes[chan] = emotes
+      const emote = emotes.find(emote => emote.name == name)
+      if (!emote) return this.sendMessage('Emote nicht gefunden')
+      if (add) this.API.emotes.downloadEmote(emote.name, emote.image)
+      else this.sendMessage(emote.image + '.pic')
+    })
+  },
+  hintergrund: logoHintergrund,
+  logo: logoHintergrund
+}
 }
 function logoHintergrund(user, params, meta) {
   let css1, css2, options, message, rank
