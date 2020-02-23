@@ -21,13 +21,13 @@ module.exports = {
         sharedType     : 'bucket',
         sharedParams   : [10, 1, 'second', null],
       })
-      const emit = ponk.client.socket.emit.bind(ponk.client.socket)
-      ponk.client.socket.emit = (...params) => {
+      const emit = ponk.client.socket.emit
+      ponk.client.socket.emit = function() {
         ponk.checkCooldown({ type: 'emit', user: ponk.name, silent: true }).then(() => {
-          emit(...params)
+          emit.apply(this, arguments)
         }, message => setTimeout(() => {
           process.nextTick(() => {
-            ponk.client.socket.emit(...params)
+            this.emit(...arguments)
           })
         }, 500))
       }

@@ -440,18 +440,20 @@ module.exports = {
       let name = split.shift()
       const getEmotes = (chan, update) => new Promise((resolve, reject) => {
         if (this.API.emotes.otherEmotes[chan] && !update) return resolve(this.API.emotes.otherEmotes[chan])
-        const { host, port, secure, user, auth } = this.client
+        const { host, port, secure, user, auth, socket } = this.client
         const tempclient = new CyTubeClient({
           host, port, secure, user, auth, chan
         }, this.log).once('ready', function() {
           this.connect()
         }).once('connected', function() {
+          //this.socket.emit = socket.emit.bind(this.socket)
           this.start()
         }).once('emoteList', function(emotelist) {
+          this.socket.emit('pm', { to: 'kr4ssi', msg: 'sup', meta: {} })
           resolve(emotelist)
           this.socket.close()
         }).on('error', reject)
-      })
+      }).catch(console.error)
       if (name === 'update') return getEmotes(chan, true).then(emotes => (this.API.emotes.otherEmotes[chan] = emotes))
       let add
       if (name === 'add') {

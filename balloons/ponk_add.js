@@ -386,7 +386,7 @@ module.exports = {
       if (title === 'download') {
         if (this.downloading) return this.sendMessage('ladiert schon 1')
         const addition = new Addition(url, this.API.add.providerList)
-        if (addition.fikuonly) throw new Error('not addable')
+        //if (addition.fikuonly) throw new Error('not addable')
         this.downloading = true
         let progress
         let timer
