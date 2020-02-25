@@ -7,15 +7,15 @@
 
 const ProviderList = require('./add_provider.js')
 
-const EventEmitter = require('events')
-const path = require('path')
 const URL = require('url')
+const path = require('path')
+const crypto = require('crypto')
 const validUrl = require('valid-url')
 const date = require('date-and-time')
-const forwarded = require('forwarded');
-const userscriptmeta = require('userscript-meta')
-const crypto = require('crypto')
+const forwarded = require('forwarded')
+const EventEmitter = require('events')
 const { execFile } = require('child_process')
+const userscriptmeta = require('userscript-meta')
 const toSource = source => require('js-beautify').js(require('tosource')(source), {
   indent_size: 2,
   keep_array_indentation: true
@@ -190,7 +190,7 @@ class AddCustom {
       new UserScript('add.new.user', 'Mit Channelberechtigung', {
         useGetValue: true
       }, {
-        include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.client.chan),
+        include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.channel),
         grant: [
           'GM_setValue', 'GM_getValue', 'unsafeWindow'
         ]
@@ -213,7 +213,7 @@ class AddCustom {
       this.bot.db.setKeyValue('userscriptts', this.bot.started);
       this.bot.db.setKeyValue('userscripthash', newuserscripthash);
       this.userScripts.forEach(({ filename, userscript }) => {
-        this.bot.pushToGit(filename, userscript)
+        this.bot.API.emotes.pushToGit(filename, userscript)
       })
     });
 

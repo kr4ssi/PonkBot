@@ -204,7 +204,7 @@ module.exports = {
         opts: ['j', 'n'],
         obscured: false
       }, pollvotes => {
-        if (pollvotes[0] > pollvotes[1]) this.sendMessage(params + ' erhält hiermit eine öffentliche Rüge durch den ' + this.client.chan)
+        if (pollvotes[0] > pollvotes[1]) this.sendMessage(params + ' erhält hiermit eine öffentliche Rüge durch den ' + this.channel)
       })
     },
     willkürpoll(user, params, meta){

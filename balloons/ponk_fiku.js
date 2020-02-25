@@ -251,8 +251,10 @@ module.exports = {
       }, err => this.sendMessage(err))
     },
     fikuinfo(user, params, meta) {
-      Promise.resolve(/^\d+$/.test(params) ? this.API.fiku.getFiku(params) :
-      { title: params || this.currMedia.title }).then(({ title }) => {
+      Promise.resolve().then(() => {
+        if (/^\d+$/.test(params)) return this.API.fiku.getFiku(params)
+        return { title: params || this.currMedia.title }
+      }).then(({ title }) => {
         this.API.fiku.getTmdbId(title).then(id => {
           this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(credits => {
             this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {

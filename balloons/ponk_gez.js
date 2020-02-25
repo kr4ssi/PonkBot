@@ -84,7 +84,10 @@ module.exports = {
         chan = 'keller'
         params = params.split(' ').slice(0, -1).join(' ')
       }
-      (this.API.gez.manifests.length ? Promise.resolve() : this.API.gez.setupManifests()).then(() => {
+      Promise.resolve().then(() => {
+        if (!this.API.gez.manifests.length)
+        return this.API.gez.setupManifests()
+      }).then(() => {
         let gezmanifests = this.API.gez.manifests
         if (params != 'alle') {
           let gezmanifest

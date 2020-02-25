@@ -110,7 +110,7 @@ module.exports = {
           if (time < this.started) return
           const triggered = this.commands.trigger.test(this.filterChat(message))
           if (triggered) this.commandDispatcher(user, message)
-          else if (!this.peers.concat(this.name, '[server]').includes(user)) {
+          else if (!this.bots.concat('[server]').includes(user)) {
             let match
             let regex = /(?<=^|\s)(\/[a-zA-Z0-9ßäöüÄÖÜ]+)(?=\s|$)/g
             const emotes = {}
