@@ -107,6 +107,7 @@ class AddCustom {
       cmAdditions : {},    // Custom Additions
       userLinks   : {},    // Userlinks for IP-Bound providers
       userScripts : {},    // Different userscripts
+      limit       : [],    // Download-limits per user
       bot         : ponk   // The bot
     })
     this.setupProviderList()
@@ -384,7 +385,15 @@ module.exports = {
       url = validUrl.isHttpsUri(url)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       if (title === 'download') {
+        if (this.getUserRank(user) < 2) return
         if (this.downloading) return this.sendMessage('ladiert schon 1')
+        this.API.add.limit = this.API.add.limit.filter(limit => {
+          return limit.date > (Date.now() - (12 * 60 * 60 * 1000))
+        })
+        if (this.getUserRank(user) < 4 && this.API.add.limit.reduce((acc, limit) => {
+          if (limit.user === user) acc += limit.size
+          return acc
+        }, 0) > 536870912) return this.sendMessage('zuviel ladiert')
         const addition = new Addition(url, this.API.add.providerList)
         //if (addition.fikuonly) throw new Error('not addable')
         this.downloading = true
@@ -399,11 +408,16 @@ module.exports = {
             this.sendPrivate(progress, user)
           }, 10000)
         }).on('info', () => {
-          this.sendMessage(addition.info._filename + ' wird addiert')
+          this.sendMessage(path.basename(addition.info._filename) + ' wird addiert')
           addition.add()
         }).on('close', () => {
           clearInterval(timer)
           this.downloading = false
+          this.API.add.limit.push({
+            user,
+            size: addition.stats.size,
+            date: Date.now()
+          })
           if (progress) this.sendPrivate(progress, user)
         }).on('error', err => {
           this.sendMessage(err.message || err)

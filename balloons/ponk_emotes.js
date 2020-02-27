@@ -17,6 +17,7 @@ const validUrl = require('valid-url')
 const fileType = require('file-type')
 const FormData = require('form-data')
 const Gitlab = require('gitlab').Gitlab
+const UserAgent = require('user-agents')
 
 class Emotes {
   constructor(ponk) {
@@ -26,7 +27,6 @@ class Emotes {
         token       : ponk.API.keys.gitlab    // Gitlab-token
       }),
       gitrepo       : ponk.API.keys.gitrepo,  // Gitlab-repo to backup to
-      gitpromise    : Promise.resolve(),      // To chain gitlab-commits
       emotePromise  : Promise.resolve(),      // To chain emote-downloads
       filenames     : new Map(),              // The Emote-filenames
       emoteCSS      : '',                     // The Emote-CSS
@@ -38,8 +38,13 @@ class Emotes {
       },
       bot           : ponk                    // The Bot
     })
-    //this.gitclient.Repositories.tree(this.gitrepo, {recursive: true, per_page: 4000}).then(console.log, console.error)
-    //this.gitclient.RepositoryFiles.show(this.gitrepo, 'filters.json', 'master').then(console.log, console.error)
+    this.gitpromise = this.gitclient.Repositories.tree(this.gitrepo, {
+      recursive: true,
+      per_page: 5000,
+    }).then(items => {
+      this.gitfiles = new Set(items.map(item => item.path))
+      console.log(this.gitfiles)
+    }, console.error),                        // To chain gitlab-commits
     this.bot.db.createTableIfNotExists('emotes', (table) => {
       table.string('emote', 240).primary()
       table.integer('count').defaultTo(0);
@@ -63,14 +68,13 @@ class Emotes {
     })
     this.bot.client.prependListener('channelCSSJS', cssjs => {
       const stripNoCache = css => css.replace(/\/(?:emotes|bot)\.css\?[^"]+/, '')
-      if (this.bot.channelCSS && stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS))
+      if (stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS))
       this.pushToGit('channel.css', cssjs.css)
-      if (this.bot.channelJS && cssjs.js != this.bot.channelJS)
+      if (cssjs.js != this.bot.channelJS)
       this.pushToGit('channel.js', cssjs.js)
     })
     this.bot.client.prependListener('chatFilters', filters => {
-      //console.log(crypto.createHash('sha256').update(JSON.stringify(filters, null, 2)).digest('hex'))
-      if (this.bot.chatFilters && filters != this.bot.chatFilters)
+      if (filters != this.bot.chatFilters)
       this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
     this.bot.client.on('updateChatFilter', filter => {
@@ -84,8 +88,7 @@ class Emotes {
       this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
     this.bot.client.prependListener('setMotd', motd => {
-      if (this.bot.channelMotd && motd != this.bot.channelMotd)
-      this.pushToGit('motd.html', motd)
+      if (motd != this.bot.channelMotd) this.pushToGit('motd.html', motd)
     })
     if (!fs.existsSync(this.emotespath)) fs.mkdirSync(this.emotespath)
     else fs.readdirSync(this.emotespath).forEach(filename => {
@@ -181,11 +184,9 @@ class Emotes {
     })
   }
   downloadEmote(name, image) {
-    return this.emotePromise = this.emotePromise.then(() => {
-      return fetch(image).then(res => {
-        return fileType.stream(res.body)
-      })
-    }).then(stream => {
+    return this.emotePromise = this.emotePromise.then(() => fetch(image, {
+      headers: { 'User-Agent': (new UserAgent()).toString() }
+    })).then(res => fileType.stream(res.body)).then(stream => {
       const filename = this.cleanName(name) + '.' + stream.fileType.ext
       const wstream = fs.createWriteStream(path.join(this.emotespath, filename))
       wstream.on('close', () => {
@@ -206,23 +207,41 @@ class Emotes {
     }).catch(console.error)
   }
   pushToGit(filename, content, encoding) {
-    const gitObj = { commit_message: (content ? 'updated ' : 'deleted ') + filename}
-    if (encoding) gitObj.encoding = encoding
+    const opt = {}
+    if (encoding) opt.encoding = encoding
     const gitArgs = [this.gitrepo, filename, 'master']
-    if (content) gitArgs.push(content)
-    gitArgs.push(gitObj.commit_message, gitObj)
     return this.gitpromise = this.gitpromise.then(() => {
-      return this.gitclient.RepositoryFiles[content ? 'edit' : 'remove'](...gitArgs).then(result => {
-        return result
-      }).catch(err => {
-        if (content && err.response && err.response.status == 400 && err.description === 'A file with this name doesn\'t exist')
-        throw err
-        gitObj.commit_message = 'created ' + filename
-        return this.gitclient.RepositoryFiles.create(...gitArgs).then(result => {
-          return result
+      if (this.gitfiles.has(filename)) {
+        if (content) return fetch(`https://gitlab.com/api/v4/projects/${this.gitrepo}/repository/files/${filename}?ref=master`, {
+          method: 'HEAD',
+          headers: { 'PRIVATE-TOKEN': this.bot.API.keys.gitlab }
+        }).then(res => {
+          const sha256 = crypto.createHash('sha256').update(content).digest('hex')
+          if (sha256 != res.headers.get('x-gitlab-content-sha256')) {
+            opt.commit_message = 'updated ' + filename
+            gitArgs.push(content, opt.commit_message, opt)
+            return this.gitclient.RepositoryFiles.edit(...gitArgs).then(result => {
+              console.log(result)
+            })
+          }
         })
-      }).catch(console.error)
-    })
+        else {
+          opt.commit_message = 'deleted ' + filename
+          gitArgs.push(opt.commit_message, opt)
+          return this.gitclient.RepositoryFiles.remove(...gitArgs).then(result => {
+            console.log(result)
+            this.gitfiles.delete(result.file_path)
+          })
+        }
+      }
+      else if (content) {
+        opt.commit_message = 'created ' + filename
+        gitArgs.push(content, opt.commit_message, opt)
+        return this.gitclient.RepositoryFiles.create(...gitArgs).then(result => {
+          this.gitfiles.add(result.file_path)
+        })
+      }
+    }).catch(console.error)
   }
   createEmoteCSS() {
     return this.bot.db.knex('emotes').whereNotNull('width').orWhereNotNull('height').orWhereNotNull('flip').orWhereNotNull('flop')
@@ -287,7 +306,9 @@ module.exports = {
         const url = validUrl.isHttpsUri(params)
         if (url) return url
         throw { err: url, msg: 'Ist keine https-Elfe /pfräh' }
-      }).then(url => fetch(url).then(res => {
+      }).then(url => fetch(url, {
+        headers: { 'User-Agent': (new UserAgent()).toString() }
+      }).then(res => {
         return fileType.stream(res.body).then(stream => {
           const filename = path.parse(URL.parse(url).pathname).name
           const form = new FormData()
@@ -299,7 +320,8 @@ module.exports = {
           })
           return fetch(host, {
             method: 'POST',
-            body: form
+            body: form,
+            headers: { 'User-Agent': (new UserAgent()).toString() }
           }).then(res => res.json())
         })
       })).then(body => {
