@@ -324,8 +324,8 @@ const providers = Object.entries({
               url: `${config.weblink}/captcha/${token}`,
               onload: res => {
                 console.log(res.responseText)
-                grecaptcha.reset()
-                setup()
+                //grecaptcha.reset()
+                //setup()
               },
               onerror: console.error
             })
