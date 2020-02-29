@@ -76,17 +76,17 @@ class Addition extends EventEmitter {
       }))
     }
   }
-  matchUrl(url, providerList) {
-    if (providerList) {
-      const provider = providerList.find(provider => {
-        return !!(this.match = url.match(provider.regex))
-      })
-      if (!provider) throw new Error('Can\'t find a supported provider')
-      Object.assign(this, provider, {
-        getInfo: (...args) => provider.getInfo.call(this, this.url, ...args),
-        download: (...args) => provider.download.call(this, this.url, ...args)
-      })
-    }
+  matchUrl(url, providerList = this.bot.API.add.providerList) {
+    if (!providerList) throw new Error('No providerlist found')
+    const provider = providerList.find(provider => {
+      return !!(this.match = url.match(provider.regex))
+    })
+    if (!provider) throw new Error('Can\'t find a supported provider')
+    Object.assign(this, provider, {
+      getInfo: (...args) => provider.getInfo.call(this, this.url, ...args),
+      download: (...args) => provider.download.call(this, this.url, ...args)
+    })
+    console.log(this)
     return this.match
   }
   add(next) {
@@ -106,8 +106,9 @@ class AddCustom {
     Object.assign(this, {
       cmAdditions : {},    // Custom Additions
       userLinks   : {},    // Userlinks for IP-Bound providers
-      userScripts : {},    // Different userscripts
+      userScripts : [],    // Different userscripts
       limit       : [],    // Download-limits per user
+      captchas    : [],    // Captchas
       bot         : ponk   // The bot
     })
     this.setupProviderList()
@@ -176,7 +177,7 @@ class AddCustom {
             include: self.providerList.userScriptIncludes.concat(meta.include || [])
           })
         })
-        this.userscript = this.meta + '\nconst allowedHosts = '
+        this.userscript = this.meta + '\nconst includes = '
         this.userscript += toSource(self.providerList.userScriptSources)
         this.userscript += '\n\nconst config = ' + toSource(Object.assign({
           weblink: self.bot.server.weblink,
@@ -193,7 +194,7 @@ class AddCustom {
       }, {
         include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.channel),
         grant: [
-          'GM_setValue', 'GM_getValue', 'unsafeWindow'
+          'GM_setValue', 'GM_getValue', 'unsafeWindow', 'GM.xmlHttpRequest'
         ]
       }),
       new UserScript('add.auto.user', 'Experimentell', {

@@ -53,7 +53,7 @@ module.exports = class ProviderList extends Array {
           this.userScriptSources.push({
             regex: provider.regex,
             groups: provider.groups,
-            getInfo: provider.userScript
+            init: provider.userScript
           })
         }
         if (!provider.fikuonly)
@@ -83,6 +83,7 @@ class Provider {
       return acc
     }, { regex: this.regex.source })
     this.overview = JSON.stringify(this.overview, undefined, 2)
+    if (typeof rules.init === 'function') rules.init.call(this)
   }
   getInfo(url, moreargs = []) {
     return new Promise((resolve, reject) => {
@@ -231,6 +232,114 @@ const providers = Object.entries({
       })
     }
   },
+  'streamkiste.tv': {
+    regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/(?:movie\/[\w-]+(\d{4})-(\d+)|(#captcha$))/,
+    groups: ['year', 'id', 'captcha'],
+    init() {
+      this.bot.db.createTableIfNotExists('captchas', (table) => {
+        table.string('token', 512).primary()
+      })
+      this.bot.server.host.get('/captcha/:token', (req, res) => {
+        const token = req.params.token
+        console.log(token)
+        this.bot.db.knex('captchas').insert({ token }).then(() => {
+          return this.bot.db.knex('captchas').count({ count: 'token' })
+        }).then(([{ count }]) => {
+          console.log(count)
+          res.send(token + '<br><br>added count: ' + count)
+        })
+      })
+    },
+    getInfo() {
+      return this.bot.fetch(this.url, {
+        match: /<title>([^<]*) HD Stream &raquo; StreamKiste\.tv<\/title>[\s\S]+pid:"(\d+)/,
+        $: true
+      }).then(({ match, $ }) => {
+        const title = match[1]
+        const pid = match[2]
+        const rlss = $('#rel > option').map((i, e) => {
+          console.log(e.attribs)
+          return e.attribs
+        }).toArray().filter(({ selected }) => selected != undefined)
+        const mirrors = $('[href=\'#video\']').map((i, e) => {
+          return e.attribs
+        }).toArray().reduce((acc, attribs) => {
+          let { 'data-mirror': mirror, 'data-host': host, title } = attribs
+          title = (title.match(/'([^']+)/) || [])[1]
+          if (!/^nxload/i.test(title)) return acc
+          if (!acc[title]) acc[title] = []
+          acc[title].push({ host, mirror})
+          return acc
+        }, {})
+        console.log(pid)
+        console.log(rlss)
+        console.log(mirrors)
+        return this.bot.db.knex('captchas').select('token').limit(1).then(result => {
+          if (!result.length) {
+            throw 'keine captchas'
+          }
+          const token = result.pop().token
+          return this.bot.db.knex('captchas').where({ token }).del().then(() => {
+            return this.bot.fetch(this.url, {
+              method: 'POST',
+              form: {
+                req: '3',
+                pid,
+                ...Object.values(mirrors).pop().pop(),
+                rel: rlss.pop().data,
+                token
+              },
+              customerr: [302]
+            })
+          })
+        }).then(({ res, body, statusCode }) => {
+          let url
+          if (statusCode === 302) url = res.headers.location
+          else {
+            if (/reCAPTCHA kann nicht erreicht werden/.test(body))
+            throw 'reCAPTCHA kann nicht erreicht werden'
+            url = body
+          }
+          console.log(url)
+          this.matchUrl(url, this.bot.API.add.providerList)
+          return this.getInfo().then(addition => {
+            addition.title = title
+            if (addition.type === 'cm' && !addition.duration)
+            return this.bot.API.add.getDuration(addition)
+            return addition
+          })
+        })
+      })
+    },
+    userScript: function() {
+      if (!this.match[3]) return
+      const setup = () => {
+        grecaptcha.render({
+          sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
+          size: 'invisible',
+          callback: token => {
+            console.log(token)
+            GM.xmlHttpRequest({
+              method: 'GET',
+              url: `${config.weblink}/captcha/${token}`,
+              onload: res => {
+                console.log(res.responseText)
+                grecaptcha.reset()
+                setup()
+              },
+              onerror: console.error
+            })
+          }
+        })
+        grecaptcha.execute()
+      }
+      unsafeWindow.setup = setup
+      const script = document.createElement('script')
+      script.setAttribute('type', 'text/javascript')
+      script.setAttribute('src', 'https://www.google.com/recaptcha/api.js?onload=setup&render=explicit')
+      document.getElementsByTagName('head').item(0).appendChild(script)
+    }
+  },
   [['nxload.com',
   'clipwatching.com',
   'gounlimited.to',
@@ -258,28 +367,25 @@ const providers = Object.entries({
     },
     userScript: function() {
       const e = /(?:www\.)?vup.to/.test(window.location.hostname) ? (holaplayer && holaplayer.cache_) : document.querySelector('video').firstElementChild || document.querySelector('video')
-      if (!e) return
+      if (!e) return false
       this.fileurl = e.src
-      return this
     }
   },
   'vshare.io': {
     regex: 'VShareIE',
     userScript: function() {
       const e = document.querySelector('video').firstElementChild || document.querySelector('video')
-      if (!e) return
+      if (!e) return false
       this.fileurl = e.src
-      return this
     }
   },
   'vivo.sx': {
     regex: 'VivoIE',
     userScript: function() {
       const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-      if (!e) return
-      if (e.paused) return
+      if (!e) return false
+      if (e.paused) return false
       this.fileurl = e.src
-      return this
     }
   },
   'nxload.com': {
@@ -333,9 +439,8 @@ const providers = Object.entries({
     priority: 2,
     userScript: function() {
       const e = pData
-      if (!e) return
+      if (!e) return false
       this.fileurl = pData.sourcesCode[0].src
-      return this
     }
   },
   'streamcrypt.net': {

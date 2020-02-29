@@ -90,6 +90,8 @@ class Emotes {
     this.bot.client.prependListener('setMotd', motd => {
       if (motd != this.bot.channelMotd) this.pushToGit('motd.html', motd)
     })
+    const stripNoCache = css => css.replace(/\/(?:emotes|bot)\.css\?[^"]+/, '')
+    const filters = this.bot.chatFilters.filter(filter => filter.name != 'Bot filter')
     if (!fs.existsSync(this.emotespath)) fs.mkdirSync(this.emotespath)
     else fs.readdirSync(this.emotespath).forEach(filename => {
       const stat = fs.statSync(path.join(this.emotespath, filename))
@@ -216,12 +218,13 @@ class Emotes {
           method: 'HEAD',
           headers: { 'PRIVATE-TOKEN': this.bot.API.keys.gitlab }
         }).then(res => {
+          console.log(res)
           const sha256 = crypto.createHash('sha256').update(content).digest('hex')
           if (sha256 != res.headers.get('x-gitlab-content-sha256')) {
             opt.commit_message = 'updated ' + filename
             gitArgs.push(content, opt.commit_message, opt)
             return this.gitclient.RepositoryFiles.edit(...gitArgs).then(result => {
-              console.log(result)
+              console.log('edited', result)
             })
           }
         })
@@ -229,7 +232,7 @@ class Emotes {
           opt.commit_message = 'deleted ' + filename
           gitArgs.push(opt.commit_message, opt)
           return this.gitclient.RepositoryFiles.remove(...gitArgs).then(result => {
-            console.log(result)
+            console.log('deleted', result)
             this.gitfiles.delete(result.file_path)
           })
         }
@@ -238,6 +241,7 @@ class Emotes {
         opt.commit_message = 'created ' + filename
         gitArgs.push(content, opt.commit_message, opt)
         return this.gitclient.RepositoryFiles.create(...gitArgs).then(result => {
+          console.log('created', result)
           this.gitfiles.add(result.file_path)
         })
       }

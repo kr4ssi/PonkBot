@@ -58,7 +58,7 @@ module.exports = {
               try {
                 if (err) throw err
                 if (jsonparse) body = JSON.parse(body)
-                if (body.err) throw body.err
+                if (body && body.err) throw body.err
                 let result = {
                   body,
                   statusCode: res.statusCode,
@@ -70,7 +70,7 @@ module.exports = {
                   throw new Error(res.statusCode)
                 }
                 if (getprop && !body[getprop]) throw new matchError('no property \'' + getprop + '\' found')
-                result.prop = body[getprop] || body
+                result.prop = (body && body[getprop]) || body
                 if (getlist) {
                   if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new matchError('no list \'' + getlist + '\' found')
                   result.list = result.prop[getlist]
