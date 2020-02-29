@@ -185,7 +185,7 @@ const providers = Object.entries({
           return kinoxIds.includes(host.id)
         })
         const getHost = ({ provider, id } = kinoxHosts.shift() || {}) => {
-          if (!provider) return Promise.reject('Kein addierbarer Hoster gefunden')
+          if (!provider) throw 'Kein addierbarer Hoster gefunden'
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
           /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
           const hostdiv = $('#Hoster_' + id)
@@ -206,11 +206,11 @@ const providers = Object.entries({
                 Mirror: mirrorindex
               }
             }).then(({ body }) => {
-              if (!body.Stream) return reject(body)
+              if (!body.Stream) throw body
               const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
               if (body.Replacement) {
                 const match = body.Replacement.match(regex)
-                if (!match) return reject(body)
+                if (!match) throw body
                 mirrorindex = match[1]
                 mirrorcount = match[2]
                 date = match[3]
@@ -308,6 +308,7 @@ const providers = Object.entries({
             })
           }
           return getCaptcha().then(url => {
+            this.emit('message', `Addiere Mirror: ${url}`)
             return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
               this.title = title
               if (this.type === 'cm' && !this.duration)
