@@ -315,7 +315,7 @@ const providers = Object.entries({
       if (!this.config.captcha || !this.match[3]) return
       const setup = () => {
         const div = document.createElement('div')
-        document.body.appendChild(div)
+        document.body.prepend(div)
         grecaptcha.render(div, {
           sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
           size: 'invisible',
