@@ -101,7 +101,7 @@ class Provider {
           info = data.map((rawData) => JSON.parse(rawData))
         }
         catch (err) {
-          return console.error(err)
+          return reject(err)
         }
         if (!info.title) info = info[0]
         this.info = info
@@ -184,7 +184,7 @@ const providers = Object.entries({
         const kinoxHosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
           return kinoxIds.includes(host.id)
         })
-        const getHost = ({ provider, id } = kinoxHosts.shift()) => {
+        const getHost = ({ provider, id } = kinoxHosts.shift() || {}) => {
           if (!provider) return Promise.reject('Kein addierbarer Hoster gefunden')
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
           /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
@@ -206,25 +206,24 @@ const providers = Object.entries({
                 Mirror: mirrorindex
               }
             }).then(({ body }) => {
-              if (!body.Stream) return console.error(provider, id) // || !body.Replacement
+              if (!body.Stream) return reject(body)
               const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
               if (body.Replacement) {
                 const match = body.Replacement.match(regex)
-                if (!match) return console.log(body.Replacement)
+                if (!match) return reject(body)
                 mirrorindex = match[1]
                 mirrorcount = match[2]
                 date = match[3]
                 console.log(match[0], mirrorindex, mirrorcount, date)
               }
               this.emit('message', `Addiere Mirror ${mirrorindex}/${mirrorcount}: ${mirrorurl} Vom: ${date}`)
-              this.matchUrl(mirrorurl, [provider])
-              return this.getInfo().then(addition => {
-                addition.title = title
-                if (addition.type === 'cm' && !addition.duration)
-                return this.bot.API.add.getDuration(addition)
-                return addition
-              }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
-            })
+              return this.matchUrl(mirrorurl, [provider]).getInfo()
+            }).then(() => {
+              this.title = title
+              if (this.type === 'cm' && !this.duration)
+              return this.bot.API.add.getDuration(this)
+              return this
+            }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
           }
           return getMirror(initialindex)
         }
@@ -247,10 +246,11 @@ const providers = Object.entries({
         }).then(([{ count }]) => {
           console.log(count)
           res.send(token + '<br><br>added count: ' + count)
+          this.bot.emit('captcha', token)
         })
       })
     },
-    getInfo() {
+    getInfo(url, gettitle) {
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) HD Stream &raquo; StreamKiste\.tv<\/title>[\s\S]+pid:"(\d+)/,
         $: true
@@ -261,54 +261,62 @@ const providers = Object.entries({
           console.log(e.attribs)
           return e.attribs
         }).toArray().filter(({ selected }) => selected != undefined)
+        const allowed = ['NxLoad', 'ClipWatching', 'Vivo']
         const mirrors = $('[href=\'#video\']').map((i, e) => {
-          return e.attribs
-        }).toArray().reduce((acc, attribs) => {
-          let { 'data-mirror': mirror, 'data-host': host, title } = attribs
-          title = (title.match(/'([^']+)/) || [])[1]
-          if (!/^nxload/i.test(title)) return acc
-          if (!acc[title]) acc[title] = []
-          acc[title].push({ host, mirror})
-          return acc
-        }, {})
+          return { attribs: e.attribs, name: $(e).find('.hoster').text() }
+        }).toArray().reduce((acc, { attribs, name }) => {
+          let { 'data-mirror': mirror, 'data-host': host } = attribs
+          if (!allowed.includes(name)) return acc
+          return acc.concat({ mirror, host, name })
+        }, []).sort((a ,b) => allowed.indexOf(a.name) - allowed.indexOf(b.name))
         console.log(pid)
         console.log(rlss)
         console.log(mirrors)
-        return this.bot.db.knex('captchas').select('token').limit(1).then(result => {
-          if (!result.length) {
-            throw 'keine captchas'
-          }
-          const token = result.pop().token
-          return this.bot.db.knex('captchas').where({ token }).del().then(() => {
-            return this.bot.fetch(this.url, {
-              method: 'POST',
-              form: {
-                req: '3',
-                pid,
-                ...Object.values(mirrors).pop().pop(),
-                rel: rlss.pop().data,
-                token
-              },
-              customerr: [302]
+        const rel = rlss.pop().data
+        const getMirror = ({ mirror, host } = mirrors.shift() || {}) => {
+          if (!mirror) throw 'Kein addierbarer Hoster gefunden'
+          console.log(mirror)
+          const getCaptcha = () => {
+            return this.bot.db.knex('captchas').select('token').limit(1).then(result => {
+              if (result.length) return result.pop().token
+              return new Promise((resolve, reject) => {
+                this.emit('message', 'Captcha generieren: https://streamkiste.tv/#captcha')
+                this.bot.once('captcha', resolve)
+              })
+            }).then(token => {
+              return this.bot.db.knex('captchas').where({ token }).del().then(() => {
+                return this.bot.fetch(url, {
+                  method: 'POST',
+                  form: {
+                    req: '3',
+                    pid,
+                    mirror,
+                    host,
+                    rel,
+                    token
+                  },
+                  customerr: [302]
+                })
+              })
+            }).then(({ res, body, statusCode }) => {
+              if (statusCode === 302) return res.headers.location
+              if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
+                this.emit('message', 'Captcha abgelaufen')
+                return getCaptcha()
+              }
+              return body
             })
-          })
-        }).then(({ res, body, statusCode }) => {
-          let url
-          if (statusCode === 302) url = res.headers.location
-          else {
-            if (/reCAPTCHA kann nicht erreicht werden/.test(body))
-            throw 'reCAPTCHA kann nicht erreicht werden'
-            url = body
           }
-          console.log(url)
-          this.matchUrl(url, this.bot.API.add.providerList)
-          return this.getInfo().then(addition => {
-            addition.title = title
-            if (addition.type === 'cm' && !addition.duration)
-            return this.bot.API.add.getDuration(addition)
-            return addition
+          return getCaptcha().then(url => {
+            return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
+              this.title = title
+              if (this.type === 'cm' && !this.duration)
+              return this.bot.API.add.getDuration(this)
+              return this
+            }).catch(() => getMirror())
           })
-        })
+        }
+        return gettitle ? title : getMirror()
       })
     },
     userScript: function() {
@@ -393,8 +401,8 @@ const providers = Object.entries({
   'nxload.com': {
     regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
     groups: ['id'],
-    getInfo() {
-      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) \| Your streaming service/,
         unpack: /src:\\\'([^\\]+)\\'/
@@ -409,8 +417,8 @@ const providers = Object.entries({
   'onlystream.tv': {
     regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
     groups: ['host', 'id'],
-    getInfo() {
-      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+\{src: \"([^"]+)/
       }).then(({ match }) => {
@@ -426,8 +434,8 @@ const providers = Object.entries({
   'vidoza.net': {
     regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
     groups: ['id'],
-    getInfo() {
-      this.matchUrl(this.url.replace(/embed-/i, '').replace(/\.html$/, ''))
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
       }).then(({ match }) => {

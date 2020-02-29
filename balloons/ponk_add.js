@@ -86,8 +86,7 @@ class Addition extends EventEmitter {
       getInfo: (...args) => provider.getInfo.call(this, this.url, ...args),
       download: (...args) => provider.download.call(this, this.url, ...args)
     })
-    console.log(this)
-    return this.match
+    return this
   }
   add(next) {
     this.bot.client.socket.emit('queue', {
@@ -210,21 +209,22 @@ class AddCustom {
       })
     ]
 
-    const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY');
+    const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY')
 
-    if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started);
+    if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started)
     else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
-      const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex');
-      if (userscripthash === newuserscripthash) return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
+      const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex')
+      if (userscripthash === newuserscripthash)
+      return this.bot.db.getKeyValue('userscriptts').then(userscriptts => {
         this.userscriptdate = parseDate(userscriptts)
-      });
-      this.userscriptdate = parseDate(this.bot.started);
-      this.bot.db.setKeyValue('userscriptts', this.bot.started);
-      this.bot.db.setKeyValue('userscripthash', newuserscripthash);
+      })
+      this.userscriptdate = parseDate(this.bot.started)
+      this.bot.db.setKeyValue('userscriptts', this.bot.started)
+      this.bot.db.setKeyValue('userscripthash', newuserscripthash)
       this.userScripts.forEach(({ filename, userscript }) => {
         this.bot.API.emotes.pushToGit(filename, userscript)
       })
-    });
+    })
 
     this.userScriptPollOpts = [
       ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + '.js ' + descr)
@@ -327,8 +327,6 @@ class AddCustom {
       if (title) addition.title = title
       if (addition.type === 'cm' && !addition.duration)
       return this.getDuration(addition)
-    }).catch(err => {
-      throw err
     }).then(() => {
       this.cmAdditions[addition.id] = addition
       if (addition.needUserScript) addition.on('queue', () => {
@@ -363,7 +361,10 @@ class AddCustom {
         })
       })
       addition.add(meta.addnext)
-    }).catch(err => this.bot.sendByFilter(err.message || err))
+    }).catch(err => {
+      console.error(err)
+      this.bot.sendByFilter(err.message || err)
+    })
     return addition
   }
 }
@@ -446,6 +447,9 @@ module.exports = {
         const jumpto = (this.currMedia.currentTime - 30)
         this.commands.handlers.settime(user, jumpto.toString(), meta)
       })
+    },
+    userscripts(user, params, meta) {
+      this.sendByFilter(this.API.add.userScriptPollOpts.join('\n'))
     }
   }
 }

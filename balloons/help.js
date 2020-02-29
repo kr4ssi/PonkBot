@@ -355,5 +355,9 @@ module.exports = {
   ts: {
     synop: '',
     rank: 2
+  },
+  userscripts: {
+    synop: '',
+    rank: 0
   }
 }
