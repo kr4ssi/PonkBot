@@ -314,7 +314,9 @@ const providers = Object.entries({
     userScript: function() {
       if (!this.config.captcha || !this.match[3]) return
       const setup = () => {
-        grecaptcha.render({
+        const div = document.createElement('div')
+        document.body.appendChild(div)
+        grecaptcha.render(div, {
           sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
           size: 'invisible',
           callback: token => {
@@ -324,8 +326,8 @@ const providers = Object.entries({
               url: `${config.weblink}/captcha/${token}`,
               onload: res => {
                 console.log(res.responseText)
-                //grecaptcha.reset()
-                //setup()
+                div.remove()
+                setup()
               },
               onerror: console.error
             })
