@@ -194,7 +194,14 @@ class AddCustom {
       }, {
         include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.channel),
         grant: [
-          'GM_setValue', 'GM_getValue', 'unsafeWindow', 'GM.xmlHttpRequest'
+          'GM_setValue', 'GM_getValue', 'unsafeWindow'
+        ]
+      }),
+      new UserScript('add.captcha.user', 'Mit Captchagenerator', {
+        captcha: true
+      }, {
+        grant: [
+          'unsafeWindow', 'GM.xmlHttpRequest'
         ]
       }),
       new UserScript('add.auto.user', 'Experimentell', {

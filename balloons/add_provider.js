@@ -312,7 +312,7 @@ const providers = Object.entries({
       })
     },
     userScript: function() {
-      if (!this.match[3]) return
+      if (!this.config.captcha || !this.match[3]) return
       const setup = () => {
         grecaptcha.render({
           sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
