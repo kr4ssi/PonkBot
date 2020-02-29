@@ -3,7 +3,7 @@ new (class UserScript {
     const include = includes.find(include => {
       return !!(this.match = url.match(include.regex))
     })
-    Object.assign(this, include)
+    Object.assign(this, include, { config })
     let initTimer
     if (include) initTimer = setInterval(() => {
       if (typeof include.init != 'function') throw new Error('No constructor found')
