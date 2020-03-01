@@ -497,7 +497,7 @@ function logoHintergrund(user, params, meta) {
       }
       params = validUrl.isHttpsUri(params)
       if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      this.API.emotes.cssReplace(command, command.css1 + params + command.css2)
+      this.API.emotes.cssReplace(meta.command, command.css1 + params + command.css2)
     }
   }
   else this.sendByFilter(command.message + Object.keys(command.options).join(', '))
