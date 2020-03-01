@@ -359,10 +359,13 @@ const providers = Object.entries({
   'vup.to',
   'xvideosharing.com'].join(', ')]: {
     regex: 'XFileShareIE',
-    getInfo() {
-      if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host'))) this.needUserScript = false
-      let args = []
-      if (['gounlimited.to'].includes(this.matchGroup('host'))) args = ['--no-check-certificate']
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host')))
+      this.needUserScript = false
+      const args = []
+      if (['gounlimited.to'].includes(this.matchGroup('host')))
+      args.push('--no-check-certificate')
       return Provider.prototype.getInfo.call(this, this.url, args)
     },
     kinoxids: {
