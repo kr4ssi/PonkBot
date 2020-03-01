@@ -172,7 +172,7 @@ const providers = Object.entries({
       return this.bot.fetch(url, {
         cloud: true,
         $: true
-      }).then(({ match, $, headers }) => {
+      }).then(({ $, headers }) => {
         const hostname = 'https://' + URL.parse(url).hostname
         const location = hostname + $('.Grahpics a').attr('href')
         if (/\/Tipp\.html$/.test(url))
@@ -232,7 +232,7 @@ const providers = Object.entries({
     }
   },
   'streamkiste.tv': {
-    regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/(?:movie\/[\w-]+(\d{4})-(\d+)|(#captcha$))/,
+    regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/movie\/[\w-]+(\d{4})-(\d+)/,
     groups: ['year', 'id', 'captcha'],
     init() {
       this.bot.db.createTableIfNotExists('captchas', (table) => {
@@ -254,9 +254,7 @@ const providers = Object.entries({
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) HD Stream &raquo; StreamKiste\.tv<\/title>[\s\S]+pid:"(\d+)/,
         $: true
-      }).then(({ match, $ }) => {
-        const title = match[1]
-        const pid = match[2]
+      }).then(({ match: [ , title, pid], $ }) => {
         const rlss = $('#rel > option').map((i, e) => {
           console.log(e.attribs)
           return e.attribs
@@ -280,7 +278,7 @@ const providers = Object.entries({
             return new Promise((resolve, reject) => {
               this.bot.db.knex('captchas').select('token').limit(1).then(result => {
                 if (result.length) return resolve(result.pop().token)
-                this.emit('message', 'Captcha generieren: https://streamkiste.tv/#userscript')
+                this.emit('message', `Captcha generieren: ${url}#userscript`)
                 this.bot.once('captcha', resolve)
               })
             }).then(token => {
@@ -317,7 +315,7 @@ const providers = Object.entries({
       })
     },
     userScript: function() {
-      if (!this.config.captcha || !this.match[3]) return
+      if (!this.config.captcha) return
       const setup = () => {
         const div = document.createElement('div')
         document.body.prepend(div)
@@ -408,10 +406,8 @@ const providers = Object.entries({
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) \| Your streaming service/,
         unpack: /src:\\\'([^\\]+)\\'/
-      }).then(({ match, unpack }) => {
-        this.title = match[1]
-        this.fileurl = unpack[1]
-        return this
+      }).then(({ match: [ , title], unpack: [ , fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
       })
     },
     type: 'cm'
@@ -423,10 +419,8 @@ const providers = Object.entries({
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) - Onlystream.tv<\/title>[\s\S]+\{src: \"([^"]+)/
-      }).then(({ match }) => {
-        this.title = match[1]
-        this.fileurl = match[2]
-        return this
+      }).then(({ match: [ , title], unpack: [ , fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
       })
     },
     kinoxids: ['90'],
@@ -440,11 +434,8 @@ const providers = Object.entries({
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
-      }).then(({ match }) => {
-        this.title = match[3]
-        this.fileurl = match[1]
-        this.duration = parseInt(match[2])
-        return this
+      }).then(({ match: [ , title, fileurl, duration] }) => {
+        return Object.assign(this, { title, fileurl, duration })
       })
     },
     kinoxids: ['80'],
@@ -471,11 +462,10 @@ const providers = Object.entries({
     getInfo() {
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) EMBED<\/title>/,
-      }).then(({ match }) => {
-        this.title = match[1]
-        this.fileurl = 'https://' + this.matchGroup('host') + '/stream' + this.matchGroup('id') + '.mp4'
-        return this
-      })
+      }).then(({ match: [ , title] }) => Object.assign(this, {
+        title,
+        fileurl: `https://${this.matchGroup('host')}/stream${this.matchGroup('id')}.mp4`
+      }))
     },
     type: 'cm'
   },
@@ -484,11 +474,10 @@ const providers = Object.entries({
     getInfo() {
       return this.bot.fetch(this.url, {
         match: /<title>(.*?) \| TVNOW[\s\S]+?footprint\.net([^\.]+)/,
-      }).then(({ match }) => {
-        this.title = match[1]
-        this.fileurl = 'https://vodnowusoawshls-a.akamaihd.net' + match[2] + '.ism/fairplay.m3u8'
-        return this
-      })
+      }).then(({ match: [ , title, fileurl] }) => Object.assign(this, {
+        title,
+        fileurl: `https://vodnowusoawshls-a.akamaihd.net${fileurl}.ism/fairplay.m3u8`
+      }))
     },
     type: 'cm'
   },

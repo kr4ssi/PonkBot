@@ -98,7 +98,7 @@ module.exports = {
                     throw new matchError('no match \'' + unpack + '\' in packed code found')
                   }
                 }
-                if ($) result.$ = cheerio.load(result.prop)
+                if ($ && result.prop) result.$ = cheerio.load(result.prop)
                 resolve(result)
               }
               catch (err) {
