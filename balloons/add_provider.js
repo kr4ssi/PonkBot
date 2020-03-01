@@ -389,10 +389,12 @@ const providers = Object.entries({
   'vivo.sx': {
     regex: 'VivoIE',
     userScript: function() {
-      const e = document.querySelector('video').lastElementChild || document.querySelector('video')
-      if (!e) return false
-      if (e.paused) return false
-      this.fileurl = e.src
+      let match
+      document.querySelectorAll('script').forEach(e => {
+        match = e.textContent.match(/\n\t\t\tsource: '([^']+)/) || match
+      })
+      if (!match) return false
+      this.fileurl = (function r(a,b){return++b?String.fromCharCode((a=a.charCodeAt()+47,a>126?a-94:a)):a.replace(/[^ ]/g,r)})(decodeURIComponent(match[1]))
     }
   },
   'nxload.com': {
