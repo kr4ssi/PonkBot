@@ -288,15 +288,18 @@ const providers = Object.entries({
                 return this.bot.fetch(url, {
                   method: 'POST',
                   form: { req: '3', pid, mirror, host, rel, token },
-                  customerr: [302]
+                  customerr: [302],
+                  $: true
                 })
               })
-            }).then(({ res, body, statusCode }) => {
+            }).then(({ res, body, statusCode, $ }) => {
               if (statusCode === 302) return res.headers.location
               if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
                 this.emit('message', 'Captcha abgelaufen')
                 return getCaptcha()
               }
+              const url = $('#stream').attr('href')
+              if (url) return url
               return body
             })
           }
