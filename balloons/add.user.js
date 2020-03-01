@@ -5,7 +5,9 @@ new (class UserScript {
     })
     Object.assign(this, include, { config })
     let initTimer
-    if (include) initTimer = setInterval(() => {
+    if (include) {
+      if (window.location.hash != '#userscript') return
+      initTimer = setInterval(() => {
       if (typeof include.init != 'function') throw new Error('No constructor found')
       if (include.init.call(this) === false) return
       clearInterval(initTimer)
@@ -18,6 +20,7 @@ new (class UserScript {
       if (!config.dontAsk && !confirm(confirmString)) return
       window.location.replace(config.weblink + `/add.json?url=${this.url}&userlink=${this.fileurl}`)
     }, 1000)
+  }
     else if (config.useGetValue) initTimer = setInterval(() => {
       const matchLinkRegEx = new RegExp('^' + (config.weblink + '/add.json?userscript&url=').replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') + '(.*)')
       const socket = unsafeWindow.socket
@@ -41,7 +44,7 @@ new (class UserScript {
         }, 1000)
       })
     })
-    if (!include) throw new Error('No Config for this included Page found')
+    else throw new Error('No Config for this included Page found')
   }
   get url() {
     return this.match[0]

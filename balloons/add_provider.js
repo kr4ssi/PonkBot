@@ -280,7 +280,7 @@ const providers = Object.entries({
             return new Promise((resolve, reject) => {
               this.bot.db.knex('captchas').select('token').limit(1).then(result => {
                 if (result.length) return resolve(result.pop().token)
-                this.emit('message', 'Captcha generieren: https://streamkiste.tv/#captcha')
+                this.emit('message', 'Captcha generieren: https://streamkiste.tv/#userscript')
                 this.bot.once('captcha', resolve)
               })
             }).then(token => {

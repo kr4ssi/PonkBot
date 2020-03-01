@@ -342,7 +342,7 @@ class AddCustom {
           this.bot.client.createPoll({
             title: addition.title,
             opts: [
-              addition.url,
+              addition.url + '#userscript',
               `Geht nur mit Userscript (Letztes update: ${this.userscriptdate})`,
               '(ks*.user.js bitte löschen)',
               ...this.userScriptPollOpts
