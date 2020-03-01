@@ -67,7 +67,7 @@ module.exports = {
                 }
                 if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
                   console.error(body)
-                  throw new Error(res.statusCode)
+                  throw new matchError(res.statusCode)
                 }
                 if (getprop && !body[getprop]) throw new matchError('no property \'' + getprop + '\' found')
                 result.prop = (body && body[getprop]) || body

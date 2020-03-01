@@ -359,5 +359,9 @@ module.exports = {
   userscripts: {
     synop: '',
     rank: 0
+  },
+  sub: {
+    synop: '',
+    rank: 2
   }
 }

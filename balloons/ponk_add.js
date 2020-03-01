@@ -20,6 +20,7 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
   indent_size: 2,
   keep_array_indentation: true
 })
+const parser = require('subtitles-parser')
 
 class Addition extends EventEmitter {
   constructor(...args) {
@@ -139,6 +140,10 @@ class AddCustom {
       }
     })
     this.bot.client.on('mediaUpdate', ({ currentTime }) => {
+      if (this.srt && this.srt.length) {
+        while (currentTime * 1000 > this.srt[0].startTime)
+        this.bot.sendMessage(this.srt.shift().text)
+      }
       if (this.cmAdditions[ponk.currMedia.id]) {
         if (currentTime > this.cmAdditions[ponk.currMedia.id].closetoend) {
           if (!this.cmAdditions[ponk.currMedia.id].closetoended) {
@@ -450,6 +455,15 @@ module.exports = {
     },
     userscripts(user, params, meta) {
       this.sendByFilter(this.API.add.userScriptPollOpts.join('\n'))
+    },
+    sub(user, params, meta) {
+      if (params === 'off') return this.API.add.srt = []
+      const url = validUrl.isHttpsUri(params)
+      if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+      this.fetch(url).then(({ body }) => {
+        const srt = parser.fromSrt(body, true)
+        this.API.add.srt = srt.filter(srt => srt.startTime > this.currMedia.currentTime * 1000)
+      })
     }
   }
 }

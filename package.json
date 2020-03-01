@@ -44,6 +44,7 @@
     "rss-watcher": "latest",
     "socket.io": "latest",
     "socket.io-client": "latest",
+    "subtitles-parser": "0.0.2",
     "tosource": "latest",
     "ts3-nodejs-library": "latest",
     "user-agents": "latest",

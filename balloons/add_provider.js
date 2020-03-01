@@ -277,9 +277,9 @@ const providers = Object.entries({
           if (!mirror) throw 'Kein addierbarer Hoster gefunden'
           console.log(mirror)
           const getCaptcha = () => {
-            return this.bot.db.knex('captchas').select('token').limit(1).then(result => {
-              if (result.length) return result.pop().token
-              return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
+              this.bot.db.knex('captchas').select('token').limit(1).then(result => {
+                if (result.length) return resolve(result.pop().token)
                 this.emit('message', 'Captcha generieren: https://streamkiste.tv/#captcha')
                 this.bot.once('captcha', resolve)
               })
@@ -287,14 +287,7 @@ const providers = Object.entries({
               return this.bot.db.knex('captchas').where({ token }).del().then(() => {
                 return this.bot.fetch(url, {
                   method: 'POST',
-                  form: {
-                    req: '3',
-                    pid,
-                    mirror,
-                    host,
-                    rel,
-                    token
-                  },
+                  form: { req: '3', pid, mirror, host, rel, token },
                   customerr: [302]
                 })
               })
