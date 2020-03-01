@@ -261,7 +261,7 @@ const providers = Object.entries({
           console.log(e.attribs)
           return e.attribs
         }).toArray().filter(({ selected }) => selected != undefined)
-        const allowed = ['NxLoad', 'ClipWatching', 'Vivo']
+        const allowed = ['NxLoad', 'Vivo', 'ClipWatching']
         const mirrors = $('[href=\'#video\']').map((i, e) => {
           return { attribs: e.attribs, name: $(e).find('.hoster').text() }
         }).toArray().reduce((acc, { attribs, name }) => {
