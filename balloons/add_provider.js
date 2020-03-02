@@ -385,7 +385,7 @@ const providers = Object.entries({
         match = e.textContent.match(/\n\t\t\tsource: '([^']+)/) || match
       })
       if (!match) return false
-      this.fileurl = ((a, b) => ++b ?
+      this.fileurl = (r = (a, b) => ++b ?
       String.fromCharCode((a = a.charCodeAt() + 47, a > 126 ? a - 94 : a))
       : a.replace(/[^ ]/g, r))(decodeURIComponent(match[1]))
     }
