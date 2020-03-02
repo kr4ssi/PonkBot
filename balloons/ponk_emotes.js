@@ -18,6 +18,20 @@ const fileType = require('file-type')
 const FormData = require('form-data')
 const Gitlab = require('gitlab').Gitlab
 const UserAgent = require('user-agents')
+const simpleGit = require('simple-git')
+
+const gitpath = path.join(__dirname, '..', '..', 'ponkbackup')
+this.logger = console
+fs.promises.stat(gitpath).then(stats => {
+    if (err) {
+        this.logger.debug(err);
+        return this.logger.log('')
+    }
+    if (!stats.isDirectory()) {
+        return this.logger.error('')
+    }
+    this.logger.debug('')
+})
 
 class Emotes {
   constructor(ponk) {
@@ -74,17 +88,18 @@ class Emotes {
       this.pushToGit('channel.js', cssjs.js)
     })
     this.bot.client.prependListener('chatFilters', filters => {
-      if (filters != this.bot.chatFilters)
+      //if (filters != this.bot.chatFilters)
+      filters = this.bot.chatFilters.filter(filter => filter.name.startsWith('Bot filter'))
       this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
     this.bot.client.on('updateChatFilter', filter => {
-      if (filter.name === 'Bot filter') return
-      const filters = this.bot.chatFilters.filter(filter => filter.name != 'Bot filter')
+      if (filter.name.startsWith('Bot filter')) return
+      const filters = this.bot.chatFilters.filter(filter => filter.name.startsWith('Bot filter'))
       this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
     this.bot.client.on('deleteChatFilter', filter => {
-      if (filter.name === 'Bot filter') return
-      const filters = this.bot.chatFilters.filter(filter => filter.name != 'Bot filter')
+      if (filter.name.startsWith('Bot filter')) return
+      const filters = this.bot.chatFilters.filter(filter => filter.name.startsWith('Bot filter'))
       this.pushToGit('filters.json', JSON.stringify(filters, null, 2))
     })
     this.bot.client.prependListener('setMotd', motd => {
@@ -410,7 +425,7 @@ module.exports = {
       }).then(() => this.API.emotes.createEmoteCSS()).then(() => {
         this.API.emotes.pushToGit('emotes.css', this.API.emotes.emoteCSS)
         this.client.socket.emit('setChannelCSS', {
-          css: this.channelCSS.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Math.random().toString(36).slice(2))
+          css: this.channelCSS.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Date.now())
         })
       })
     },

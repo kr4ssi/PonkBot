@@ -211,32 +211,6 @@ module.exports = {
             } : {})
           });
         },
-        sendByFilter(message, force) {
-          if (!this.meeseeks('filteredit')) {
-            if (force) return this.sendMessage('Für diese Funktion muss ich Filter erstellen dürfen')
-            return this.sendMessage(message)
-          }
-          if (message.length < 320 && !force) return this.sendMessage(message)
-          const limit = 1000
-          const count = Math.ceil(message.length / limit)
-          for (let i = 0; i < count; i++) {
-            const filterstring = '###' + Math.random().toString(36).slice(2) + '###'
-            this.client.socket.emit('updateFilter', {
-              name: 'Bot filter',
-              source: filterstring,
-              replace: message.substr(i * limit, limit),
-              flags: '',
-              active: true
-            })
-            this.sendMessage(filterstring)
-            this.client.socket.emit('updateFilter', {
-              name: 'Bot filter',
-              source: '',
-              replace: '',
-              flags: ''
-            })
-          }
-        },
         pollAction(poll, callback) {
           return new Promise((resolve, reject) => {
             if (!this.meeseeks('pollctl')) {
@@ -283,7 +257,33 @@ module.exports = {
               }
             }, err => resolve(this.sendMessage('fehler')))
           })
+        },
+        sendByFilter(message, force) {
+          if (!this.meeseeks('filteredit')) {
+            if (force) return this.sendMessage('Für diese Funktion muss ich Filter erstellen dürfen')
+            return this.sendMessage(message)
+          }
+          if (message.length < 320 && !force) return this.sendMessage(message)
+          const limit = 1000
+          const count = Math.ceil(message.length / limit)
+          for (let i = 0; i < count; i++) {
+            const name = 'Bot filter ###' + Math.random().toString(36).slice(2) + '###'
+            this.client.socket.emit('addFilter', {
+              name,
+              source: name,
+              replace: message.substr(i * limit, limit),
+              flags: '',
+              active: true
+            })
+          }
         }
+      })
+      ponk.client.on('updateChatFilter', ({ name }) => {
+        if (!name.startsWith('Bot filter ###')) return
+        ponk.sendMessage(name)
+        setTimeout(() => ponk.client.socket.emit('removeFilter', {
+          name
+        }), 2000)
       })
       ponk.client.socket.emit('requestChatFilters')
       ponk.logger.log(`Requested Chat-Filters`)
@@ -324,7 +324,7 @@ module.exports = {
       //ponk.client.socket.on('voteskip',             data => console.log('voteskip', data))
       ponk.client.socket.on('warnLargeChandump',    data => console.log('warnLargeChandump', data))
       ponk.client.socket.on('readChanLog',          data => console.log('readChanLog', data))
-      ponk.client.socket.on('addFilterSuccess',     data => console.log('addFilterSuccess', data))
+      //ponk.client.socket.on('addFilterSuccess',     data => console.log('addFilterSuccess', data))
       resolve()
     })
   }

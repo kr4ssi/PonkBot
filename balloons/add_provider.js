@@ -11,6 +11,7 @@ module.exports = class ProviderList extends Array {
     Object.assign(this, {
       bot: ponk,
       kinoxHosts: [],
+      skisteHosts: [],
       userScriptIncludes: [],
       userScriptSources: [],
       supportedProviders: ''
@@ -18,7 +19,6 @@ module.exports = class ProviderList extends Array {
   }
   then(...args) {
     const grpregex = /(^\(\?\w+\))|\(\?P\<(\w+)\>|\(\?\((\w+)\)|\(\?P=(\w+)\)/g
-    const priority = ({ id, provider }) => provider.priority || provider.kinoxids[id]
     return this.then = new Promise((resolve, reject) => {
       PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
         cwd: path.join(__dirname, '..', 'youtube-dl'),
@@ -42,12 +42,8 @@ module.exports = class ProviderList extends Array {
       providers.forEach(([name, rules = {}]) => {
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
-        if (provider.kinoxids) {
-          let kinoxids
-          if (Array.isArray(provider.kinoxids)) kinoxids = provider.kinoxids
-          else kinoxids = Object.keys(provider.kinoxids)
-          kinoxids.forEach(id => this.kinoxHosts.push({ provider, id }))
-        }
+        provider.kinoxids.forEach(([ , id]) => this.kinoxHosts.push({ provider, id }))
+        provider.skisteids.forEach(([ , id]) => this.skisteHosts.push({ provider, id }))
         if (provider.needUserScript) {
           this.userScriptIncludes.push(provider.regex)
           this.userScriptSources.push({
@@ -59,12 +55,17 @@ module.exports = class ProviderList extends Array {
         if (!provider.fikuonly)
         this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
       })
-      this.kinoxHosts = this.kinoxHosts.sort((a, b) =>  priority(a) - priority(b))
+      const priority = ({ id, provider }, ids) => provider[['kinoxids',
+      'skisteids'][ids]].find(([priority, value]) => id === value)[0]
+      this.kinoxHosts.sort((a, b) =>  priority(a, 0) - priority(b, 0))
+      this.skisteHosts.sort((a, b) =>  priority(a, 1) - priority(b, 1))
       return this
     }).then(...args)
   }
   byName(name) {
-    return this.find(provider => (new RegExp('^' + name, 'i')).test(provider.name))
+    return this.find(provider => provider.name.split(',').some(host => {
+      return new RegExp('^' + name, 'i').test(host.trim())
+    }))
   }
 }
 class Provider {
@@ -76,7 +77,10 @@ class Provider {
       groups: [],
       type: rules.type || (typeof rules.userScript === 'function' ? 'cm' : 'fi'),
       needUserScript: typeof rules.userScript === 'function'
-    }, rules, (typeof rules.regex === 'string') && ytdlRegex[rules.regex])
+    }, rules, {
+      kinoxids: Object.entries(rules.kinoxids || []),
+      skisteids: Object.entries(rules.skisteids || [])
+    }, (typeof rules.regex === 'string') && ytdlRegex[rules.regex])
     this.overview = Object.entries(this).reduce((acc, [key, value]) => {
       if (!['bot', 'regex'].includes(key) && typeof value != 'function')
       acc[key] = value
@@ -92,9 +96,7 @@ class Provider {
         pythonOptions: ['-m'],
         args: ['--dump-json', '-f', 'best', '--restrict-filenames', ...moreargs,  url]
       }, (err, data) => {
-        if (err) {
-          return reject(err)
-        }
+        if (err) return reject(err)
         let info
         try {
           //let data = stdout.trim().split(/\r?\n/)
@@ -163,6 +165,104 @@ class Provider {
   }
 }
 const providers = Object.entries({
+  'streamkiste.tv': {
+    regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/movie\/[\w-]+(\d{4})-(\d+)/,
+    groups: ['year', 'id', 'captcha'],
+    init() {
+      this.bot.db.createTableIfNotExists('captchas', table => {
+        table.string('token', 512).primary()
+      })
+      this.bot.server.host.get('/captcha/:token', (req, res) => {
+        const token = req.params.token
+        console.log(token)
+        res.header('Access-Control-Allow-Origin', '*')
+        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
+        this.bot.db.knex('captchas').insert({ token }).then(() => {
+          this.bot.emit('captcha', token)
+          this.bot.once('captchadone', () => res.send('1'))
+          this.bot.once('needcaptcha', () => res.send(''))
+        })
+      })
+    },
+    getInfo(url, gettitle) {
+      return this.bot.fetch(this.url, {
+        match: /<title>([^<]*) HD Stream &raquo; StreamKiste\.tv<\/title>[\s\S]+pid:"(\d+)/,
+        $: true
+      }).then(({ match: [ , title, pid], $, headers }) => {
+        const allowed = ['NxLoad', 'Vivo', 'ClipWatching']
+        const rel = $('#rel > option[selected]').attr('data')
+        const mirrors = $('[href=\'#video\']').map((i, e) => {
+          const { 'data-mirror': mirror, 'data-host': host } = e.attribs
+          return { mirror, host, name: $(e).find('.hoster').text() }
+        }).toArray().filter(({ name }) => allowed.includes(name))
+        .sort((a ,b) => allowed.indexOf(a.name) - allowed.indexOf(b.name))
+        console.log(pid, rel, mirrors)
+        const getMirror = ({ mirror, host } = mirrors.shift() || {}) => {
+          if (!mirror) throw 'Kein addierbarer Hoster gefunden'
+          console.log(mirror, host)
+          const getCaptcha = () => new Promise((resolve, reject) => {
+            this.bot.db.knex('captchas').select('token').limit(1).then(result => {
+              if (result.length) return resolve(result.pop().token)
+              this.emit('message', `Captcha generieren: ${url}#userscript`)
+              this.bot.emit('needcaptcha')
+              this.bot.once('captcha', resolve)
+            })
+          }).then(token => {
+            return this.bot.db.knex('captchas').where({ token }).del().then(() => {
+              return this.bot.fetch(url, {
+                method: 'POST',
+                form: { req: '3', pid, mirror, host, rel, token },
+                customerr: [302],
+                $: true,
+                headers
+              })
+            })
+          }).then(({ res, body, statusCode, $ }) => {
+            if (statusCode === 302) return res.headers.location
+            if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
+              this.emit('message', 'Captcha abgelaufen')
+              return getCaptcha()
+            }
+            return $('#stream').attr('href') || body
+          })
+          return getCaptcha().then(url => {
+            this.emit('message', `Addiere Mirror: ${url}`)
+            return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
+              this.bot.emit('captchadone')
+              this.title = title
+              if (this.type === 'cm' && !this.duration)
+              return this.bot.API.add.getDuration(this)
+              return this
+            }).catch(() => getMirror())
+          })
+        }
+        return gettitle ? title : getMirror()
+      })
+    },
+    userScript: function() {
+      const setup = div => {
+        if (div) div.remove()
+        div = document.createElement('div')
+        document.body.prepend(div)
+        grecaptcha.render(div, {
+          sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
+          size: 'invisible',
+          callback: token => {
+            console.log(token)
+            fetch(`${this.weblink}/captcha/${token}`).then(res => {
+              res.text().then(body => console.log(body) || !body && setup(div))
+            })
+          }
+        })
+        grecaptcha.execute()
+      }
+      (unsafeWindow || window).setup = setup
+      const script = document.createElement('script')
+      script.setAttribute('type', 'text/javascript')
+      script.setAttribute('src', 'https://www.google.com/recaptcha/api.js?onload=setup&render=explicit')
+      document.getElementsByTagName('head').item(0).appendChild(script)
+    }
+  },
   'kinox.to': {
     regex: new RegExp(/https?:\/\/(?:www\.)?kino/.source + '(?:[sz]\\.to|x\\.' +
     '(?:tv|me|si|io|sx|am|nu|sg|gratis|mobi|sh|lol|wtf|fun|fyi|cloud|ai|click' +
@@ -231,120 +331,6 @@ const providers = Object.entries({
       })
     }
   },
-  'streamkiste.tv': {
-    regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/movie\/[\w-]+(\d{4})-(\d+)/,
-    groups: ['year', 'id', 'captcha'],
-    init() {
-      this.bot.db.createTableIfNotExists('captchas', (table) => {
-        table.string('token', 512).primary()
-      })
-      this.bot.server.host.get('/captcha/:token', (req, res) => {
-        const token = req.params.token
-        console.log(token)
-        this.bot.db.knex('captchas').insert({ token }).then(() => {
-          return this.bot.db.knex('captchas').count({ count: 'token' })
-        }).then(([{ count }]) => {
-          console.log(count)
-          res.send(token + '<br><br>added count: ' + count)
-          this.bot.emit('captcha', token)
-        })
-      })
-    },
-    getInfo(url, gettitle) {
-      return this.bot.fetch(this.url, {
-        match: /<title>([^<]*) HD Stream &raquo; StreamKiste\.tv<\/title>[\s\S]+pid:"(\d+)/,
-        $: true
-      }).then(({ match: [ , title, pid], $ }) => {
-        const rlss = $('#rel > option').map((i, e) => {
-          console.log(e.attribs)
-          return e.attribs
-        }).toArray().filter(({ selected }) => selected != undefined)
-        const allowed = ['NxLoad', 'Vivo', 'ClipWatching']
-        const mirrors = $('[href=\'#video\']').map((i, e) => {
-          return { attribs: e.attribs, name: $(e).find('.hoster').text() }
-        }).toArray().reduce((acc, { attribs, name }) => {
-          let { 'data-mirror': mirror, 'data-host': host } = attribs
-          if (!allowed.includes(name)) return acc
-          return acc.concat({ mirror, host, name })
-        }, []).sort((a ,b) => allowed.indexOf(a.name) - allowed.indexOf(b.name))
-        console.log(pid)
-        console.log(rlss)
-        console.log(mirrors)
-        const rel = rlss.pop().data
-        const getMirror = ({ mirror, host } = mirrors.shift() || {}) => {
-          if (!mirror) throw 'Kein addierbarer Hoster gefunden'
-          console.log(mirror)
-          const getCaptcha = () => {
-            return new Promise((resolve, reject) => {
-              this.bot.db.knex('captchas').select('token').limit(1).then(result => {
-                if (result.length) return resolve(result.pop().token)
-                this.emit('message', `Captcha generieren: ${url}#userscript`)
-                this.bot.once('captcha', resolve)
-              })
-            }).then(token => {
-              return this.bot.db.knex('captchas').where({ token }).del().then(() => {
-                return this.bot.fetch(url, {
-                  method: 'POST',
-                  form: { req: '3', pid, mirror, host, rel, token },
-                  customerr: [302],
-                  $: true
-                })
-              })
-            }).then(({ res, body, statusCode, $ }) => {
-              if (statusCode === 302) return res.headers.location
-              if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
-                this.emit('message', 'Captcha abgelaufen')
-                return getCaptcha()
-              }
-              const url = $('#stream').attr('href')
-              if (url) return url
-              return body
-            })
-          }
-          return getCaptcha().then(url => {
-            this.emit('message', `Addiere Mirror: ${url}`)
-            return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
-              this.title = title
-              if (this.type === 'cm' && !this.duration)
-              return this.bot.API.add.getDuration(this)
-              return this
-            }).catch(() => getMirror())
-          })
-        }
-        return gettitle ? title : getMirror()
-      })
-    },
-    userScript: function() {
-      if (!this.config.captcha) return
-      const setup = () => {
-        const div = document.createElement('div')
-        document.body.prepend(div)
-        grecaptcha.render(div, {
-          sitekey: '6LcGFzMUAAAAAJaE5lmKtD_Oi_YzC837_Nwt6Btv',
-          size: 'invisible',
-          callback: token => {
-            console.log(token)
-            GM.xmlHttpRequest({
-              method: 'GET',
-              url: `${config.weblink}/captcha/${token}`,
-              onload: res => {
-                console.log(res.responseText)
-                div.remove()
-                setup()
-              },
-              onerror: console.error
-            })
-          }
-        })
-        grecaptcha.execute()
-      }
-      unsafeWindow.setup = setup
-      const script = document.createElement('script')
-      script.setAttribute('type', 'text/javascript')
-      script.setAttribute('src', 'https://www.google.com/recaptcha/api.js?onload=setup&render=explicit')
-      document.getElementsByTagName('head').item(0).appendChild(script)
-    }
-  },
   [['nxload.com',
   'clipwatching.com',
   'gounlimited.to',
@@ -370,11 +356,14 @@ const providers = Object.entries({
       return Provider.prototype.getInfo.call(this, this.url, args)
     },
     kinoxids: {
-      '84': 1,
-      '87': 3
+      1: '84',
+      3: '87'
     },
+    skisteids: { 3: 'ClipWatching' },
     userScript: function() {
-      const e = /(?:www\.)?vup.to/.test(window.location.hostname) ? (holaplayer && holaplayer.cache_) : document.querySelector('video').firstElementChild || document.querySelector('video')
+      let e =  document.querySelector('video')
+      e = document.querySelector('video').firstElementChild || e
+      e = holaplayer && holaplayer.cache_ || e
       if (!e) return false
       this.fileurl = e.src
     }
@@ -382,20 +371,24 @@ const providers = Object.entries({
   'vshare.io': {
     regex: 'VShareIE',
     userScript: function() {
-      const e = document.querySelector('video').firstElementChild || document.querySelector('video')
+      let e =  document.querySelector('video')
+      e = document.querySelector('video').firstElementChild || e
       if (!e) return false
       this.fileurl = e.src
     }
   },
   'vivo.sx': {
     regex: 'VivoIE',
+    skisteids: { 1: 'Vivo', },
     userScript: function() {
       let match
       document.querySelectorAll('script').forEach(e => {
         match = e.textContent.match(/\n\t\t\tsource: '([^']+)/) || match
       })
       if (!match) return false
-      this.fileurl = (function r(a,b){return++b?String.fromCharCode((a=a.charCodeAt()+47,a>126?a-94:a)):a.replace(/[^ ]/g,r)})(decodeURIComponent(match[1]))
+      this.fileurl = ((a, b) => ++b ?
+      String.fromCharCode((a = a.charCodeAt() + 47, a > 126 ? a - 94 : a))
+      : a.replace(/[^ ]/g, r))(decodeURIComponent(match[1]))
     }
   },
   'nxload.com': {
@@ -410,7 +403,8 @@ const providers = Object.entries({
         return Object.assign(this, { title, fileurl })
       })
     },
-    type: 'cm'
+    type: 'cm',
+    skisteids: { 1: 'NxLoad' },
   },
   'onlystream.tv': {
     regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
@@ -428,7 +422,7 @@ const providers = Object.entries({
     type: 'cm'
   },
   'vidoza.net': {
-    regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+    regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org|co)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
     groups: ['id'],
     getInfo(url) {
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))

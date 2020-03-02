@@ -8,6 +8,7 @@
 const ProviderList = require('./add_provider.js')
 
 const URL = require('url')
+const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 const validUrl = require('valid-url')
@@ -162,11 +163,10 @@ class AddCustom {
     this.setupServer()
   }
   setupUserScript() {
-    const userscript = require('fs').readFileSync(path.join(__dirname, 'add.user.js'), {
-      encoding: "utf-8"
-    })
+    const userscript = fs.readFileSync(path.join(__dirname, 'add.user.js'))
     const self = this
     const packageObj = require('../package.json')
+    const channelregex = new RegExp(/(?:^https?:\/\/cytu\.be\/r\/)/.source + self.bot.channel)
     class UserScript {
       constructor(filename, descr = '', opt = {}, meta = {}) {
         Object.assign(this, {
@@ -182,7 +182,36 @@ class AddCustom {
           })
         })
         this.userscript = this.meta + '\nconst includes = '
-        this.userscript += toSource(self.providerList.userScriptSources)
+        this.userscript += toSource([...self.providerList.userScriptSources, {
+          regex: channelregex,
+          groups: [],
+          active: true,
+          init: function() {
+            if (!this.useGetValue) return
+            const matchLinkRegEx = new RegExp('^' + this.weblink.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') +
+            /\/add\.json\?userscript&url=(.*)/.source)
+            const socket = (unsafeWindow || window).socket
+            if (!socket) return false
+            if (typeof socket.on !== 'function') return false
+            clearInterval(initTimer)
+            let srcTimer
+            socket.on('changeMedia', ({ id }) => {
+              clearInterval(srcTimer)
+              const match = id.match(matchLinkRegEx)
+              if (!match) return
+              const url = match[1]
+              if (!includes.find(include => include.regex.test(url))) return
+              console.log(match)
+              srcTimer = setInterval(() => {
+                const e = document.getElementById('ytapiplayer_html5_api')
+                console.log(e)
+                if (!e) return
+                clearInterval(srcTimer)
+                e.src = GM_getValue(url)
+              }, 1000)
+            })
+          }
+        }])
         this.userscript += '\n\nconst config = ' + toSource(Object.assign({
           weblink: self.bot.server.weblink,
         }, opt)) + '\n\n' + userscript
@@ -190,27 +219,20 @@ class AddCustom {
     }
     this.userScripts = [
       new UserScript('add.user'),
-      new UserScript('add.dontask.user', 'Ohne Abfrage', {
-        dontAsk: true
-      }),
       new UserScript('add.new.user', 'Mit Channelberechtigung', {
         useGetValue: true
       }, {
-        include: new RegExp('^https?:\\/\\/cytu\\.be\\/r\\/' + this.bot.channel),
+        include: channelregex,
         grant: [
           'GM_setValue', 'GM_getValue', 'unsafeWindow'
         ]
       }),
-      new UserScript('add.captcha.user', 'Mit Captchagenerator', {
-        captcha: true
-      }, {
-        grant: [
-          'unsafeWindow', 'GM.xmlHttpRequest'
-        ]
+      new UserScript('add.doask.user', 'Mit Abfrage', {
+        doAsk: true
       }),
       new UserScript('add.auto.user', 'Experimentell', {
-        useSendMessage: true,
-        chan: this.bot.client.chan
+        postMessage: true,
+        chan: this.bot.channel
       })
     ]
 
@@ -227,7 +249,7 @@ class AddCustom {
       this.bot.db.setKeyValue('userscriptts', this.bot.started)
       this.bot.db.setKeyValue('userscripthash', newuserscripthash)
       this.userScripts.forEach(({ filename, userscript }) => {
-        this.bot.API.emotes.pushToGit(filename, userscript)
+        this.bot.API.emotes.pushToGit(filename + '.js', userscript)
       })
     })
 

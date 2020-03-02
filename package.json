@@ -42,6 +42,7 @@
     "python-shell": "latest",
     "request": "latest",
     "rss-watcher": "latest",
+    "simple-git": "^1.131.0",
     "socket.io": "latest",
     "socket.io-client": "latest",
     "subtitles-parser": "0.0.2",
@@ -53,7 +54,7 @@
   },
   "optionalDependencies": {
     "mysql2": "latest",
-    "sqlite3": "latest",
-    "pg": "latest"
+    "pg": "latest",
+    "sqlite3": "^4.1.1"
   }
 }
