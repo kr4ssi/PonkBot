@@ -176,7 +176,6 @@ const providers = Object.entries({
         const token = req.params.token
         console.log(token)
         res.header('Access-Control-Allow-Origin', '*')
-        res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept')
         this.bot.db.knex('captchas').insert({ token }).then(() => {
           this.bot.emit('captcha', token)
           this.bot.once('captchadone', () => res.send('1'))
