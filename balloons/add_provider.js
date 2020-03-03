@@ -42,8 +42,12 @@ module.exports = class ProviderList extends Array {
       providers.forEach(([name, rules = {}]) => {
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
-        provider.kinoxids.forEach(([ , id]) => this.kinoxHosts.push({ provider, id }))
-        provider.skisteids.forEach(([ , id]) => this.skisteHosts.push({ provider, id }))
+        provider.kinoxids.forEach(([priority , id]) => {
+          return this.kinoxHosts.push({ provider, priority || provider.priority, id }))
+        }
+        provider.skisteids.forEach(([priority , id]) => {
+          return this.skisteHosts.push({ provider, priority || provider.priority, id }))
+        }
         if (provider.needUserScript) {
           this.userScriptIncludes.push(provider.regex)
           this.userScriptSources.push({
@@ -55,10 +59,8 @@ module.exports = class ProviderList extends Array {
         if (!provider.fikuonly)
         this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
       })
-      const priority = ({ id, provider }, ids) => provider[['kinoxids',
-      'skisteids'][ids]].find(([priority, value]) => id === value)[0]
-      this.kinoxHosts.sort((a, b) =>  priority(a, 0) - priority(b, 0))
-      this.skisteHosts.sort((a, b) =>  priority(a, 1) - priority(b, 1))
+      this.kinoxHosts.sort((a, b) =>  a.priority - b.priority
+      this.skisteHosts.sort((a, b) =>  a.priority - b.priority
       return this
     }).then(...args)
   }
@@ -178,8 +180,11 @@ const providers = Object.entries({
         res.header('Access-Control-Allow-Origin', '*')
         this.bot.db.knex('captchas').insert({ token }).then(() => {
           this.bot.emit('captcha', token)
-          this.bot.once('captchadone', () => res.send('1'))
-          this.bot.once('needcaptcha', () => res.send(''))
+          const timeout = setTimeout(() => res.send('1'), 5000)
+          this.bot.once('needcaptcha', () => {
+            clearTimeout(timeout)
+            res.send('')
+          })
         })
       })
     },
@@ -207,7 +212,8 @@ const providers = Object.entries({
               this.bot.once('captcha', resolve)
             })
           }).then(token => {
-            return this.bot.db.knex('captchas').where({ token }).del().then(() => {
+            return this.bot.db.knex('captchas').where({ token }).del().then(del => {
+              if (!del) return getCaptcha()
               return this.bot.fetch(url, {
                 method: 'POST',
                 form: { req: '3', pid, mirror, host, rel, token },
@@ -227,7 +233,6 @@ const providers = Object.entries({
           return getCaptcha().then(url => {
             this.emit('message', `Addiere Mirror: ${url}`)
             return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
-              this.bot.emit('captchadone')
               this.title = title
               if (this.type === 'cm' && !this.duration)
               return this.bot.API.add.getDuration(this)
