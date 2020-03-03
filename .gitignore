@@ -65,7 +65,7 @@ test-*
 dev-*
 
 # Fuck package lock
-#package-lock.json
+package-lock.json
 
 # VS Code
 /.vscode
