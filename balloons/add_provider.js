@@ -61,8 +61,6 @@ module.exports = class ProviderList extends Array {
       })
       this.kinoxHosts.sort((a, b) =>  a.priority - b.priority)
       this.skisteHosts.sort((a, b) =>  a.priority - b.priority)
-      console.log(this.kinoxHosts)
-      console.log(this.skisteHosts)
       return this
     }).then(...args)
   }
@@ -275,9 +273,15 @@ const providers = Object.entries({
     '|tube|club|digital|direct|pub|express|party|space|lc|ms|mu|gs|bz|gy|af))' +
     /\/(?:Tipp|Stream\/.+)\.html/.source),
     getInfo(url, gettitle) {
+      const onCaptcha = (options, { captcha }) => new Promise((resolve, reject) => {
+        console.error('The url is "' + captcha.uri.href + '"')
+        console.error('The site key is "' + captcha.siteKey + '"')
+        reject(new Error('This is a dummy function.'))
+      })
       return this.bot.fetch(url, {
         cloud: true,
-        $: true
+        $: true,
+        onCaptcha
       }).then(({ $, headers }) => {
         const hostname = 'https://' + URL.parse(url).hostname
         const location = hostname + $('.Grahpics a').attr('href')
@@ -310,7 +314,8 @@ const providers = Object.entries({
               qs: {
                 Hoster: id,
                 Mirror: mirrorindex
-              }
+              },
+              onCaptcha
             }).then(({ body }) => {
               if (!body.Stream) throw body
               const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
@@ -540,7 +545,11 @@ const providers = Object.entries({
       return Provider.prototype.getInfo.call(this, this.url).then(() => {
         if (this.info.extractor === 'youtube') {
           this.type = 'yt'
-          this.fileurl = info.display_id
+          this.fileurl = this.info.display_id
+        }
+        else if (this.info.extractor === 'vimeo') {
+          this.type = 'vi'
+          this.fileurl = this.info.display_id
         }
         return this
       })

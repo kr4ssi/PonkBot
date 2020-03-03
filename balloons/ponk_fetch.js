@@ -39,7 +39,8 @@ module.exports = {
           headers = {},
           cloud = false,
           $ = false,
-          unpack = false
+          unpack = false,
+          onCaptcha = false
         } = {}) {
           return new Promise((resolve, reject) => {
             console.log('Fetch:', ...arguments)
@@ -53,7 +54,7 @@ module.exports = {
               headers,
               url, qs, form, method, json
             },//: match ? false : json
-            body && { body }), (err, res, body) => {
+            body && { body }, onCaptcha && { onCaptcha }), (err, res, body) => {
               class matchError extends Error {}
               try {
                 if (err) throw err
