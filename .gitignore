@@ -64,6 +64,9 @@ config.js
 test-*
 dev-*
 
+# Fuck package lock
+#package-lock.json
+
 # VS Code
 /.vscode
 
