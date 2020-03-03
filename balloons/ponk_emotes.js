@@ -57,7 +57,7 @@ class Emotes {
       per_page: 5000,
     }).then(items => {
       this.gitfiles = new Set(items.map(item => item.path))
-      console.log(this.gitfiles)
+      //console.log(this.gitfiles)
     }, console.error),                        // To chain gitlab-commits
     this.bot.db.createTableIfNotExists('emotes', (table) => {
       table.string('emote', 240).primary()

@@ -42,12 +42,12 @@ module.exports = class ProviderList extends Array {
       providers.forEach(([name, rules = {}]) => {
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
-        provider.kinoxids.forEach(([priority , id]) => {
-          return this.kinoxHosts.push({ provider, priority || provider.priority, id }))
+        const priority = (provider, [priority , id]) => {
+          if (priority < 1) priority = provider.priority || 1
+          return { provider, priority, id }
         }
-        provider.skisteids.forEach(([priority , id]) => {
-          return this.skisteHosts.push({ provider, priority || provider.priority, id }))
-        }
+        provider.kinoxids.forEach(keyval => this.kinoxHosts.push(priority(provider, keyval)))
+        provider.skisteids.forEach(keyval => this.skisteHosts.push(priority(provider, keyval)))
         if (provider.needUserScript) {
           this.userScriptIncludes.push(provider.regex)
           this.userScriptSources.push({
@@ -59,8 +59,10 @@ module.exports = class ProviderList extends Array {
         if (!provider.fikuonly)
         this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
       })
-      this.kinoxHosts.sort((a, b) =>  a.priority - b.priority
-      this.skisteHosts.sort((a, b) =>  a.priority - b.priority
+      this.kinoxHosts.sort((a, b) =>  a.priority - b.priority)
+      this.skisteHosts.sort((a, b) =>  a.priority - b.priority)
+      console.log(this.kinoxHosts)
+      console.log(this.skisteHosts)
       return this
     }).then(...args)
   }
@@ -335,8 +337,7 @@ const providers = Object.entries({
       })
     }
   },
-  [['nxload.com',
-  'clipwatching.com',
+  [['clipwatching.com',
   'gounlimited.to',
   'govid.me',
   'holavid.com',
@@ -360,8 +361,8 @@ const providers = Object.entries({
       return Provider.prototype.getInfo.call(this, this.url, args)
     },
     kinoxids: {
-      1: '84',
-      3: '87'
+      1: '84', // gounlimited
+      3: '87'  // clipwatching
     },
     skisteids: { 3: 'ClipWatching' },
     userScript: function() {
@@ -383,7 +384,7 @@ const providers = Object.entries({
   },
   'vivo.sx': {
     regex: 'VivoIE',
-    skisteids: { 1: 'Vivo', },
+    skisteids: { 2: 'Vivo', },
     userScript: function() {
       let match
       document.querySelectorAll('script').forEach(e => {
@@ -437,7 +438,7 @@ const providers = Object.entries({
       })
     },
     kinoxids: ['80'],
-    priority: 2,
+    priority: 3,
     userScript: function() {
       const e = pData
       if (!e) return false
@@ -451,7 +452,7 @@ const providers = Object.entries({
         return this.getInfo()
       })
     },
-    priority: 1,
+    priority: 4,
     kinoxids: ['58']
   },
   'thevideos.ga': {
@@ -574,6 +575,9 @@ const providers = Object.entries({
   },
   'WDRElefant': {
     regex: 'WDRElefantIE'
+  },
+  'servus.com': {
+    regex: 'ServusIE'
   },
   'mdr.de': {},
   'br.de': {},
