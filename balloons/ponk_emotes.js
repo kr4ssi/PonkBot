@@ -213,7 +213,8 @@ class Emotes {
       return fileType.stream(res.body)
     }).then(stream => new Promise((resolve, reject) => {
       const filename = `${this.cleanName(name)}.${stream.fileType.ext}`
-      const filepath = path.join(this.backuppath, chan, 'emotes', filename)
+      let filepath = path.join(this.backuppath, chan, 'emotes', filename)
+      if (process.env.NODE_ENV != 'production') filepath = path.join(this.emotespath, filename)
       stream.pipe(fs.createWriteStream(filepath)).on('close', () => {
         if (update) this.bot.client.socket.emit('updateEmote', {
           name,
@@ -248,7 +249,7 @@ class Emotes {
       if ((shouldfilename != filename) && rename)
       this.renameEmote(filename, shouldfilename, false)
     }
-    return this.scheduleEmote({ name, image })
+    else return this.scheduleEmote({ name, image })
   }
   removeEmote(filename) {
     if (!this.filenames.has(path.parse(filename).name)) return
