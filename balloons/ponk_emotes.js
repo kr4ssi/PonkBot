@@ -248,7 +248,7 @@ class Emotes {
       if ((shouldfilename != filename) && rename)
       this.renameEmote(filename, shouldfilename, false)
     }
-    return this.this.scheduleEmote(emote)
+    return this.scheduleEmote(emote)
   }
   removeEmote(filename) {
     if (!this.filenames.has(path.parse(filename).name)) return
@@ -528,7 +528,7 @@ module.exports = {
         return this.sendMessage('Muss mit / anfangen und aus Buchstaben, oder Zahlen bestehen')
         const emote = emotelist.find(emote => emote.name == name)
         if (!emote) return this.sendMessage('Emote nicht gefunden')
-        if (split.pop() === 'add') this.API.emotes.this.scheduleEmote(emote)
+        if (split.pop() === 'add') this.API.emotes.scheduleEmote(emote)
         else this.sendMessage(emote.image + '.pic')
       })
     },
