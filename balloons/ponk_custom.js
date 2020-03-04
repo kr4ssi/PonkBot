@@ -38,12 +38,12 @@ module.exports = {
         const sig = req.header('X-Hub-Signature')
         if (sig && sig.split('=')[1] === crypto.createHmac('sha1', process.env.githooksecret).update(req.rawBody).digest('hex')) {
           const commit = req.body.commits[0]
-          ponk.sendByFilter(`Neuer commit: <a href="${commit.url}" target="_blank" rel="noopener noreferrer">${commit.message}</a>`, true);
+          ponk.sendByFilter(`Neuer commit: <a href="${commit.url}" target="_blank" rel="noopener noreferrer">${commit.message}</a>`, true)
           update()
         }
         res.end('OK');
       })
-      ponk.logger.log('Registering custom handlers');
+      ponk.logger.log('Registering custom handlers')
       Object.assign(module.exports.handlers, ...Object.entries(fs.readdirSync(path.join(__dirname, 'quotes')).reduce((quotes, file) => {
         file = path.join(__dirname, 'quotes', file)
         const parsed = path.parse(file)
