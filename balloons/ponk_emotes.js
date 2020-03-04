@@ -248,7 +248,7 @@ class Emotes {
       if ((shouldfilename != filename) && rename)
       this.renameEmote(filename, shouldfilename, false)
     }
-    return this.scheduleEmote(emote)
+    return this.scheduleEmote({ name, image })
   }
   removeEmote(filename) {
     if (!this.filenames.has(path.parse(filename).name)) return
