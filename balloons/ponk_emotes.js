@@ -499,11 +499,11 @@ module.exports = {
       const name = split.shift()
       let image = split.join().trim()
       if (!image) return this.getLastImage().then(image => {
-        this.API.emotes.scheduleEmote(name)
+        this.API.emotes.scheduleEmote({ name, image })
       })
       image = validUrl.isHttpsUri(image)
       if (!image) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      this.API.emotes.scheduleEmote(name)
+      this.API.emotes.scheduleEmote({ name, image })
     },
     getemote(user, params, meta) {
       const split = params.trim().split(' ')
