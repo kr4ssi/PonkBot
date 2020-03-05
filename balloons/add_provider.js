@@ -188,7 +188,7 @@ const providers = Object.entries({
           const converter = new Converter()
           const download = file.download()
           download.pipe(converter.createInputStream())
-          converter.createOutputToFile(pathname, {c: 'copy', movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov'].join(''), y: true})
+          converter.createOutputToFile(pathname, {c: 'copy', movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov', '+faststart'].join(''), y: true})
           //download.pipe(fs.createWriteStream(pathname))
           converter.run().catch(err => {
             download.emit(err)
