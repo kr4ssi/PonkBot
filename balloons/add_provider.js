@@ -174,27 +174,41 @@ const providers = Object.entries({
   'mega.co.nz': {
     regex: /https:\/\/mega.nz\/#F!([a-zA-Z0-9]{0,8})!([\w-])+/,
     groups: ['id', 'key'],
-    type: 'fi',
+    type: 'cm',
     download() {
       return new Promise((resolve, reject) => {
         File.fromURL(this.url).loadAttributes((err, file) => {
           if (err) return reject(err)
           console.log(file)
+          this.title = file.name
           if (file.directory) file = file.children.shift()
+          console.log(file)
           this.size = file.size
-          this.filename = path.parse(file.name).name + '.mp4'
+          this.filename = path.parse(file.name).name + '.m3u8'
           this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
           const pathname = path.join(this.bot.API.keys.filepath, this.filename)
           const converter = new Converter()
           const download = file.download()
+          console.log(converter, download)
           download.pipe(converter.createInputStream())
-          converter.createOutputToFile(pathname, {c: 'copy', movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov', '+faststart'].join(''), y: true})
+          converter.createOutputToFile(pathname, {c: 'copy', hls_time: 10, hls_list_size: 0, f: 'hls', y: true})
+          //movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov', '+faststart'].join('')
           //download.pipe(fs.createWriteStream(pathname))
           converter.run().catch(err => {
             download.emit(err)
             download.end()
             console.error(err)
           })
+          const getDuration = data => {
+            const duration = data.match(/Duration: ([^.]+)/)
+            if (!duration) return
+            this.duration = duration[1].split(':').reverse().reduce((s, c, u) => {
+              return s + (c * Math.pow(60, u))
+            }, 0)
+            console.log(duration, this.duration)
+            converter.process.stderr.off('data', getDuration)
+          }
+          converter.process.stderr.on('data', getDuration)
           resolve(download)
         })
       })

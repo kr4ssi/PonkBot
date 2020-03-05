@@ -1,7 +1,8 @@
 console.log('Userscript loaded', new class UserScript {
   constructor(url) {
+    const match = window.location.hash.match(/#userscript(\d+)/)
     Object.assign(this, {
-      active: window.location.hash === '#userscript'
+      active: !!match
     }, config, includes.find(include => {
       return !!(this.match = url.match(include.regex))
     }))
@@ -18,7 +19,7 @@ console.log('Userscript loaded', new class UserScript {
       if (this.doAsk && !confirm(`Userlink:\n${this.fileurl}\n
         für Addierungslink: ${this.url}\ngefunden. Dem Bot schicken?`)) return
       window.location.replace(`${this.weblink}/add.json?${new URLSearchParams({
-        url: this.url,
+        url: match[1],
         userlink: this.fileurl
       }).toString()}`)
     }, 1000)

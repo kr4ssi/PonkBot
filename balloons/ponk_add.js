@@ -27,6 +27,7 @@ class Addition extends EventEmitter {
   constructor(...args) {
     super()
     this.matchUrl(...args)
+    this.fileid = Date.now()
     Object.assign(this, {
       user: '',
       timestamp: 0,
@@ -48,7 +49,7 @@ class Addition extends EventEmitter {
     if (this.type !='cm') return this.fileurl.replace(/(?:^http:\/\/)/i, 'https://')
     let id = `${this.bot.server.weblink}/add.json?`
     if (this.needUserScript) id += 'userscript&'
-    return id += `url=${this.url}`
+    return id += `url=${this.fileid}`
   }
   get sources () {
     if (this.live && this.formats.length) return this.formats
@@ -61,7 +62,7 @@ class Addition extends EventEmitter {
       duration: this.duration || 0,
       thumbnail: this.thumbnail.replace(/(?:^http:\/\/)/i, 'https://') || undefined,
       sources: this.sources.map(({ height: quality, url }) => ({
-        url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.url}` : url,
+        url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.fileid}` : url,
         quality,
         contentType: ([
           {type: 'video/mp4', ext: ['.mp4']},
@@ -91,6 +92,7 @@ class Addition extends EventEmitter {
     return this
   }
   add(next) {
+    this.bot.API.add.cmAdditions[this.id] = this
     this.bot.client.socket.emit('queue', {
       title: this.title,
       type : this.type,
@@ -279,8 +281,7 @@ class AddCustom {
 
     this.bot.server.host.get('/add.json', (req, res) => {
       if (req.query.userlink) return userlink(req, res);
-      const url = this.fixurl(req.query.url)
-      if (!url) return res.send('invalid url');
+      const url = req.query.url
       const cmManifest = this.cmAdditions[this.bot.server.weblink + '/add.json?' + (req.query.hasOwnProperty('userscript') ? 'userscript&' : '') + 'url=' + url];
       if (!cmManifest) return res.sendStatus(404);
       res.json(cmManifest.manifest);
@@ -354,7 +355,6 @@ class AddCustom {
       if (addition.type === 'cm' && !addition.duration)
       return this.getDuration(addition)
     }).then(() => {
-      this.cmAdditions[addition.id] = addition
       if (addition.needUserScript) addition.on('queue', () => {
         const userScriptPoll = () => {
           this.bot.client.once('newPoll', poll => {
