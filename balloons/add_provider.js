@@ -188,7 +188,7 @@ const providers = Object.entries({
           const converter = new Converter()
           const download = file.download()
           download.pipe(converter.createInputStream())
-          converter.createOutputToFile(pathname, {c: 'copy', movflags: 'faststart', y: true})
+          converter.createOutputToFile(pathname, {c: 'copy', movflags: '+faststart', y: true})
           //download.pipe(fs.createWriteStream(pathname))
           converter.run().catch(err => {
             download.emit(err)
