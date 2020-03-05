@@ -113,24 +113,23 @@ class AddCustom {
       bot         : ponk   // The bot
     })
     this.setupProviderList()
-    this.bot.client.on('queue', ({ item }) => {
-      if (item.queueby != this.bot.name) return
-      if (this.cmAdditions[item.media.id]) {
-        this.cmAdditions[item.media.id].emit('queue')
-        this.cmAdditions[item.media.id].duration = item.media.seconds
-        this.cmAdditions[item.media.id].closetoend = item.media.seconds * 0.8
-      }
+    this.bot.client.on('queue', ({ item: { queueby, media: { id, seconds } } }) => {
+      if (queueby != this.bot.name) return
+      if (this.cmAdditions[id]) Object.assign(this.cmAdditions[id], {
+        duration: seconds,
+        closetoend: seconds * 0.8
+      }).emit('queue')
     })
-    this.bot.client.on('changeMedia', media => {
-      if (this.cmAdditions[media.id]) this.cmAdditions[media.id].emit('play')
+    this.bot.client.on('changeMedia', ({ id }) => {
+      if (this.cmAdditions[id]) this.cmAdditions[id].emit('play')
     })
-    this.bot.client.on('queueFail', data => {
-      this.bot.sendMessage(data.msg.replace(/&#39;/g,  `'`) + ' ' + data.link)
-      if (data.msg === 'This item is already on the playlist')
+    this.bot.client.on('queueFail', ({ msg, link, id }) => {
+      this.bot.sendMessage(msg.replace(/&#39;/g,  `'`) + ' ' + link)
+      if (msg === 'This item is already on the playlist')
       return this.bot.sendMessage('Das darf garnicht passieren')
-      if (this.cmAdditions[data.id]) {
-        this.cmAdditions[data.id].emit('queueFail')
-        this.cmAdditions[data.id].removeAllListeners()
+      if (this.cmAdditions[id]) {
+        this.cmAdditions[id].emit('queueFail')
+        this.cmAdditions[id].removeAllListeners()
       }
     })
     this.bot.client.prependListener('delete', ({ uid }) => {
@@ -435,29 +434,39 @@ module.exports = {
         this.downloading = true
         let progress
         let timer
-        addition.download(url).prependListener('message', message => {
-          if (message === this.downloadmsg) return
-          if (!message.startsWith('[download]'))
-          return this.sendMessage(message)
-          progress = message
-          if (!timer) timer = setInterval(() => {
-            this.sendPrivate(progress, user)
-          }, 10000)
-        }).on('info', () => {
-          this.sendMessage(path.basename(addition.info._filename) + ' wird addiert')
-          addition.add()
-        }).on('close', () => {
-          clearInterval(timer)
-          this.downloading = false
-          this.API.add.limit.push({
-            user,
-            size: addition.stats.size,
-            date: Date.now()
+        addition.download(url).then(stream => {
+          stream.prependListener('message', message => {
+            if (message === this.downloadmsg) return
+            if (!message.startsWith('[download]'))
+            return this.sendMessage(message)
+            progress = message
+            if (!timer) timer = setInterval(() => {
+              this.sendPrivate(progress, user)
+            }, 10000)
+          }).on('info', () => {
+            this.sendMessage(addition.filename + ' wird addiert')
+            addition.add()
+          }).on('progress', ({ bytesLoaded, bytesTotal }) => {
+            progress = bytesLoaded + '/' + bytesTotal
+            if (!timer) timer = setInterval(() => {
+              this.sendPrivate(progress, user)
+              if (addition.added) return
+              addition.added = true
+              addition.add()
+            }, 10000)
+          }).on('close', () => {
+            clearInterval(timer)
+            this.downloading = false
+            this.API.add.limit.push({
+              user,
+              size: addition.size,
+              date: Date.now()
+            })
+            if (progress) this.sendPrivate(progress, user)
+          }).on('error', err => {
+            this.sendMessage(err.message || err)
           })
-          if (progress) this.sendPrivate(progress, user)
-        }).on('error', err => {
-          this.sendMessage(err.message || err)
-        })
+        }).catch(console.error)
       }
       else this.API.add.add(url, title, { user, ...meta })
     },

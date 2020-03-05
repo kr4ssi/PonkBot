@@ -10,7 +10,7 @@ const CyTubeClient = require('../lib/client.js');
 const path = require('path')
 const URL = require('url')
 
-class gezStations {
+class GezStations {
   constructor(ponk) {
     Object.assign(this, {
       manifests   : [],    // Manifests
@@ -72,7 +72,7 @@ module.exports = {
   },
   giggle(ponk){
     return new Promise((resolve, reject) => {
-      ponk.API.gez = new gezStations(ponk);
+      ponk.API.gez = new GezStations(ponk);
       ponk.logger.log('Registering GEZ-Stations');
       resolve();
     })

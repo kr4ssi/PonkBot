@@ -7,7 +7,7 @@
 
 const Watcher = require('rss-watcher')
 
-class autoAdd {
+class AutoAdd {
   constructor(ponk){
     Object.assign(this, {
       ids: [
@@ -46,7 +46,7 @@ module.exports = {
   },
   giggle(ponk){
     return new Promise((resolve, reject)=>{
-      ponk.API.autoadd = new autoAdd(ponk);
+      ponk.API.autoadd = new AutoAdd(ponk);
       ponk.logger.log('Registering auto-add');
       resolve();
     })

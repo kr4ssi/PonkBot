@@ -4,6 +4,8 @@ const URL = require('url')
 const path = require('path')
 const { PythonShell } = require('python-shell')
 const parseLink = require('./add_parselink.js')
+const { File } = require('megajs')
+const { Converter } = require('ffmpeg-stream')
 
 module.exports = class ProviderList extends Array {
   constructor(ponk) {
@@ -42,12 +44,11 @@ module.exports = class ProviderList extends Array {
       providers.forEach(([name, rules = {}]) => {
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
-        const priority = (provider, [priority , id]) => {
-          if (priority < 1) priority = provider.priority || 1
-          return { provider, priority, id }
-        }
-        provider.kinoxids.forEach(keyval => this.kinoxHosts.push(priority(provider, keyval)))
-        provider.skisteids.forEach(keyval => this.skisteHosts.push(priority(provider, keyval)))
+        const p = (provider, [priority , id]) => ({ provider,
+          priority: priority || provider.priority || 1, id
+        })
+        provider.kinoxids.forEach(kv => this.kinoxHosts.push(p(provider, kv)))
+        provider.skisteids.forEach(kv => this.skisteHosts.push(p(provider, kv)))
         if (provider.needUserScript) {
           this.userScriptIncludes.push(provider.regex)
           this.userScriptSources.push({
@@ -126,47 +127,79 @@ class Provider {
   }
   download(url) {
     let pyshell
-    return pyshell = new PythonShell('youtube_dl', {
-      cwd: path.join(__dirname, '..', 'youtube-dl'),
-      pythonOptions: ['-m'],
-      args: [
-        '-o', path.join(this.bot.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
-        '-f', 'mp4',
-        '--restrict-filenames',
-        '--write-info-json',
-        '--newline',
-        '--no-mtime',
-        '--no-part',
-        url
-      ]
-    }).on('message', message => {
-      this.downloadmsg = message
-      const match = message.match(/JSON to: (.*)$/)
-      if (match) pyshell.once('message', () => {
-        fs.readFile(match[1], (err, info) => {
-          if (err) return pyshell.emit('error', err)
-          try {
-            this.info = JSON.parse(info)
-          }
-          catch (err) {
-            return pyshell.emit('error', err)
-          }
-          this.type = 'fi'
-          this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.info._filename)
-          fs.chmod(match[1], 0o644, err => {
-            if (err) pyshell.emit('error', err)
-            fs.stat(this.info._filename, (err, stats) => {
+    return new Promise((resolve, reject) => {
+      resolve(pyshell = new PythonShell('youtube_dl', {
+        cwd: path.join(__dirname, '..', 'youtube-dl'),
+        pythonOptions: ['-m'],
+        args: [
+          '-o', path.join(this.bot.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
+          '-f', 'mp4',
+          '--restrict-filenames',
+          '--write-info-json',
+          '--newline',
+          '--no-mtime',
+          '--no-part',
+          url
+        ]
+      }).on('message', message => {
+        this.downloadmsg = message
+        const match = message.match(/JSON to: (.*)$/)
+        if (match) pyshell.once('message', () => {
+          fs.readFile(match[1], (err, info) => {
+            if (err) return pyshell.emit('error', err)
+            try {
+              this.info = JSON.parse(info)
+            }
+            catch (err) {
+              return pyshell.emit('error', err)
+            }
+            this.type = 'fi'
+            this.filename = this.info._filename
+            this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.filename)
+            fs.chmod(match[1], 0o644, err => {
               if (err) pyshell.emit('error', err)
-              this.stats = stats
-              pyshell.emit('info')
+              fs.stat(this.info._filename, (err, stats) => {
+                if (err) pyshell.emit('error', err)
+                this.size = stats.size
+                pyshell.emit('info')
+              })
             })
           })
         })
-      })
+      }))
     })
   }
 }
 const providers = Object.entries({
+  'mega.co.nz': {
+    regex: /https:\/\/mega.nz\/#F!([a-zA-Z0-9]{0,8})!([\w-])+/,
+    groups: ['id', 'key'],
+    type: 'fi',
+    download() {
+      return new Promise((resolve, reject) => {
+        File.fromURL(this.url).loadAttributes((err, file) => {
+          if (err) return reject(err)
+          console.log(file)
+          if (file.directory) file = file.children.shift()
+          this.size = file.size
+          this.filename = path.parse(file.name).name + '.mp4'
+          this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
+          const pathname = path.join(this.bot.API.keys.filepath, this.filename)
+          const converter = new Converter()
+          const download = file.download()
+          download.pipe(converter.createInputStream())
+          converter.createOutputToFile(pathname, {c: 'copy', y: true})
+          //download.pipe(fs.createWriteStream(pathname))
+          converter.run().catch(err => {
+            download.emit(err)
+            download.end()
+            console.error(err)
+          })
+          resolve(download)
+        })
+      })
+    }
+  },
   'streamkiste.tv': {
     regex: /https?:\/\/(?:www\.)?streamkiste\.tv\/movie\/[\w-]+(\d{4})-(\d+)/,
     groups: ['year', 'id', 'captcha'],
@@ -488,7 +521,7 @@ const providers = Object.entries({
   'youtube.com': {
     regex: 'YoutubeIE',
     type: 'yt',
-    fikuonly: true,
+    //fikuonly: true,
     getInfo() {
       this.fileurl = this.match[2]
       const match = this.match[0].match(/[?&](?:t|timestamp)=(\d+)/)

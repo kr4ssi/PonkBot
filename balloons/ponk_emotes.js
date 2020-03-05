@@ -141,8 +141,7 @@ class Emotes {
     if (this.bot.emotes.length) this.checkEmotes()
     else this.bot.client.once('emoteList', list => this.checkEmotes(list))
   }
-  getEmoteData(chan) {
-    const dir = path.join(this.backuppath, chan)
+  getEmoteData(dir) {
     const emotespath = path.join(dir, 'emotes')
     return fs.promises.mkdir(dir).catch(err => {
       if (err.code != 'EEXIST') throw err
@@ -158,47 +157,73 @@ class Emotes {
     }).then(() => fs.promises.readFile(path.join(dir, 'emotes.json'), {
       encoding: 'utf8'
     }).then(file => JSON.parse(file)).then(oldemotes => {
-      return oldemotes.reduce((acc, emote) => Object.assign(acc, {
-        [this.cleanName(emote.name)]: emote
-      }), {})
+      return oldemotes.reduce((acc, emote) => acc.then(olddata => {
+        return Promise.resolve().then(() => {
+          if (!emote.filename) return
+          const filepath = path.join(emotespath, emote.filename)
+          return fs.promises.lstat(filepath).then(stats => {
+            if (!stats.isFile()) throw new Error(emote.filename + ' is not a file')
+          }).catch(err => {
+            console.error(err)
+            delete emote.filename
+          })
+        }).then(() => Object.assign(olddata, {
+          [this.cleanName(emote.name)]: emote
+        }))
+      }), Promise.resolve({}))
     })).catch(err => {
       console.error(err)
       return {}
-    }).then(olddata => fs.promises.readdir(emotespath).then(files => {
-      return files.reduce((olddata, filename) => {
-        const name = path.parse(filename).name
-        if (!olddata[name]) olddata[name] = {}
-        olddata[name].filename = filename
-        return olddata
-      }, olddata)
+    }).then(olddata => fs.promises.readdir(emotespath, {
+      withFileTypes: true
+    }).then(files => {
+      return files.reduce((acc, file) => acc.then(olddata => {
+        return Promise.resolve().then(() => {
+          if (!file.isFile()) throw new Error(file.name + ' is not a file')
+          const name = path.parse(file.name).name
+          if (!olddata[name]) olddata[name] = {}
+          olddata[name].filename = file.name
+        }).catch(console.error).then(() => olddata)
+      }), Promise.resolve(olddata))
     }))
   }
   backupEmotes(emotes, client = this.bot.client) {
     const chan = client.chan
+    const dir = path.join(this.backuppath, chan)
     Promise.resolve().then(() => {
       if (!emotes) throw new Error('No emotes-list found')
-      return this.backupData[chan] || this.getEmoteData(chan)
+      return this.backupData[chan] || this.getEmoteData(dir)
     }).then(olddata => {
       this.backupData[chan] = {}
-      return emotes.reduce((acc, emote) => acc.then(() => {
-        const name = this.cleanName(emote.name)
-        const { filename, image } = olddata[name]
-        if (filename) {
-          if (emote.image === image) return filename
+      //console.log(olddata)
+      return emotes.reduce((acc, emote, i) => acc.then(() => {
+        if (i > 20) return
+        const old = olddata[this.cleanName(emote.name)]
+        if (old && old.filename) {
+          if (emote.image === old.image) return old.filename
         }
-        return this.scheduleEmote(emote, chan, false)
+        return this.downloadEmote(emote, chan, false).catch(err => {
+          client.chat({ msg: `${emote.name} ${err.message}`})
+        })
       }).then(filename => {
         if (!filename) return
         const name = path.parse(filename).name
         this.backupData[chan][name] = Object.assign(emote, { filename })
       }), Promise.resolve())
-    }).catch(console.error).then(() => {
-      const dir = path.join(this.backuppath, chan)
-      const git = simpleGit(dir)
-      return git.checkIsRepo().then(isrepo => {
-        if (!isrepo) return git.init()
-      }).then(() => git.raw(['ls-files', '-s']))
-    }).then(console.log).catch(console.error)
+    }).then(() => {
+      const emotespath = path.join(dir, 'emotes.json')
+      const emotesjson = JSON.stringify(emotes, null, 2)
+      return fs.promises.writeFile(emotespath, emotesjson).then(() => {
+        const git = simpleGit(dir)
+        return git.checkIsRepo().then(isrepo => {
+          if (!isrepo) return git.init().addRemote('origin', 'https://some.git.repo')
+        }).then(() => git.add('.').then(() => git.commit('backup')).then(() => {
+          return git.push('origin', 'master').then(() => {
+            return git.raw(['ls-files', '-s'])
+          })
+        }).then(console.log).catch(console.error))
+      })
+    })
   }
   scheduleEmote() {
     return this.emotePromise = this.emotePromise.then(() => {
@@ -213,7 +238,7 @@ class Emotes {
       return fileType.stream(res.body)
     }).then(stream => new Promise((resolve, reject) => {
       const filename = `${this.cleanName(name)}.${stream.fileType.ext}`
-      let filepath = path.join(this.backuppath, chan, 'emotes', filename)
+      /*const*/let filepath = path.join(this.backuppath, chan, 'emotes', filename)
       if (process.env.NODE_ENV === 'production') filepath = path.join(this.emotespath, filename)
       stream.pipe(fs.createWriteStream(filepath)).on('close', () => {
         if (update) this.bot.client.socket.emit('updateEmote', {
