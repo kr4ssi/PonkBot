@@ -269,8 +269,9 @@ class AddCustom {
     const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
 
     const userlink = (req, res) => {
-      const url = this.fixurl(req.query.url);
-      if (!url) return res.send('invalid url');
+      //const url = this.fixurl(req.query.url);
+      //if (!url) return res.send('invalid url');
+      const url = req.query.url
       if (!req.query.userlink) return res.send('invalid userlink');
       if (!this.userLinks[url]) this.userLinks[url] = {};
       this.userLinks[url][md5ip(req)] = req.query.userlink;
@@ -289,8 +290,9 @@ class AddCustom {
 
     this.bot.server.host.get('/redir', (req, res) => {
       const empty = 'https://ia801501.us.archive.org/0/items/youtube-yUUjeindT5U/VHS_simple_static_noise_-_Motion_background_loop_1-yUUjeindT5U.mp4';
-      const url = this.fixurl(req.query.url);
-      if (!url) return res.redirect(empty);
+      //const url = this.fixurl(req.query.url);
+      //if (!url) return res.redirect(empty);
+      const url = req.query.url
       const userLinks = this.userLinks[url];
       if (userLinks && userLinks[md5ip(req)]) res.redirect(userLinks[md5ip(req)]);
       else res.redirect(empty);
