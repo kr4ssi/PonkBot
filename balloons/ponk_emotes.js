@@ -569,10 +569,10 @@ function logoHintergrund(user, params, meta) {
       css2: '"); }',
       message: 'Verfügbare Logos: ',
       options: {
-        FIKU: 'https://tinyimg.io/i/wVmC0iw.png',
-        KS: 'https://tinyimg.io/i/NF44780.png',
-        Partei: 'https://tinyimg.io/i/JlE5E57.png',
-        Heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
+        fiku: 'https://tinyimg.io/i/wVmC0iw.png',
+        ks: 'https://tinyimg.io/i/NF44780.png',
+        partei: 'https://tinyimg.io/i/JlE5E57.png',
+        heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
       }
     },
     hintergrund: {
@@ -580,24 +580,27 @@ function logoHintergrund(user, params, meta) {
       css2: '"); }',
       message: 'Verfügbare Hintergründe: ',
       options: {
-        Partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
-        Synthwave: 'https://i.imgur.com/JnSmM2r.jpg',
-        Sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
-        KinoX: 'https://tinyimg.io/i/4DUPI3z.jpg',
-        Donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
-        Mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
-        Nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK'
+        partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
+        synthwave: 'https://tinyimg.io/i/HkAMo0B.jpg',
+        heinrich: 'https://i.htgl.fr/nI3AixC4',
+        sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
+        fiku: 'https://tinyimg.io/i/4DUPI3z.jpg',
+        donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
+        mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
+        nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK',
+        sternenkadse: 'https://tinyimg.io/i/FENDoXG.jpg'
       }
     }
   }[meta.command]
   if (params) {
-    if (params === 'last') this.API.emotes.cssReplace(command)
+    if (params === 'last') this.API.emotes.cssReplace(meta.command)
     else {
-      if (command.options[params]) params = command.options[params]
+      if (command.options[params.toLowerCase()]) params = command.options[params.toLowerCase()]
       else {
         const emote = params.match(/^\/[\wäÄöÖüÜß]+/) && this.emotes.find(emote => emote.name == params)
         if (emote) params = emote.image
       }
+      console.log(params)
       params = validUrl.isHttpsUri(params)
       if (!params) return this.sendMessage('Ist keine https-Elfe /pfräh')
       this.API.emotes.cssReplace(meta.command, command.css1 + params + command.css2)
