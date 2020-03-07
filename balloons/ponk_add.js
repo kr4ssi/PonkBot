@@ -275,7 +275,7 @@ class AddCustom {
       if (!req.query.userlink) return res.send('invalid userlink');
       if (!this.userLinks[url]) this.userLinks[url] = {};
       this.userLinks[url][md5ip(req)] = req.query.userlink;
-      res.send(req.query.userlink + '<br>added to:<br><br>' + url);
+      res.send(req.query.userlink + '<br>added to:<br><br>' + this.userLinks[url].url);
     }
 
     this.bot.server.host.get('/userlink', userlink);

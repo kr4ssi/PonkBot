@@ -1,6 +1,6 @@
 console.log('Userscript loaded', new class UserScript {
   constructor(url) {
-    const match = window.location.hash.match(/#userscript(\d+)/)
+    const match = window.location.hash.match(/#userscript(\d+)?/)
     Object.assign(this, {
       active: !!match
     }, config, includes.find(include => {
