@@ -334,7 +334,7 @@ class AddCustom {
           addition.duration = parseFloat(addition.ffprobe.format.duration)
           resolve(addition)
         }
-        else reject(info)
+        else reject(addition.ffprobe)
       })
     }).catch(err => {
       console.error(err)
