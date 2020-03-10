@@ -158,8 +158,8 @@ class FikuSystem {
       }
       const setFiku = (msg) => {
         if (msg) this.bot.sendMessage(msg)
-        this.bot.commandDispatcher(user, '.hintergrund ' + (msg ? 'last' : 'KinoX'))
-        setTimeout(() => this.bot.commandDispatcher(user, '.logo ' + (msg ? 'last' : 'FIKU')), 1000)
+        this.bot.commandDispatcher(this.name, '.hintergrund ' + (msg ? 'last' : 'fiku'))
+        setTimeout(() => this.bot.commandDispatcher(this.name, '.logo ' + (msg ? 'last' : 'fiku')), 1000)
       }
       fikuPoll(title, opts, timeout)
       console.log(meta)

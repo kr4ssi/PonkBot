@@ -62,7 +62,7 @@ class Addition extends EventEmitter {
       duration: this.duration || 0,
       thumbnail: this.thumbnail.replace(/(?:^http:\/\/)/i, 'https://') || undefined,
       sources: this.sources.map(({ height: quality, url }) => ({
-        url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.fileid}` : url,
+        url: this.needUserScript ? `${this.bot.server.weblink}/redir?url=${this.fileid}` : url.replace(/(?:^http:\/\/)/i, 'https://'),
         quality,
         contentType: ([
           {type: 'video/mp4', ext: ['.mp4']},
