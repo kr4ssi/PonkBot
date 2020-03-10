@@ -48,7 +48,8 @@ class GezStations {
             live: true
           })).catch(console.error)
         }))).then(results => {
-          results.forEach(({ manifest, title }) => {
+          results.forEach(({ manifest, title } = {}) => {
+            if (!manifest) return
             console.log(title)
             const filepath = `/mediathek/${encodeURIComponent(title)}.json`
             this.bot.server.host.get(filepath, (req, res) => {
