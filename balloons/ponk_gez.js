@@ -29,13 +29,12 @@ class GezStations {
           const url = 'https://www.ardmediathek.de' + e.attribs.href
           const addition = this.bot.API.add.add(url, null, { gettitle: true })
           return addition.getInfo().then(() => Object.assign(addition, {
-            title: addition.info.title.replace(' im Livestream', ''),
             formats: addition.formats.filter(format => {
               if (/hr/.test(e.attribs.title)) return !/sub/.test(format.url)
               return (format.manifest_url === addition.info.manifest_url)
             }),
             live: true,
-            title: e.attribs.title
+            title: e.attribs.title.replace(' im Livestream', '')
           })).catch(console.error)
         }).toArray().concat([
           'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
