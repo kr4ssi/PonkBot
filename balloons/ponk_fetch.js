@@ -156,7 +156,7 @@ module.exports = {
     },
     w0bm(user, params, meta) {
       const getW0bm = (page = '') => {
-        this.fetch('https://w0bm.com/index', {
+        this.fetch('https://w0bm.kim/index', {
           qs: {
             q: params,
             page
@@ -180,18 +180,18 @@ module.exports = {
           const vids = getMatches(body, /<tr data-thumb="(\d+)"/g)
           if (!vids || vids.length < 1) return this.sendMessage('Keine Ergebnisse /elo')
           w0bm = vids[Math.floor(Math.random() * vids.length)]
-          this.sendByFilter(imageHtml('https://w0bm.com/thumbs/' + w0bm + '.gif', 'https://b.w0bm.com/' + w0bm + '.webm'), true)
+          this.sendByFilter(imageHtml('https://w0bm.kim/thumbs/' + w0bm + '.gif', 'https://b.w0bm.kim/' + w0bm + '.webm'), true)
         })
       }
       if (params.length > 0) return getW0bm()
-      if (!w0bm) return [...Array(meta.repeat)].forEach((c, i) => this.fetch('https://w0bm.com/api/video/random', {
+      if (!w0bm) return [...Array(meta.repeat)].forEach((c, i) => this.fetch('https://w0bm.kim/api/video/random', {
         json: true
       }).then(({ body }) => {
-        this.addNetzm('https://w0bm.com/b/' + body.file, meta.addnext, user)
-        if (meta.repeat === 1) this.sendMessage('Zufälliges netzm von w0bm.com addiert')
-        else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige netzms von w0bm.com addiert')
+        this.addNetzm('https://w0bm.kim/b/' + body.file, meta.addnext, user)
+        if (meta.repeat === 1) this.sendMessage('Zufälliges netzm von w0bm.kim addiert')
+        else if (meta.repeat === i + 1) this.sendMessage(meta.repeat + ' zufällige netzms von w0bm.kim addiert')
       }))
-      this.addNetzm('https://w0bm.com/b/' + w0bm + '.webm', meta.addnext, user)
+      this.addNetzm('https://w0bm.kim/b/' + w0bm + '.webm', meta.addnext, user)
       this.sendMessage('Letztes gif als netzm addiert')
       w0bm = false
     },
