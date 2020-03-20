@@ -32,12 +32,12 @@ module.exports = class ProviderList extends Array {
             const p = p3 || p4
             if (p && (groups.includes(p) || Number(p)))
             return groups.push(p) && (p3 ? '(' : '')
-            reject('error')
+            reject(new Error(match))
           })
           return { [name]: { regex: new RegExp(regex), groups } }
         }
       }, (err, result) => {
-        if (err) throw err.message
+        if (err) return reject(err)
         resolve(Object.assign(...result))
       })
     }).then(ytdlRegex => {
@@ -49,16 +49,15 @@ module.exports = class ProviderList extends Array {
         })
         provider.kinoxids.forEach(kv => this.kinoxHosts.push(p(provider, kv)))
         provider.skisteids.forEach(kv => this.skisteHosts.push(p(provider, kv)))
-        if (provider.needUserScript) {
-          this.userScriptIncludes.push(provider.regex)
-          this.userScriptSources.push({
-            regex: provider.regex,
-            groups: provider.groups,
-            init: provider.userScript
-          })
-        }
         if (!provider.fikuonly)
         this.supportedProviders += (this.supportedProviders ? ', ' : '') + name
+        if (!provider.needUserScript) return
+        this.userScriptIncludes.push(provider.regex)
+        this.userScriptSources.push({
+          regex: provider.regex,
+          groups: provider.groups,
+          init: provider.userScript
+        })
       })
       this.kinoxHosts.sort((a, b) =>  a.priority - b.priority)
       this.skisteHosts.sort((a, b) =>  a.priority - b.priority)
@@ -93,35 +92,32 @@ class Provider {
     if (typeof rules.init === 'function') rules.init.call(this)
   }
   getInfo(url, moreargs = []) {
-    return new Promise((resolve, reject) => {
-      PythonShell.run('youtube_dl', {
-        cwd: path.join(__dirname, '..', 'youtube-dl'),
-        pythonOptions: ['-m'],
-        args: ['--dump-json', '-f', 'best', '--restrict-filenames', ...moreargs,  url]
-      }, (err, data) => {
-        if (err) return reject(err)
-        let info
-        try {
-          //let data = stdout.trim().split(/\r?\n/)
-          info = data.map((rawData) => JSON.parse(rawData))
-        }
-        catch (err) {
-          return reject(err)
-        }
-        if (!info.title) info = info[0]
-        this.info = info
-        if (info.formats && info.formats.length)
-        this.formats = info.formats.filter(format => {
+    return new Promise((resolve, reject) => PythonShell.run('youtube_dl', {
+      cwd: path.join(__dirname, '..', 'youtube-dl'),
+      pythonOptions: ['-m'],
+      args: [
+        '--restrict-filenames',
+        '-f', 'best',
+        '--dump-json'
+      ].concat(moreargs, url)
+    }, (err, data) => {
+      if (err) return reject(err)
+      resolve(data)
+    })).then(data => data.map(rawData => JSON.parse(rawData))).then(info => {
+      if (Array.isArray(info)) info = info[0]
+      return Object.assign(this, {
+        info,
+        headers: info.headers,
+        title: `${info.extractor_key} - ${info.title}`,
+        fileurl: this.type === 'cm' && info.manifest_url || info.url,
+        duration: info.duration,
+        quality: info.height
+      }, info.formats && info.formats.length && {
+        formats: info.formats.filter(format => {
           return [240, 360, 480, 540, 720, 1080, 1440].includes(format.height)
         })
-        this.title = (new RegExp('^' + this.info.extractor_key, 'i')).test(info.title) ? info.title : (info.extractor_key + ' - ' + info.title)
-        this.fileurl = info.url
-        if (this.type != 'cm') return resolve(this)
-        if (info.manifest_url) this.fileurl = info.manifest_url
-        if (info.thumbnail && info.thumbnail.match(/(?:^http:\/\/)/i)) this.thumbnail = info.thumbnail
-        this.duration = info.duration
-        this.quality = info.height;
-        return resolve(this)
+      }, info.thumbnail && info.thumbnail.match(/(?:^https?:\/\/)/i) && {
+        thumbnail: info.thumbnail
       })
     })
   }
@@ -230,7 +226,7 @@ const providers = Object.entries({
           const timeout = setTimeout(() => res.send('1'), 5000)
           this.bot.once('needcaptcha', () => {
             clearTimeout(timeout)
-            res.send('')
+            if (!res.headersSent) res.send('')
           })
         })
       })
@@ -267,22 +263,22 @@ const providers = Object.entries({
                 customerr: [302],
                 $: true,
                 headers
+              }).then(({ res, body, statusCode, $ }) => {
+                if (statusCode === 302) return res.headers.location
+                if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
+                  this.emit('message', 'Captcha abgelaufen')
+                  return getCaptcha()
+                }
+                return $('a').attr('href') || body
               })
             })
-          }).then(({ res, body, statusCode, $ }) => {
-            if (statusCode === 302) return res.headers.location
-            if (/reCAPTCHA kann nicht erreicht werden/.test(body)) {
-              this.emit('message', 'Captcha abgelaufen')
-              return getCaptcha()
-            }
-            return $('#stream').attr('href') || body
           })
           return getCaptcha().then(url => {
             this.emit('message', `Addiere Mirror: ${url}`)
             return this.matchUrl(url, this.bot.API.add.providerList).getInfo().then(() => {
               this.title = title
               if (this.type === 'cm' && !this.duration)
-              return this.bot.API.add.getDuration(this)
+              return this.getDuration()
               return this
             }).catch(() => getMirror())
           })
@@ -320,15 +316,9 @@ const providers = Object.entries({
     '|tube|club|digital|direct|pub|express|party|space|lc|ms|mu|gs|bz|gy|af))' +
     /\/(?:Tipp|Stream\/.+)\.html/.source),
     getInfo(url, gettitle) {
-      const onCaptcha = (options, { captcha }) => new Promise((resolve, reject) => {
-        console.error('The url is "' + captcha.uri.href + '"')
-        console.error('The site key is "' + captcha.siteKey + '"')
-        reject(new Error('This is a dummy function.'))
-      })
       return this.bot.fetch(url, {
         cloud: true,
-        $: true,
-        onCaptcha
+        $: true
       }).then(({ $, headers }) => {
         const hostname = 'https://' + URL.parse(url).hostname
         const location = hostname + $('.Grahpics a').attr('href')
@@ -338,54 +328,47 @@ const providers = Object.entries({
         const kinoxIds = $('#HosterList').children().map((i, e) => {
           return (e.attribs.id.match(/_(\d+)/) || [])[1]
         }).toArray()
-        const kinoxHosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
+        const hosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
           return kinoxIds.includes(host.id)
-        })
-        const getHost = ({ provider, id } = kinoxHosts.shift() || {}) => {
+        }).concat({})
+        const getHost = ({ provider, id } = hosts.shift()) => {
           if (!provider) throw 'Kein addierbarer Hoster gefunden'
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
           /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
           const hostdiv = $('#Hoster_' + id)
-          const data = hostdiv.children('.Data').html()
-          console.log(provider, id, hostdiv, data)
-          const match = data.match(regex)
-          if (!match) return console.log(data)
-          let [, initialindex, mirrorcount, date] = match
-          console.log(initialindex, mirrorcount, date)
+          const match = hostdiv.children('.Data').html().match(regex)
+          if (!match) throw data
+          let [ , current, count, date] = match
+          const initial = current
           const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
-          const getMirror = mirrorindex => {
+          const getMirror = () => {
             return this.bot.fetch(hostname + '/aGET/Mirror/' + filename, {
               headers,
               cloud: true,
               json: true,
               qs: {
                 Hoster: id,
-                Mirror: mirrorindex
-              },
-              onCaptcha
+                Mirror: current
+              }
             }).then(({ body }) => {
               if (!body.Stream) throw body
               const mirrorurl = 'https://' + (body.Stream.match(/\/\/([^"]+?)"/) || [])[1]
+              this.emit('message', `Addiere Mirror ${current}/${count}: ${mirrorurl} Vom: ${date}`)
               if (body.Replacement) {
                 const match = body.Replacement.match(regex)
                 if (!match) throw body
-                mirrorindex = match[1]
-                mirrorcount = match[2]
-                date = match[3]
-                console.log(match[0], mirrorindex, mirrorcount, date)
+                ;[ , current, count, date] = match
               }
-              this.emit('message', `Addiere Mirror ${mirrorindex}/${mirrorcount}: ${mirrorurl} Vom: ${date}`)
               return this.matchUrl(mirrorurl, [provider]).getInfo()
-            }).then(() => {
-              this.title = title
-              if (this.type === 'cm' && !this.duration)
-              return this.bot.API.add.getDuration(this)
-              return this
-            }, () => (mirrorindex != initialindex) ? getMirror(mirrorindex) : getHost())
+            })
           }
-          return getMirror(initialindex)
-        }
-        return gettitle ? title : getHost()
+          return getMirror().catch(current != initial ? getMirror : getHost)
+        })
+        return gettitle ? title : getHost().then(() => {
+          this.title = title
+          if (this.type === 'cm' && !this.duration) return this.getDuration()
+          return this
+        })
       })
     }
   },
@@ -485,7 +468,7 @@ const providers = Object.entries({
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
-      }).then(({ match: [ , title, fileurl, duration] }) => {
+      }).then(({ match: [ , title, duration, fileurl] }) => {
         return Object.assign(this, { title, fileurl, duration })
       })
     },
@@ -590,6 +573,7 @@ const providers = Object.entries({
   'liveleak.com': {
     getInfo() {
       return Provider.prototype.getInfo.call(this, this.url).then(() => {
+        this.title = this.info.title
         if (this.info.extractor === 'youtube') {
           this.type = 'yt'
           this.fileurl = this.info.display_id

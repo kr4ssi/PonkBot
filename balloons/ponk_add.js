@@ -85,14 +85,40 @@ class Addition extends EventEmitter {
       return !!(this.match = url.match(provider.regex))
     })
     if (!provider) throw new Error('Can\'t find a supported provider')
-    Object.assign(this, provider, {
+    return Object.assign(this, provider, {
       getInfo: (...args) => provider.getInfo.call(this, this.url, ...args),
       download: (...args) => provider.download.call(this, this.url, ...args)
     })
-    return this
+  }
+  getDuration() {
+    let tries = 0
+    const tryToGetDuration = () => new Promise((resolve, reject) => {
+      execFile('ffprobe', [
+        '-v', 'error',
+        '-show_format',
+        '-show_streams',
+        '-icy', '0',
+        '-print_format', 'json'
+      ].concat(this.headers ? ['-headers',
+      Object.entries(this.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')] : [],
+      this.fileurl), (err, stdout) => {
+        if (err) return reject(err)
+        resolve(stdout)
+      })
+    }).catch(err => {
+      console.error(err)
+      if (++tries > 1) throw err
+      return tryToGetDuration()
+    })
+    return tryToGetDuration().then(stdout => JSON.parse(stdout)).then(info => {
+      if (!info.format || !info.format.duration) throw new Error(info)
+      return Object.assign(this, {
+        ffprobe: info,
+        duration: info.format.duration
+      })
+    })
   }
   add(next) {
-    this.bot.API.add.cmAdditions[this.id] = this
     this.bot.client.socket.emit('queue', {
       title: this.title,
       type : this.type,
@@ -100,7 +126,7 @@ class Addition extends EventEmitter {
       pos : next ? 'next' : 'end',
       temp : true,
     })
-    return this
+    return this.bot.API.add.cmAdditions[this.id] = this
   }
 }
 
@@ -129,6 +155,8 @@ class AddCustom {
       this.bot.sendMessage(msg.replace(/&#39;/g,  `'`) + ' ' + link)
       if (msg === 'This item is already on the playlist')
       return this.bot.sendMessage('Das darf garnicht passieren')
+      if (msg === 'The uploader has made this video non-embeddable https://youtu.be/' + id)
+      this.bot.commandDispatcher(this.name, '.add ' + link + ' download')
       if (this.cmAdditions[id]) {
         this.cmAdditions[id].emit('queueFail')
         this.cmAdditions[id].removeAllListeners()
@@ -236,9 +264,7 @@ class AddCustom {
         chan: this.bot.channel
       })
     ]
-
     const parseDate = userscriptts => date.format(new Date(parseInt(userscriptts)), 'DD.MM.YY')
-
     if (/localhost/.test(this.bot.server.weblink)) this.userscriptdate = parseDate(this.bot.started)
     else this.bot.db.getKeyValue('userscripthash').then(userscripthash => {
       const newuserscripthash = crypto.createHash('md5').update(JSON.stringify(this.userScripts)).digest('hex')
@@ -253,7 +279,6 @@ class AddCustom {
         this.bot.API.emotes.pushToGit(filename + '.js', userscript)
       })
     })
-
     this.userScriptPollOpts = [
       ...this.userScripts.map(({ filename, descr }) => this.bot.server.weblink + '/' + filename + '.js ' + descr)
     ]
@@ -261,87 +286,46 @@ class AddCustom {
 
   fixurl(url) {
     if (typeof url === 'undefined') return false;
-    url = decodeURIComponent(url).replace(/(?:^http:\/\/)/, 'https://');
-    return validUrl.isHttpsUri(url);
+    url = decodeURIComponent(url).replace(/(?:^http:\/\/)/, 'https://')
+    return validUrl.isHttpsUri(url)
   }
 
   setupServer() {
-    const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex');
-
+    const md5ip = req => crypto.createHash('md5').update(forwarded(req).pop()).digest('hex')
     const userlink = (req, res) => {
-      //const url = this.fixurl(req.query.url);
-      //if (!url) return res.send('invalid url');
+      //const url = this.fixurl(req.query.url)
+      //if (!url) return res.send('invalid url')
       const url = req.query.url
-      if (!req.query.userlink) return res.send('invalid userlink');
-      if (!this.userLinks[url]) this.userLinks[url] = {};
-      this.userLinks[url][md5ip(req)] = req.query.userlink;
-      res.send(req.query.userlink + '<br>added to:<br><br>' + this.userLinks[url].url);
+      if (!req.query.userlink) return res.send('invalid userlink')
+      if (!this.userLinks[url]) this.userLinks[url] = {}
+      this.userLinks[url][md5ip(req)] = req.query.userlink
+      res.send(req.query.userlink + '<br>added to:<br><br>' + this.userLinks[url].url)
     }
-
-    this.bot.server.host.get('/userlink', userlink);
-
+    this.bot.server.host.get('/userlink', userlink)
     this.bot.server.host.get('/add.json', (req, res) => {
-      if (req.query.userlink) return userlink(req, res);
+      if (req.query.userlink) return userlink(req, res)
       const url = req.query.url
-      const cmManifest = this.cmAdditions[this.bot.server.weblink + '/add.json?' + (req.query.hasOwnProperty('userscript') ? 'userscript&' : '') + 'url=' + url];
-      if (!cmManifest) return res.sendStatus(404);
-      res.json(cmManifest.manifest);
-    });
-
+      const cmManifest = this.cmAdditions[this.bot.server.weblink + '/add.json?' + (req.query.hasOwnProperty('userscript') ? 'userscript&' : '') + 'url=' + url]
+      if (!cmManifest) return res.sendStatus(404)
+      res.json(cmManifest.manifest)
+    })
     this.bot.server.host.get('/redir', (req, res) => {
-      const empty = 'https://ia801501.us.archive.org/0/items/youtube-yUUjeindT5U/VHS_simple_static_noise_-_Motion_background_loop_1-yUUjeindT5U.mp4';
-      //const url = this.fixurl(req.query.url);
-      //if (!url) return res.redirect(empty);
+      const empty = 'https://ia801501.us.archive.org/0/items/youtube-yUUjeindT5U/VHS_simple_static_noise_-_Motion_background_loop_1-yUUjeindT5U.mp4'
+      //const url = this.fixurl(req.query.url)
+      //if (!url) return res.redirect(empty)
       const url = req.query.url
-      const userLinks = this.userLinks[url];
-      if (userLinks && userLinks[md5ip(req)]) res.redirect(userLinks[md5ip(req)]);
-      else res.redirect(empty);
-    });
-
+      const userLinks = this.userLinks[url]
+      if (userLinks && userLinks[md5ip(req)]) res.redirect(userLinks[md5ip(req)])
+      else res.redirect(empty)
+    })
     this.userScripts.forEach(({ filename, meta, userscript }) => {
       this.bot.server.host.get('/' + filename + '.js', (req, res) => {
-        res.end(userscript);
+        res.end(userscript)
       })
       this.bot.server.host.get('/' + filename + '.meta.js', (req, res) => {
-        res.end(meta);
+        res.end(meta)
       })
     })
-  }
-
-  getDuration(addition) {
-    let tries = 0
-    const params = [
-      '-v', 'error',
-      '-show_format',
-      '-show_streams',
-      '-icy', '0',
-      '-print_format', 'json'
-    ]
-    const headers = Object.entries(addition.info.http_headers || {})
-    if (headers.length) params.push('-headers', headers.map(([key, value]) => {
-      return `${key}: ${value}`
-    }).join('\r\n'))
-    const tryToGetDuration = () => new Promise((resolve, reject) => {
-      execFile('ffprobe', [...params, addition.fileurl], (err, stdout) => {
-        if (err) return reject(err)
-        try {
-          addition.ffprobe = JSON.parse(stdout)
-        }
-        catch(err) {
-          return reject(err)
-        }
-        if (addition.ffprobe.format && addition.ffprobe.format.duration) {
-          addition.duration = parseFloat(addition.ffprobe.format.duration)
-          resolve(addition)
-        }
-        else reject(addition.ffprobe)
-      })
-    }).catch(err => {
-      console.error(err)
-      if (++tries > 1) throw 'Can\'t get duration'
-      return tryToGetDuration()
-    })
-    return tryToGetDuration()
   }
 
   add(url, title, meta) {
@@ -355,7 +339,7 @@ class AddCustom {
       throw 'Ist schon in der playlist'
       if (title) addition.title = title
       if (addition.type === 'cm' && !addition.duration)
-      return this.getDuration(addition)
+      return addition.getDuration()
     }).then(() => {
       if (addition.needUserScript) addition.on('queue', () => {
         const userScriptPoll = () => {
