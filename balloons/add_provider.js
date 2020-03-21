@@ -469,7 +469,7 @@ const providers = Object.entries({
       return this.bot.fetch(this.url, {
         match: /([^"]+\.mp4)[\s\S]+vid_length: '([^']+)[\s\S]+curFileName = "([^"]+)/
       }).then(({ match: [ , title, duration, fileurl] }) => {
-        return Object.assign(this, { title, fileurl, duration })
+        return Object.assign(this, { title, fileurl, duration: Number(duration) })
       })
     },
     kinoxids: ['80'],
