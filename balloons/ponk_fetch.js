@@ -85,15 +85,19 @@ module.exports = {
                   }
                 }
                 if (unpack) {
-                  const match = result.prop.match(/return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/)
+                  function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
+                  const regex = /return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/g
+                  let match = regex.exec(result.prop)
                   if (!match) {
                     //console.error(body)
                     throw new matchError('no packed code found')
                   }
-                  function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
-                  const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
-                  result.unpack = unpacked.match(unpack)
-                  console.log(unpacked)
+                  while (match && !result.unpack) {
+                    const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
+                    console.log(unpacked)
+                    result.unpack = unpacked.match(unpack)
+                    match = regex.exec(result.prop)
+                  }
                   if (!result.unpack) {
                     //console.error(body)
                     throw new matchError('no match \'' + unpack + '\' in packed code found')
@@ -121,7 +125,7 @@ module.exports = {
         }
       })
       ponk.db.createTableIfNotExists('netzms', (table) => {
-          table.string('faden', 240).primary();
+        table.string('faden', 240).primary();
       })
       ponk.logger.log('Registering fetch-handlers');
       resolve();
