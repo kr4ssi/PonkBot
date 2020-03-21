@@ -39,6 +39,7 @@ class Addition extends EventEmitter {
       ffprobe: {},
       info: {},
       formats: [],
+      headers: {},
       matchGroup: id => this.match[this.groups.indexOf(id) + 1]
     })
   }
@@ -92,6 +93,7 @@ class Addition extends EventEmitter {
   }
   getDuration() {
     let tries = 0
+    const headers = Object.entries(this.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')
     const tryToGetDuration = () => new Promise((resolve, reject) => {
       execFile('ffprobe', [
         '-v', 'error',
@@ -99,9 +101,7 @@ class Addition extends EventEmitter {
         '-show_streams',
         '-icy', '0',
         '-print_format', 'json'
-      ].concat(this.headers ? ['-headers',
-      Object.entries(this.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')] : [],
-      this.fileurl), (err, stdout) => {
+      ].concat(headers ? ['-headers', headers] : [], this.fileurl), (err, stdout) => {
         if (err) return reject(err)
         resolve(stdout)
       })

@@ -363,7 +363,7 @@ const providers = Object.entries({
             })
           }
           return getMirror().catch(current != initial ? getMirror : getHost)
-        })
+        }
         return gettitle ? title : getHost().then(() => {
           this.title = title
           if (this.type === 'cm' && !this.duration) return this.getDuration()
