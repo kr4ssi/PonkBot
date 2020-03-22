@@ -107,7 +107,7 @@ class Provider {
       if (Array.isArray(info)) info = info[0]
       return Object.assign(this, {
         info,
-        headers: info.headers,
+        headers: info.http_headers,
         title: `${info.extractor_key} - ${info.title}`,
         fileurl: this.type === 'cm' && info.manifest_url || info.url,
         duration: info.duration,
