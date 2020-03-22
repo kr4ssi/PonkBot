@@ -114,7 +114,7 @@ class Addition extends EventEmitter {
       if (!info.format || !info.format.duration) throw new Error(info)
       return Object.assign(this, {
         ffprobe: info,
-        duration: info.format.duration
+        duration: parseFloat(info.format.duration)
       })
     })
   }
