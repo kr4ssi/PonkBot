@@ -111,11 +111,11 @@ class Addition extends EventEmitter {
       return tryToGetDuration()
     })
     return tryToGetDuration().then(stdout => JSON.parse(stdout)).then(info => {
-      if (!info.format || !info.format.duration) throw new Error(info)
-      return Object.assign(this, {
-        ffprobe: info,
-        duration: parseFloat(info.format.duration)
-      })
+      if (!info.format) throw new Error(info)
+      this.ffprobe = info
+      if (info.format.duration) this.duration = parseFloat(info.format.duration)
+      else this.live = true
+      return this
     })
   }
   add(next) {
@@ -338,7 +338,7 @@ class AddCustom {
       if (this.bot.playlist.some(item => item.media.id === addition.id))
       throw 'Ist schon in der playlist'
       if (title) addition.title = title
-      if (addition.type === 'cm' && !addition.duration)
+      if (addition.type === 'cm' && !addition.live && !addition.duration)
       return addition.getDuration()
     }).then(() => {
       if (addition.needUserScript) addition.on('queue', () => {

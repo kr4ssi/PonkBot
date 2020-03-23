@@ -110,8 +110,9 @@ class Provider {
         headers: info.http_headers,
         title: `${info.extractor_key} - ${info.title}`,
         fileurl: this.type === 'cm' && info.manifest_url || info.url,
-        duration: info.duration,
-        quality: info.height
+        duration: info.duration || undefined,
+        quality: info.height,
+        live: info.is_live || false
       }, info.formats && info.formats.length && {
         formats: info.formats.filter(format => {
           return [240, 360, 480, 540, 720, 1080, 1440].includes(format.height)
@@ -603,13 +604,36 @@ const providers = Object.entries({
   'peertube': {
     regex: 'PeerTubeIE'
   },
-  'f0ck.me': {}
+  'f0ck.me': {},
+  'tiktok.com': {}
 }).concat(Object.entries({
   'twitter.com': {},
   'ARDMediathek': {
-    regex: 'ARDMediathekIE'
+    regex: 'ARDMediathekIE',
+    getInfo() {
+      return Provider.prototype.getInfo.call(this, this.url).then(() => {
+        const match = this.info.title.match(/^(.*?)(hr)?(?: im )? Livestream.*$/)
+        if (!match) return this
+        return Object.assign(this, {
+          formats: match[2] ? this.formats.filter(format => {
+            return !/sub/.test(format.url)
+          }) : this.formats.filter(format => {
+            return (format.manifest_url === this.info.manifest_url)
+          }),
+          title: match[1]
+        })
+      })
+    }
   },
-  'zdf.de': {},
+  'zdf.de': {
+    regex: 'ZDFIE',
+    getInfo() {
+      return Provider.prototype.getInfo.call(this, this.url).then(() => {
+        this.title = this.title.replace(/(?: im )? Livestream.*$/, '')
+        return this
+      })
+    }
+  },
   'wdr.de': {
     regex: 'WDRPageIE'
   },

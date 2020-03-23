@@ -28,24 +28,25 @@ class GezStations {
         Promise.all(stations.map((i, e) => {
           const url = 'https://www.ardmediathek.de' + e.attribs.href
           const addition = this.bot.API.add.add(url, null, { gettitle: true })
-          return addition.getInfo().then(() => Object.assign(addition, {
-            formats: addition.formats.filter(format => {
-              if (/hr/.test(e.attribs.title)) return !/sub/.test(format.url)
-              return (format.manifest_url === addition.info.manifest_url)
-            }),
-            live: true,
-            title: e.attribs.title.replace(' im Livestream', '')
-          })).catch(console.error)
+          return addition.getInfo()//.then(() => Object.assign(addition, {
+            //formats: addition.formats.filter(format => {
+            //  if (/hr/.test(e.attribs.title)) return !/sub/.test(format.url)
+            //  return (format.manifest_url === addition.info.manifest_url)
+            //}),
+            //live: true,
+            //title: e.attribs.title.replace(' im Livestream', '')
+          //}))
+          .catch(console.error)
         }).toArray().concat([
           'https://www.zdf.de/sender/zdf/zdf-live-beitrag-100.html',
           'https://www.zdf.de/sender/zdfneo/zdfneo-live-beitrag-100.html',
           'https://www.zdf.de/dokumentation/zdfinfo-doku/zdfinfo-live-beitrag-100.html'
         ].map(url => {
           const addition = this.bot.API.add.add(url, null, { gettitle: true })
-          return addition.getInfo().then(() => Object.assign(addition, {
-            title: addition.info.title.replace(' Livestream', ''),
-            live: true
-          })).catch(console.error)
+          return addition.getInfo()//.then(() => Object.assign(addition, {
+            //title: addition.info.title.replace(' Livestream', '')
+          //}))
+          .catch(console.error)
         }))).then(results => {
           results.forEach(({ manifest, title } = {}) => {
             if (!manifest) return
