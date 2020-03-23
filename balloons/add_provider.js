@@ -608,6 +608,7 @@ const providers = Object.entries({
   'tiktok.com': {}
 }).concat(Object.entries({
   'twitter.com': {},
+  'welt.de': {},
   'ARDMediathek': {
     regex: 'ARDMediathekIE',
     getInfo() {
