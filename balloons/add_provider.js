@@ -45,7 +45,7 @@ module.exports = class ProviderList extends Array {
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
         const p = (provider, [priority , id]) => ({ provider,
-          priority: priority || provider.priority || 1, id
+          priority: provider.priority || priority || 1, id
         })
         provider.kinoxids.forEach(kv => this.kinoxHosts.push(p(provider, kv)))
         provider.skisteids.forEach(kv => this.skisteHosts.push(p(provider, kv)))
@@ -332,6 +332,7 @@ const providers = Object.entries({
         const hosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
           return kinoxIds.includes(host.id)
         }).concat({})
+        console.log(this.bot.API.add.providerList.kinoxHosts)
         const getHost = ({ provider, id } = hosts.shift()) => {
           if (!provider) throw 'Kein addierbarer Hoster gefunden'
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
