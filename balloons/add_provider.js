@@ -332,15 +332,16 @@ const providers = Object.entries({
         const hosts = this.bot.API.add.providerList.kinoxHosts.filter(host => {
           return kinoxIds.includes(host.id)
         }).concat({})
-        console.log(this.bot.API.add.providerList.kinoxHosts)
         const getHost = ({ provider, id } = hosts.shift()) => {
+          console.log(provider)
+          //console.log(hosts)
           if (!provider) throw 'Kein addierbarer Hoster gefunden'
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
           /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
           const hostdiv = $('#Hoster_' + id)
           const match = hostdiv.children('.Data').html().match(regex)
           if (!match) throw data
-          let [ , current, count, date] = match
+          var [ , current, count, date] = match
           const initial = current
           const filename = (hostdiv.attr('rel').match(/^(.*?)\&/) || [])[1]
           const getMirror = () => {
@@ -360,17 +361,21 @@ const providers = Object.entries({
                 const match = body.Replacement.match(regex)
                 if (!match) throw body
                 ;[ , current, count, date] = match
+                console.log(initial, current, count)
               }
-              return this.matchUrl(mirrorurl, [provider]).getInfo()
+              return this.matchUrl(mirrorurl, [provider]).getInfo().then(() => {
+                this.title = title
+                if (this.type === 'cm' && !this.duration) return this.getDuration()
+                return this
+              })
+            }).catch(err => {
+              if (current != initial) return getMirror()
+              return getHost()
             })
           }
-          return getMirror().catch(current != initial ? getMirror : getHost)
+          return getMirror()
         }
-        return gettitle ? title : getHost().then(() => {
-          this.title = title
-          if (this.type === 'cm' && !this.duration) return this.getDuration()
-          return this
-        })
+        return gettitle ? title : getHost()
       })
     }
   },

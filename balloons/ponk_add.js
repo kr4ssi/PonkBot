@@ -105,18 +105,18 @@ class Addition extends EventEmitter {
         if (err) return reject(err)
         resolve(stdout)
       })
-    }).catch(err => {
-      console.error(err)
-      if (++tries > 1) throw err
-      return tryToGetDuration()
-    })
-    return tryToGetDuration().then(stdout => JSON.parse(stdout)).then(info => {
+    }).then(stdout => JSON.parse(stdout)).then(info => {
       if (!info.format) throw new Error(info)
       this.ffprobe = info
       if (info.format.duration) this.duration = parseFloat(info.format.duration)
       else this.live = true
       return this
+    }).catch(err => {
+      console.error(err)
+      if (++tries > 1) throw err
+      return tryToGetDuration()
     })
+    return tryToGetDuration()
   }
   add(next) {
     this.bot.client.socket.emit('queue', {
