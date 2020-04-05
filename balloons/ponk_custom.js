@@ -155,7 +155,7 @@ module.exports = {
       username = isinplaylist.queueby
       this.pollAction({
         title: 'Sollen alle Videos von ' + username + ' aus der Liste entfernt werden?',
-        timeout: 30,
+        timeout: 60,
         opts: ['Ja /krebs', 'Nein /top'],
         obscured: false
       }, pollvotes => {
@@ -212,7 +212,7 @@ module.exports = {
       if (playlist.length > 2) {
         this.pollAction({
           title: 'Was willküren',
-          timeout: 30,
+          timeout: 60,
           opts: playlist.map(row => row.uid != this.currUID ? row.media.title : 'Garnichts'),
           obscured: false
         }, pollvotes => {
@@ -225,7 +225,7 @@ module.exports = {
       if (playlist.length > 0 && !playlist.find(item => item.uid == this.currUID)) {
         this.pollAction({
           title: 'Willkürüberspringen der permanenten Videos /ffz',
-          timeout: 20,
+          timeout: 60,
           opts: ['j', 'n'],
           obscured: false
         }, pollvotes => {
@@ -242,7 +242,7 @@ module.exports = {
       if (playlist.length > 2) {
         this.pollAction({
           title: 'Mischen /ffz',
-          timeout: 20,
+          timeout: 60,
           opts: ['j', 'n'],
           obscured: false
         }, pollvotes => {
