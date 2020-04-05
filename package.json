@@ -48,7 +48,7 @@
     "socket.io": "latest",
     "socket.io-client": "latest",
     "subtitles-parser": "latest",
-    "tosource": "latest",
+    "tosource": "1.0.0",
     "ts3-nodejs-library": "latest",
     "user-agents": "latest",
     "userscript-meta": "latest",
