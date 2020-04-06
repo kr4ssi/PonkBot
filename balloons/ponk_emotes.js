@@ -404,7 +404,7 @@ class Emotes {
       }
     }[meta.command]
     if (params) {
-      if (params === 'last') this.bot.API.emotes.cssReplace(meta.command)
+      if (params === 'last') this.cssReplace(meta.command)
       else {
         if (command.options[params.toLowerCase()]) params = command.options[params.toLowerCase()]
         else {
@@ -414,10 +414,10 @@ class Emotes {
         console.log(params)
         params = validUrl.isHttpsUri(params)
         if (!params) return this.bot.sendMessage('Ist keine https-Elfe /pfräh')
-        this.bot.API.emotes.cssReplace(meta.command, command.css1 + params + command.css2)
+        this.cssReplace(meta.command, command.css1 + params + command.css2)
       }
     }
-    else this.sendByFilter(command.message + Object.keys(command.options).join(', '))
+    else this.bot.sendByFilter(command.message + Object.keys(command.options).join(', '))
   }
   cleanName(name) {
     return name.replace(/^\//, '').replace(/["*/:<>?\\()|]/g, match => ({
