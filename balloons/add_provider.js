@@ -152,6 +152,7 @@ class Provider {
             }
             this.type = 'fi'
             this.filename = this.info._filename
+            this.title = `${info.extractor_key} - ${info.title}`
             this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.filename)
             fs.chmod(match[1], 0o644, err => {
               if (err) pyshell.emit('error', err)
