@@ -227,6 +227,11 @@ module.exports = {
         this.sendMessage('Elfe für "' + fiku.title + '": ' + fiku.url)
       })
     },
+    fikuwer(user, params, meta) {
+      this.API.fiku.getFiku(params).then(fiku => {
+        this.sendMessage('Vorschlag "' + fiku.title + '" ist von: ' + fiku.user)
+      })
+    },
     fikuaktiv(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
         const active = !fiku.active
@@ -244,7 +249,7 @@ module.exports = {
           const update = { url }
           if (title.length) update.title = title.join(' ')
           this.db.knex('fiku').where(fiku).update(update).then(() => {
-            this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title)
+            this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title.join(' '))
           })
         })
       }, err => this.sendMessage(err))

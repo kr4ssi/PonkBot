@@ -265,6 +265,10 @@ module.exports = {
     synop: 'Zeigt die Elfe des Films mit .fikuelfe Film-ID',
     rank: 0
   },
+  fikuwer: {
+    synop: '',
+    rank: 2
+  },
   fikuinfo: {
     synop: 'Zeigt Cover, Beschreibung, Mitwirkende und imdb-Wertung des Films mit .fikuinfo Film-ID',
     rank: 0
