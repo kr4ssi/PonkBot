@@ -58,7 +58,7 @@ class FikuSystem {
       })
     })
   }
-  addFiku(id, newuser, newurl) {
+  addFiku(id, meta, newuser, newurl) {
     return this.getFiku(id).then(({ url, title, id, user }) => {
       if (newurl) {
         url = newurl
@@ -70,7 +70,7 @@ class FikuSystem {
         fiku: true
       }).on('closetoend', () => {
         this.delFiku(id).then(() => {
-          if (!this.fikupoll) this.fikuPoll(user, '')
+          if (!this.fikupoll) this.fikuPoll(user, '', meta)
         })
       })
       return { url, title, id, user }
@@ -151,7 +151,7 @@ class FikuSystem {
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
           if (winner[0] === 'Partei') return setFiku('Partei!')
           const id = winner[0].match(/ \(ID: (\d+)\)/)[1]
-          this.addFiku(id).then(({ title }) => {
+          this.addFiku(id, meta).then(({ title }) => {
             this.bot.sendMessage(`${title} (ID: ${id}) wird addiert`)
           })
         })
@@ -220,7 +220,7 @@ module.exports = {
         if (!newurl)
         return this.sendMessage('Ist keine https-Elfe /pfräh')
       }
-      this.API.fiku.addFiku(id, user, newurl)
+      this.API.fiku.addFiku(id, meta, user, newurl)
     },
     fikuelfe(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
