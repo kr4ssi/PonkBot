@@ -133,7 +133,7 @@ class FikuSystem {
       //const date = new Date()
       //const hour = date.getHours()
       let opts = fikuList.filter(row => row.active)
-      if (meta && meta.command === 'ausschussfiku') opts.filter((row, i) => i < 8)
+      if (meta && meta.command === 'ausschussfiku') opts = opts.filter((row, i) => i < 8)
       opts = opts.map(row => `${row.title} (ID: ${row.id})`).concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
       const fikuPoll = (title, opts, timeout) => {
         this.fikupoll = true
