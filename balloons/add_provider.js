@@ -398,10 +398,14 @@ const providers = Object.entries({
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       if (['nxload.com', 'gounlimited.to'].includes(this.matchGroup('host')))
       this.needUserScript = false
-      const args = []
       if (['gounlimited.to'].includes(this.matchGroup('host')))
-      args.push('--no-check-certificate')
-      return Provider.prototype.getInfo.call(this, this.url, args)
+      return Provider.prototype.getInfo.call(this, this.url, [
+        '--no-check-certificate'
+      ]).then(info => {
+        if (info.fileurl.match(/https:\/\/gounlimited\.to\/videojs\d\/small\d\.mp4/))
+        throw new Error('Server overload')
+      })
+      return Provider.prototype.getInfo.call(this, this.url)
     },
     kinoxids: {
       1: '84', // gounlimited
