@@ -232,7 +232,7 @@ class Emotes {
       })
     })
   }
-  downloadEmote({name, image}, chan = this.bot.channel, update = true) {
+  downloadEmote({ name, image }, chan = this.bot.channel, update = true) {
     return fetch(image, { headers: this.headers }).then(res => {
       if (!res.ok) throw new Error(res.statusText)
       return fileType.stream(res.body)
@@ -240,6 +240,7 @@ class Emotes {
       const filename = `${this.cleanName(name)}.${stream.fileType.ext}`
       /*const*/let filepath = path.join(this.backuppath, chan, 'emotes', filename)
       if (process.env.NODE_ENV === 'production') filepath = path.join(this.emotespath, filename)
+      this.removeEmote(filepath)
       stream.pipe(fs.createWriteStream(filepath)).on('close', () => {
         if (update) this.bot.client.socket.emit('updateEmote', {
           name,
@@ -259,7 +260,10 @@ class Emotes {
   }
   checkEmotes(emotes = this.bot.emotes) {
     if (process.env.NODE_ENV != 'production') return this.backupEmotes(emotes)
-    emotes.forEach(emote => this.checkEmote(emote))
+    emotes.forEach((emote, i) => {
+      if (i > 20) return this.bot.sendMessage('checkier das nochmal')
+      this.checkEmote(emote)
+    })
   }
   checkEmote({ name, image }, rename = true) {
     if (image.startsWith(this.bot.API.keys.emotehost)) {
