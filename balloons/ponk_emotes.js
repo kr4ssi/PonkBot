@@ -260,9 +260,10 @@ class Emotes {
   }
   checkEmotes(emotes = this.bot.emotes) {
     if (process.env.NODE_ENV != 'production') return this.backupEmotes(emotes)
-    emotes.forEach((emote, i) => {
+    let i = 0
+    emotes.forEach(emote => {
       if (i > 20) return this.bot.sendMessage('checkier das nochmal')
-      this.checkEmote(emote)
+      if (this.checkEmote(emote) instanceof Promise) i++
     })
   }
   checkEmote({ name, image }, rename = true) {
