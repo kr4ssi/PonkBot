@@ -334,8 +334,6 @@ const providers = Object.entries({
           return kinoxIds.includes(host.id)
         }).concat({})
         const getHost = ({ provider, id } = hosts.shift()) => {
-          console.log(provider)
-          //console.log(hosts)
           if (!provider) throw 'Kein addierbarer Hoster gefunden'
           const regex = new RegExp(/<b>Mirror<\/b>: (?:(\d+)\/(\d+))/.source +
           /<br ?\/?><b>Vom<\/b>: (\d\d\.\d\d\.\d{4})/.source)
@@ -422,6 +420,25 @@ const providers = Object.entries({
   },
   'vshare.io': {
     regex: 'VShareIE',
+    userScript: function() {
+      let e =  document.querySelector('video')
+      e = document.querySelector('video').firstElementChild || e
+      if (!e) return false
+      this.fileurl = e.src
+    }
+  },
+  'voe.sx': {
+    regex: /https?:\/\/(?:www\.)?voe\.sx(?:\/e)?\/([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      this.matchUrl(url.replace(/\/e/i, ''))
+      return this.bot.fetch(this.url, {
+        match: /<title>Watch ([^<]*)[\s\S]+\{src: \"([^"]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    skisteids: { 2: 'VOE', },
     userScript: function() {
       let e =  document.querySelector('video')
       e = document.querySelector('video').firstElementChild || e
