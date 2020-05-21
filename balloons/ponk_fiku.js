@@ -64,16 +64,11 @@ class FikuSystem {
         url = newurl
         user = newuser
       }
-      this.bot.API.add.add(url, title + ' (ID: ' + id + ')', {
+      return this.bot.API.add.add(url, title + ' (ID: ' + id + ')', {
         user,
         addnext: true,
         fiku: true
-      }).on('closetoend', () => {
-        this.delFiku(id).then(() => {
-          if (!this.fikupoll) this.fikuPoll(user, '', meta)
-        })
       })
-      return { url, title, id, user }
     })
   }
   delFiku(id) {
@@ -151,8 +146,22 @@ class FikuSystem {
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
           if (winner[0] === 'Partei') return setFiku('Partei!')
           const id = winner[0].match(/ \(ID: (\d+)\)/)[1]
-          this.addFiku(id, meta).then(({ title }) => {
-            this.bot.sendMessage(`${title} (ID: ${id}) wird addiert`)
+          this.addFiku(id, meta).then(addition => {
+            this.bot.sendMessage(`${addition.title} wird addiert`)
+            addition.on('closetoend', () => {
+              this.delFiku(id).then(() => {
+                if (!this.fikupoll) this.fikuPoll(user, '', meta)
+              })
+            }).on('queue', () => {
+              const playlist = this.bot.playlist.filter(item => item.temp)
+              playlist.sort((a, b) => a.media.seconds - b.media.seconds)
+              let seconds = 0
+              while (seconds < 600 && playlist.length) {
+                const item = playlist.shift()
+                this.bot.mediaMove({ from: item.uid })
+                seconds = seconds + item.media.seconds
+              }
+            })
           })
         })
       }
