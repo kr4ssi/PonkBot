@@ -446,6 +446,28 @@ const providers = Object.entries({
       this.fileurl = e.src
     }
   },
+  'upstream.to': {
+    regex: /https?:\/\/(?:www\.)?upstream\.to\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
+    groups: ['id'],
+    getInfo(url) {
+      this.matchUrl(url.replace(/\/e/i, ''))
+      return this.bot.fetch(this.url, {
+        match: /<title>Watch ([^<]*)[\s\S]+\[{file:"([^"]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    kinoxids: ['86'],
+    priority: 2,
+    userScript: function() {
+      let match
+      document.querySelectorAll('script').forEach(e => {
+        match = e.textContent.match(/\[{file:"([^"]+)/) || match
+      })
+      if (!match) return false
+      this.fileurl = match[1]
+    }
+  },
   'vivo.sx': {
     regex: 'VivoIE',
     skisteids: { 2: 'Vivo', },
