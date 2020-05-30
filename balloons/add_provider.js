@@ -457,7 +457,7 @@ const providers = Object.entries({
         return Object.assign(this, { title, fileurl })
       })
     },
-    kinoxids: ['86'],
+    kinoxids: ['91'],
     priority: 2,
     userScript: function() {
       let match
