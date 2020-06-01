@@ -378,6 +378,15 @@ const providers = Object.entries({
       })
     }
   },
+  'vshare.io': {
+    regex: 'VShareIE',
+    userScript: function() {
+      let e =  document.querySelector('video')
+      e = document.querySelector('video').firstElementChild || e
+      if (!e) return false
+      this.fileurl = e.src
+    }
+  },
   [['clipwatching.com',
   'gounlimited.to',
   'govid.me',
@@ -418,90 +427,6 @@ const providers = Object.entries({
       this.fileurl = e.src
     }
   },
-  'vshare.io': {
-    regex: 'VShareIE',
-    userScript: function() {
-      let e =  document.querySelector('video')
-      e = document.querySelector('video').firstElementChild || e
-      if (!e) return false
-      this.fileurl = e.src
-    }
-  },
-  'voe.sx': {
-    regex: /https?:\/\/(?:www\.)?voe\.sx(?:\/e)?\/([^/?#&]+)/,
-    groups: ['id'],
-    getInfo(url) {
-      this.matchUrl(url.replace(/\/e/i, ''))
-      return this.bot.fetch(this.url, {
-        match: /<title>Watch ([^<]*)[\s\S]+\{src: \"([^"]+)/
-      }).then(({ match: [ , title, fileurl] }) => {
-        return Object.assign(this, { title, fileurl })
-      })
-    },
-    skisteids: { 2: 'VOE', },
-    userScript: function() {
-      let e =  document.querySelector('video')
-      e = document.querySelector('video').firstElementChild || e
-      if (!e) return false
-      this.fileurl = e.src
-    }
-  },
-  'upstream.to': {
-    regex: /https?:\/\/(?:www\.)?upstream\.to\/(?:embed-)?([^/?#&]+)/,
-    groups: ['id'],
-    getInfo(url) {
-      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
-      return this.bot.fetch(this.url, {
-        match: /<title>Watch ([^<]*)[\s\S]+\[{file:"([^"]+)/
-      }).then(({ match: [ , title, fileurl] }) => {
-        return Object.assign(this, { title, fileurl })
-      })
-    },
-    kinoxids: ['91'],
-    priority: 2,
-    userScript: function() {
-      let match
-      document.querySelectorAll('script').forEach(e => {
-        match = e.textContent.match(/\[{file:"([^"]+)/) || match
-      })
-      if (!match) return false
-      this.fileurl = match[1]
-    }
-  },
-  'streamtape.com': {
-    regex: /https?:\/\/(?:www\.)?streamtape\.com\/[ve]\/([^/?#&]+)/,
-    groups: ['id'],
-    getInfo(url) {
-      return this.bot.fetch(this.url, {
-        match: /<meta name="og:title" content="([^"]*)[\s\S]+<div id="videolink" style="display:none;">([^<]+)/
-      }).then(({ match: [ , title, fileurl] }) => {
-        fileurl = 'https:' + fileurl
-        return Object.assign(this, { title, fileurl })
-      })
-    },
-    kinoxids: ['102'],
-    priority: 2,
-    userScript: function() {
-      let match
-      e = document.getElementById('videolink')
-      if (!e) return false
-      this.fileurl = 'https:' + e.innerText
-    }
-  },
-  'vivo.sx': {
-    regex: 'VivoIE',
-    skisteids: { 2: 'Vivo', },
-    userScript: function() {
-      let match
-      document.querySelectorAll('script').forEach(e => {
-        match = e.textContent.match(/\n\t\t\tsource: '([^']+)/) || match
-      })
-      if (!match) return false
-      this.fileurl = (r = (a, b) => ++b ?
-      String.fromCharCode((a = a.charCodeAt() + 47, a > 126 ? a - 94 : a))
-      : a.replace(/[^ ]/g, r))(decodeURIComponent(match[1]))
-    }
-  },
   'nxload.com': {
     regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?([^/?#&]+)/,
     groups: ['id'],
@@ -532,6 +457,80 @@ const providers = Object.entries({
     priority: 2,
     type: 'cm'
   },
+  'upstream.to': {
+    regex: /https?:\/\/(?:www\.)?upstream\.to\/(?:embed-)?([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      return this.bot.fetch(this.url, {
+        match: /<title>Watch ([^<]*)[\s\S]+\[{file:"([^"]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    kinoxids: ['91'],
+    priority: 3,
+    userScript: function() {
+      let match
+      document.querySelectorAll('script').forEach(e => {
+        match = e.textContent.match(/\[{file:"([^"]+)/) || match
+      })
+      if (!match) return false
+      this.fileurl = match[1]
+    }
+  },
+  'streamtape.com': {
+    regex: /https?:\/\/(?:www\.)?streamtape\.com\/[ve]\/([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      return this.bot.fetch(this.url, {
+        match: /<meta name="og:title" content="([^"]*)[\s\S]+<div id="videolink" style="display:none;">([^<]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        fileurl = 'https:' + fileurl
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    kinoxids: ['102'],
+    priority: 3,
+    userScript: function() {
+      const e = document.getElementById('videolink')
+      if (!e) return false
+      this.fileurl = 'https:' + e.innerText
+    }
+  },
+  'voe.sx': {
+    regex: /https?:\/\/(?:www\.)?voe\.sx(?:\/e)?\/([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      this.matchUrl(url.replace(/\/e/i, ''))
+      return this.bot.fetch(this.url, {
+        match: /<title>Watch ([^<]*)[\s\S]+\{src: \"([^"]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    skisteids: { 3: 'VOE', },
+    userScript: function() {
+      let e =  document.querySelector('video')
+      e = document.querySelector('video').firstElementChild || e
+      if (!e) return false
+      this.fileurl = e.src
+    }
+  },
+  'vivo.sx': {
+    regex: 'VivoIE',
+    skisteids: { 2: 'Vivo', },
+    userScript: function() {
+      let match
+      document.querySelectorAll('script').forEach(e => {
+        match = e.textContent.match(/\n\t\t\tsource: '([^']+)/) || match
+      })
+      if (!match) return false
+      this.fileurl = (r = (a, b) => ++b ?
+      String.fromCharCode((a = a.charCodeAt() + 47, a > 126 ? a - 94 : a))
+      : a.replace(/[^ ]/g, r))(decodeURIComponent(match[1]))
+    }
+  },
   'vidoza.net': {
     regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org|co)\/(?:embed-)?([^/?#&]+)/,
     groups: ['id'],
@@ -544,10 +543,9 @@ const providers = Object.entries({
       })
     },
     kinoxids: ['80'],
-    priority: 3,
+    priority: 4,
     userScript: function() {
-      const e = pData
-      if (!e) return false
+      if (!pData) return false
       this.fileurl = pData.sourcesCode[0].src
     }
   },
