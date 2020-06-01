@@ -447,10 +447,10 @@ const providers = Object.entries({
     }
   },
   'upstream.to': {
-    regex: /https?:\/\/(?:www\.)?upstream\.to\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
+    regex: /https?:\/\/(?:www\.)?upstream\.to\/(?:embed-)?([^/?#&]+)/,
     groups: ['id'],
     getInfo(url) {
-      this.matchUrl(url.replace(/\/e/i, ''))
+      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>Watch ([^<]*)[\s\S]+\[{file:"([^"]+)/
       }).then(({ match: [ , title, fileurl] }) => {
@@ -468,6 +468,26 @@ const providers = Object.entries({
       this.fileurl = match[1]
     }
   },
+  'streamtape.com': {
+    regex: /https?:\/\/(?:www\.)?streamtape\.com\/[ve]\/([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      return this.bot.fetch(this.url, {
+        match: /<meta name="og:title" content="([^"]*)[\s\S]+<div id="videolink" style="display:none;">([^<]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        fileurl = 'https:' + fileurl
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    kinoxids: ['102'],
+    priority: 2,
+    userScript: function() {
+      let match
+      e = document.getElementById('videolink')
+      if (!e) return false
+      this.fileurl = 'https:' + e.innerText
+    }
+  },
   'vivo.sx': {
     regex: 'VivoIE',
     skisteids: { 2: 'Vivo', },
@@ -483,7 +503,7 @@ const providers = Object.entries({
     }
   },
   'nxload.com': {
-    regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:(?:embed-([^/?#&]+)\.html)|(?:(?:embed\/)?([^/?#&]+)(?:\.html)?))/,
+    regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?([^/?#&]+)/,
     groups: ['id'],
     getInfo(url) {
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
@@ -498,8 +518,8 @@ const providers = Object.entries({
     skisteids: { 1: 'NxLoad' },
   },
   'onlystream.tv': {
-    regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
-    groups: ['host', 'id'],
+    regex: /https?:\/\/(?:www\.)?onlystream\.tv\/(?:embed-)?([^/?#&]+)/,
+    groups: ['id'],
     getInfo(url) {
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
@@ -513,7 +533,7 @@ const providers = Object.entries({
     type: 'cm'
   },
   'vidoza.net': {
-    regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org|co)\/(?:(?:embed-([^/?#&]+)\.html)|(?:([^/?#&]+)(?:\.html)?))/,
+    regex: /https?:\/\/(?:www\.)?vidoza\.(?:net|org|co)\/(?:embed-)?([^/?#&]+)/,
     groups: ['id'],
     getInfo(url) {
       this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
@@ -530,29 +550,6 @@ const providers = Object.entries({
       if (!e) return false
       this.fileurl = pData.sourcesCode[0].src
     }
-  },
-  'streamcrypt.net': {
-    getInfo() {
-      return this.bot.fetch(this.url).then(({ res }) => {
-        this.matchUrl(res.request.uri.href, this.bot.API.add.providerList)
-        return this.getInfo()
-      })
-    },
-    priority: 4,
-    kinoxids: ['58']
-  },
-  'thevideos.ga': {
-    regex: /https?:\/\/((?:www\.)?thevideos\.ga)\/embed-([^.]+)\.html/,
-    groups: ['host', 'id'],
-    getInfo() {
-      return this.bot.fetch(this.url, {
-        match: /<title>([^<]*) EMBED<\/title>/,
-      }).then(({ match: [ , title] }) => Object.assign(this, {
-        title,
-        fileurl: `https://${this.matchGroup('host')}/stream${this.matchGroup('id')}.mp4`
-      }))
-    },
-    type: 'cm'
   },
   'tvnow.de': {
     regex: /https?:\/\/((?:www\.)?tvnow.de)\/(.*)/,
