@@ -332,7 +332,8 @@ class AddCustom {
     const addition = new Addition(url, this.providerList)
     if (!meta.gettitle) addition.on('message', msg => {
       this.bot.sendMessage(msg)
-    }).getInfo().then(() => {
+    })
+    return addition.getInfo().then(() => {
       if (!meta.fiku && addition.fikuonly)
       throw `Kein Hoster gefunden. Addierbare Hosts: ${this.supportedProviders}`
       if (this.bot.playlist.some(item => item.media.id === addition.id))

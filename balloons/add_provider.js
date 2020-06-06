@@ -428,10 +428,10 @@ const providers = Object.entries({
     }
   },
   'nxload.com': {
-    regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:embed-)?([^/?#&]+)/,
+    regex: /https?:\/\/(?:www\.)?nxload\.com\/(?:embed[-/])?([^/?#&]+)/,
     groups: ['id'],
     getInfo(url) {
-      this.matchUrl(url.replace(/embed-/i, '').replace(/\.html$/, ''))
+      this.matchUrl(url.replace(/embed[-/]/i, '').replace(/\.html$/, ''))
       return this.bot.fetch(this.url, {
         match: /<title>([^<]*) \| Your streaming service/,
         unpack: /src:\\\'([^\\]+)\\'/
