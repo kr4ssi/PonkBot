@@ -158,8 +158,9 @@ class FikuSystem {
               let seconds = 0
               while (seconds < 600 && playlist.length) {
                 const item = playlist.shift()
-                this.bot.mediaMove({ from: item.uid })
                 seconds = seconds + item.media.seconds
+                if (seconds > 720) break
+                this.bot.mediaMove({ from: item.uid })
               }
             })
           })
@@ -229,7 +230,9 @@ module.exports = {
         if (!newurl)
         return this.sendMessage('Ist keine https-Elfe /pfräh')
       }
-      this.API.fiku.addFiku(id, meta, user, newurl)
+      this.API.fiku.addFiku(id, meta, user, newurl).on('closetoend', () => {
+        this.delFiku(id)
+      })
     },
     fikuelfe(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
