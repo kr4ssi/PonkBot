@@ -333,7 +333,8 @@ class AddCustom {
     if (!meta.gettitle) addition.on('message', msg => {
       this.bot.sendMessage(msg)
     })
-    return addition.getInfo().then(() => {
+    addition.getInfo().then(() => {
+      //addition.emit('info', addition)
       if (!meta.fiku && addition.fikuonly)
       throw `Kein Hoster gefunden. Addierbare Hosts: ${this.supportedProviders}`
       if (this.bot.playlist.some(item => item.media.id === addition.id))

@@ -145,9 +145,9 @@ class FikuSystem {
           const winner = opts.filter((opt, i) => pollvotes[i] === max)
           if (winner.length > 1) return fikuPoll('Stichwahl', winner, runoff)
           if (winner[0] === 'Partei') return setFiku('Partei!')
-          const id = winner[0].match(/ \(ID: (\d+)\)/)[1]
+          const [ , title, id] = winner[0].match(/(^.*) \(ID: (\d+)\)/)
           this.addFiku(id, meta).then(addition => {
-            this.bot.sendMessage(`${addition.title} wird addiert`)
+            this.bot.sendMessage(`${title} wird addiert`)
             addition.on('closetoend', () => {
               this.delFiku(id).then(() => {
                 if (!this.fikupoll) this.fikuPoll(user, '', meta)
