@@ -285,7 +285,7 @@ const providers = Object.entries({
             }).catch(() => getMirror())
           })
         }
-        return gettitle ? title : getMirror()
+        return this.gettitle ? { title } : getMirror()
       })
     },
     userScript: function() {
@@ -374,7 +374,7 @@ const providers = Object.entries({
           }
           return getMirror()
         }
-        return gettitle ? title : getHost()
+        return this.gettitle ? { title } : getHost()
       })
     }
   },

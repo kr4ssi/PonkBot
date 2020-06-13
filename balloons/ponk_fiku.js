@@ -12,58 +12,57 @@ const countries = require("i18n-iso-countries")
 class FikuSystem {
   constructor(ponk){
     Object.assign(this, {
-      //fikuList    : [],    // A list of Fiku-suggestions
-      fikupoll: false, //poll running?
+      fikupoll    : false, //poll running?
       bot         : ponk   // The bot
     })
-    ponk.db.createTableIfNotExists('fiku', (table) => {
-      table.increments();
+    ponk.db.createTableIfNotExists('fiku', table => {
+      table.increments()
       table.string('title', 240)
       table.string('url', 240)
       table.string('user', 20)
       table.boolean('active').defaultTo(true)
       table.bigint('timestamp').unsigned()
+      table.bigint('played').unsigned().defaultTo(null)
     })
   }
-  checkFiku(url, title) {
-    return new Promise((resolve, reject) => {
-      url = validUrl.isHttpsUri(url)
+  checkFiku(url, title = '') {
+    return Promise.resolve(validUrl.isHttpsUri(url)).then(url => {
       if (!url) throw 'Ist keine https-Elfe /pfräh'
-      if (title) return resolve(title)
-      const addition = this.bot.API.add.add(url, title, { gettitle: true })
-      addition.getInfo(true).then(resolve)
+      if (/^tt\d+/.test(title)) return this.getTmdbInfo({
+        id: title,
+        media_type: 'find'
+      }).then(({ movie_results }) => {
+        if (!movie_results.length) throw 'Keine Imdb-Id'
+        const info = movie_results.shift()
+        return {
+          title: `${info.original_title} (${info.release_date.slice(0, 4)})`
+        }
+      })
+      if (title) return { title }
+      return this.bot.API.add.add(url, title, { gettitle: true }).getInfo()
+    }).then(({ title }) => {
+      if (!/\w/.test(title)) throw 'Kein Titel /lobodoblörek'
+      return title
     })
   }
   getFikuList() {
-    return new Promise(resolve => {
-      //if (this.fikuList.length) return resolve(true)
-      this.bot.db.knex('fiku').select('*').then(result => {
-        //result.forEach(fiku => this.fikuList.push(fiku))
-        resolve(result)
-      }, error => {
-        this.bot.logger.error('Unexpected error', '\n', error);
-      })
-    })
+    return this.bot.db.knex('fiku').where({ played: null }).select('*')
   }
   getFiku(id) {
-    return new Promise((resolve, reject) => {
-      if (!/^\d+$/.test(id)) return this.bot.sendMessage('Muss 1 nr sein')
-      this.bot.db.knex('fiku').where({ id }).select('*').then(rows => {
-        //const fiku = this.fikuList.find(fiku => fiku.id == id)
-        if (!rows.length) {
-          return this.bot.sendMessage('ID "' + id + '" gibts nicht')
-        }
-        const row = rows.shift();
-        resolve(row)
+    return Promise.resolve().then(() => {
+      if (!/^\d+$/.test(id)) throw 'Muss 1 nr sein'
+      return this.bot.db.knex('fiku').where({ id }).select('*').then(rows => {
+        if (!rows.length) throw `ID ${id} gibts nicht`
+        return rows.shift()
       })
+    }).catch(err => {
+      this.bot.sendMessage(err)
+      throw err
     })
   }
   addFiku(id, meta, newuser, newurl) {
     return this.getFiku(id).then(({ url, title, id, user }) => {
-      if (newurl) {
-        url = newurl
-        user = newuser
-      }
+      if (newurl) [url, user] = [newurl, newuser]
       return this.bot.API.add.add(url, title + ' (ID: ' + id + ')', {
         user,
         addnext: true,
@@ -73,44 +72,30 @@ class FikuSystem {
   }
   delFiku(id) {
     return this.getFiku(id).then(fiku => {
-      return this.bot.db.knex('fiku').where(fiku).del().then(deleted => {
-        if (deleted) {
-          this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
-        }
-      })
+      return this.db.knex('fiku').where(fiku).update({ played: Date.now() })
     })
   }
   getTmdbId(title) {
-    return new Promise(resolve => {
-      const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
-      this.bot.fetch('https://api.themoviedb.org/3/search/multi', {
-        qs: {
-          api_key: this.bot.API.keys.tmdb,
-          query: title.replace(/\([^)]+\)/ig, ''),
-          year: year ? year[1] : '',
-          language: 'de'
-        },
-        json: true,
-        getlist: 'results'
-      }).then(({ list }) => {
-        resolve({
-          id: list[0].id,
-          type: list[0].media_type
-        })
-      })
-    })
+    const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
+    return this.bot.fetch('https://api.themoviedb.org/3/search/multi', {
+      qs: {
+        api_key: this.bot.API.keys.tmdb,
+        query: title.replace(/\([^)]+\)/ig, ''),
+        year: year ? year[1] : '',
+        language: 'de'
+      },
+      json: true,
+      getlist: 'results'
+    }).then(({ list: [{ id, media_type }] }) => ({ id, media_type }))
   }
-  getTmdbInfo({ id, type }, info, language) {
-    return new Promise(resolve => {
-      this.bot.fetch(`https://api.themoviedb.org/3/${type}/${id}${info ? '/' + info : ''}`, {
-        qs: {
-          api_key: this.bot.API.keys.tmdb,
-          language,
-        }, json: true
-      }).then(({ body }) => {
-        resolve(body)
-      })
-    })
+  getTmdbInfo({ id, media_type }, info, language = 'de') {
+    return this.bot.fetch(`https://api.themoviedb.org/3/${media_type}/${id}${info ? '/' + info : ''}`, {
+      qs: {
+        api_key: this.bot.API.keys.tmdb,
+        language,
+        external_source: media_type === 'find' ? 'imdb_id' : undefined
+      }, json: true
+    }).then(({ body }) => body)
   }
   fikuPoll(user, params, meta) {
     this.getFikuList().then(fikuList => {
@@ -202,7 +187,6 @@ module.exports = {
       }
       const [url, ...title] = params.trim().split(' ')
       this.API.fiku.checkFiku(url, title.join(' ')).then(title => {
-        if (!/\w/.test(title)) throw 'Kein Titel /lobodoblörek'
         const fiku = { title, url, user, active: true, timestamp: Date.now() }
         this.db.knex('fiku').insert(fiku).returning('id').then(result => {
           if (!result.length) throw 'Unexpected Error'
@@ -214,12 +198,16 @@ module.exports = {
     fikuliste(user, params, meta) {
       this.API.fiku.getFikuList().then(fikuList => {
         this.sendByFilter(fikuList.map(row =>  row.id + ': ' + row.title
-        + ' (' + (new Date(row.timestamp || 0)).toLocaleDateString() + ')'
+        + ` (${(new Date(row.timestamp || 0)).toLocaleDateString()})`
         + (row.active ? '' : ' (deaktiviert)')).join('\n'))
       })
     },
     fikulöschen(user, params, meta) {
-      this.API.fiku.delFiku(params)
+      this.db.knex('fiku').where(fiku).del().then(deleted => {
+        if (deleted) {
+          this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
+        }
+      })
     },
     fikuadd(user, params, meta) {
       const split = params.split(' ')
@@ -248,20 +236,18 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         const active = !fiku.active
         this.db.knex('fiku').where(fiku).update({ active }).then(() => {
-          this.sendMessage('Eintrag ' + fiku.title + ' ' + (active ? '' : 'de') + 'aktiviert')
+          this.sendMessage(`Eintrag ${fiku.title} ${active ? '' : 'de'}aktiviert`)
         })
       })
     },
     fikuändern(user, params, meta) {
       const [id, url, ...title] = params.trim().split(' ')
-      this.API.fiku.checkFiku(url, 'title').then(() => {
+      this.API.fiku.checkFiku(url, title.join(' ')).then(title => {
         this.API.fiku.getFiku(id).then(fiku => {
           if (fiku.user != user && this.getUserRank(user) < 3)
           throw 'Du kannst nur deine eigenen Vorschläge ändern'
-          const update = { url }
-          if (title.length) update.title = title.join(' ')
-          this.db.knex('fiku').where(fiku).update(update).then(() => {
-            this.sendMessage('Eintrag ' + fiku.id + ' ist jetzt: ' + url + ' ' + title.join(' '))
+          this.db.knex('fiku').where(fiku).update({ url, title }).then(() => {
+            this.sendMessage(`Eintrag ${fiku.id} ist jetzt: ${url} ${title}`)
           })
         })
       }, err => this.sendMessage(err))
@@ -270,43 +256,41 @@ module.exports = {
       Promise.resolve().then(() => {
         if (/^\d+$/.test(params)) return this.API.fiku.getFiku(params)
         return { title: params || this.currMedia.title }
-      }).then(({ title }) => {
-        this.API.fiku.getTmdbId(title).then(id => {
-          this.API.fiku.getTmdbInfo(id, 'credits', 'de').then(credits => {
-            this.API.fiku.getTmdbInfo(id, '', 'de').then(body => {
-              const rlsdate = new Date(body.release_date || body.first_air_date)
-              this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" />` +
-              `${body.original_title || body.original_name} ` +
-              `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
-              `${(body.production_countries || body.origin_country).map(country => {
-                country = country.iso_3166_1 || country
-                return {
-                  US: 'VSA',
-                  UK: 'England',
-                  GB: 'England',
-                  RU: 'Russland'
-                }[country] || countries.getName(country, 'de')
-              }).join(' / ')} ` +
-              `${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
-              this.sendByFilter(`<div class="fikuinfo">${body.overview}</div>`, true)
-              this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ` +
-              `${credits.cast.filter(row => row.order < 3).map(row => row.name).join(', ')}.\n` +
-              `Von ${[...new Set([
-                'Executive Producer',
-                'Writer',
-                'Screenplay',
-                'Director',
-                'First Assistant Director'
-              ].reduce((list, job) => {
-                return list.concat(credits.crew.filter(crew => crew.job === job))
-              }, []).concat(credits.crew.filter(crew => {
-                return crew.department === 'Production'
-              })).map(item => item.name))].slice(0, 3).join(', ')}. ` +
-              `Ratierung: ${body.vote_average}/10`)
-            })
+      }).then(({ title }) => this.API.fiku.getTmdbId(title).then(id => {
+        this.API.fiku.getTmdbInfo(id, 'credits').then(credits => {
+          this.API.fiku.getTmdbInfo(id).then(body => {
+            const rlsdate = new Date(body.release_date || body.first_air_date)
+            this.sendByFilter(`<img class="fikuimage" src="https://image.tmdb.org/t/p/original${body.poster_path}" />` +
+            `${body.original_title || body.original_name} ` +
+            `(${date.format(rlsdate, 'DD.MM.YYYY')}) ` +
+            `${(body.production_countries || body.origin_country).map(country => {
+              country = country.iso_3166_1 || country
+              return {
+                US: 'VSA',
+                UK: 'England',
+                GB: 'England',
+                RU: 'Russland'
+              }[country] || countries.getName(country, 'de')
+            }).join(' / ')} ` +
+            `${body.runtime || (body.episode_run_time && body.episode_run_time[0])} Minuten`, true)
+            this.sendByFilter(`<div class="fikuinfo">${body.overview}</div>`, true)
+            this.sendByFilter(`${body.genres.map(genre => genre.name).join(' / ')} mit ` +
+            `${credits.cast.filter(row => row.order < 3).map(row => row.name).join(', ')}.\n` +
+            `Von ${[...new Set([
+              'Executive Producer',
+              'Writer',
+              'Screenplay',
+              'Director',
+              'First Assistant Director'
+            ].reduce((list, job) => {
+              return list.concat(credits.crew.filter(crew => crew.job === job))
+            }, []).concat(credits.crew.filter(crew => {
+              return crew.department === 'Production'
+            })).map(item => item.name))].slice(0, 3).join(', ')}. ` +
+            `Ratierung: ${body.vote_average}/10`)
           })
         })
-      })
+      }))
     },
     trailer(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
@@ -314,7 +298,7 @@ module.exports = {
           const addTrailer = lng => {
             this.API.fiku.getTmdbInfo(id, 'videos', lng).then(({ results }) => {
               if (!results.length) {
-                if (lng) addTrailer('')
+                if (!lng) addTrailer('en')
                 else this.sendMessage('Keine Ergebnisse /elo')
                 return
               }
@@ -323,7 +307,7 @@ module.exports = {
               this.addNetzm(trailer.key, true, user, 'yt')
             })
           }
-          addTrailer('de')
+          addTrailer()
         })
       })
     }
