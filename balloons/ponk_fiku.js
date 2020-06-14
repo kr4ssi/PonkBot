@@ -206,10 +206,10 @@ module.exports = {
       this.API.fiku.getFiku(params).then(fiku => {
         this.db.knex('fiku').where(fiku).del().then(deleted => {
           if (deleted) {
-            this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
+            this.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
           }
         })
-      })
+      }).catch(console.error)
     },
     fikuadd(user, params, meta) {
       const split = params.split(' ')
