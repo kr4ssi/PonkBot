@@ -51,9 +51,9 @@ class FikuSystem {
   getFiku(id) {
     return Promise.resolve().then(() => {
       if (!/^\d+$/.test(id)) throw 'Muss 1 nr sein'
-      return this.bot.db.knex('fiku').where({ id }).select('*').then(rows => {
-        if (!rows.length) throw `ID ${id} gibts nicht`
-        return rows.shift()
+      return this.bot.db.knex('fiku').where({ id }).select('*').then(result => {
+        if (!result.length) throw `ID ${id} gibts nicht`
+        return result.shift()
       })
     }).catch(err => {
       this.bot.sendMessage(err)
@@ -203,10 +203,12 @@ module.exports = {
       })
     },
     fikulöschen(user, params, meta) {
-      this.db.knex('fiku').where(fiku).del().then(deleted => {
-        if (deleted) {
-          this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
-        }
+      this.API.fiku.getFiku(params).then(fiku => {
+        this.db.knex('fiku').where(fiku).del().then(deleted => {
+          if (deleted) {
+            this.bot.sendMessage('Fiku-vorschlag: "' + fiku.title + '" gelöscht')
+          }
+        })
       })
     },
     fikuadd(user, params, meta) {
@@ -215,8 +217,7 @@ module.exports = {
       let newurl = split.shift()
       if (newurl) {
         newurl = validUrl.isHttpsUri(newurl)
-        if (!newurl)
-        return this.sendMessage('Ist keine https-Elfe /pfräh')
+        if (!newurl) return this.sendMessage('Ist keine https-Elfe /pfräh')
       }
       this.API.fiku.addFiku(id, meta, user, newurl).on('closetoend', () => {
         this.delFiku(id)
