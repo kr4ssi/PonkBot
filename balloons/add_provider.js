@@ -509,12 +509,33 @@ const providers = Object.entries({
         return Object.assign(this, { title, fileurl })
       })
     },
-    skisteids: { 3: 'VOE', },
+    kinoxids: ['92'],
+    skisteids: ['VOE'],
+    priority: 3,
     userScript: function() {
       let e =  document.querySelector('video')
       e = document.querySelector('video').firstElementChild || e
       if (!e) return false
       this.fileurl = e.src
+    }
+  },
+  'videobin.co': {
+    regex: /https?:\/\/(?:www\.)?videobin\.co\/(?:embed-)?([^/?#&]+)/,
+    groups: ['id'],
+    getInfo(url) {
+      this.matchUrl(url.replace(/embed-/i, ''))
+      return this.bot.fetch(this.url, {
+        match: /<title>\s+Watch ([^<]*)[\s\S]+sources: \[\"([^"]+)/
+      }).then(({ match: [ , title, fileurl] }) => {
+        return Object.assign(this, { title, fileurl })
+      })
+    },
+    kinoxids: ['94'],
+    priority: 3,
+    userScript: function() {
+      let e = player && player._options && player._options.sources
+      if (!e) return false
+      this.fileurl = e[0]
     }
   },
   'vivo.sx': {
