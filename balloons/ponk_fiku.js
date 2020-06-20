@@ -72,7 +72,7 @@ class FikuSystem {
   }
   delFiku(id) {
     return this.getFiku(id).then(fiku => {
-      return this.db.knex('fiku').where(fiku).update({ played: Date.now() })
+      return this.bot.db.knex('fiku').where(fiku).update({ played: Date.now() })
     })
   }
   getTmdbId(title) {
@@ -110,11 +110,9 @@ class FikuSystem {
       runoff = split.shift() * 60
       let title = split.join(' ').trim()
       if (!title) title = 'Fiku'
-      //const date = new Date()
-      //const hour = date.getHours()
       let opts = fikuList.filter(row => row.active)
       if (meta && meta.command === 'ausschussfiku') opts = opts.filter((row, i) => i < 8)
-      opts = opts.map(row => `${row.title} (ID: ${row.id})`).concat(['Partei'])//(hour > 0 && hour < 20) ? ['Partei'] : [])
+      opts = opts.map(row => `${row.title} (ID: ${row.id})`).concat(['Partei'])
       const fikuPoll = (title, opts, timeout) => {
         this.fikupoll = true
         this.bot.pollAction({
