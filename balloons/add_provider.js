@@ -525,7 +525,7 @@ const providers = Object.entries({
     getInfo(url) {
       this.matchUrl(url.replace(/embed-/i, ''))
       return this.bot.fetch(this.url, {
-        match: /<title>\s+Watch ([^<]*)[\s\S]+sources: \[\"([^"]+)/
+        match: /<title>\s+Watch ([^\n]*)[\s\S]+sources: \[\"([^"]+)/
       }).then(({ match: [ , title, fileurl] }) => {
         return Object.assign(this, { title, fileurl })
       })
