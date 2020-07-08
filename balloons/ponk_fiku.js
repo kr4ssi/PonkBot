@@ -22,7 +22,11 @@ class FikuSystem {
       table.string('user', 20)
       table.boolean('active').defaultTo(true)
       table.bigint('timestamp').unsigned()
-      table.bigint('played').unsigned().defaultTo(null)
+    })
+    ponk.db.createTableIfNotExists('fikuseen', table => {
+      table.string('title', 240)
+      table.string('user', 20)
+      table.bigint('timestamp').unsigned().primary()
     })
   }
   checkFiku(url, title = '') {
@@ -71,9 +75,17 @@ class FikuSystem {
     })
   }
   delFiku(id) {
-    return this.getFiku(id).then(fiku => {
-      return this.bot.db.knex('fiku').where(fiku).update({ played: Date.now() })
+    return this.getFiku(id).then(({ title, user }) => {
+      const seen = { title, user, timestamp: Date.now() }
+      return this.bot.db.knex('fikuseen').insert(seen).then(() => {
+        return this.bot.db.knex('fiku').where({ id }).del().then(deleted => {
+          if (deleted) {
+            this.bot.sendMessage(`Fiku-vorschlag: "${title}" gelöscht`)
+          }
+        })
+      })
     })
+    //return this.bot.db.knex('fiku').where(fiku).update({ played: Date.now() })
   }
   getTmdbId(title) {
     const year = title.match(/\(((?:19|20)\d{2})\)( |$)/)
@@ -217,9 +229,9 @@ module.exports = {
         newurl = validUrl.isHttpsUri(newurl)
         if (!newurl) return this.sendMessage('Ist keine https-Elfe /pfräh')
       }
-      this.API.fiku.addFiku(id, meta, user, newurl).on('closetoend', () => {
-        this.delFiku(id)
-      })
+      this.API.fiku.addFiku(id, meta, user, newurl).then(fiku => fiku.on('closetoend', () => {
+        this.API.fiku.delFiku(id)
+      }))
     },
     fikuelfe(user, params, meta) {
       this.API.fiku.getFiku(params).then(fiku => {
