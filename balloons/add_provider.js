@@ -710,6 +710,9 @@ const providers = Object.entries({
   'servus.com': {
     regex: 'ServusIE'
   },
+  'tele5.de': {
+    regex: 'Tele5IE'
+  },
   'mdr.de': {},
   'br.de': {},
   'bild.de': {},
