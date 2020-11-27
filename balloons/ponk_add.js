@@ -197,7 +197,7 @@ class AddCustom {
     const packageObj = require('../package.json')
     const channelregex = new RegExp(/(?:^https?:\/\/cytu\.be\/r\/)/.source + self.bot.channel)
     class UserScript {
-      constructor(filename, descr = '', opt = {}, meta = {}) {
+      constructor(filename, descr = '', opt = {}, meta = {}, includes = []) {
         Object.assign(this, {
           filename,
           descr,
@@ -207,40 +207,11 @@ class AddCustom {
             version: packageObj.version + '.1.0.7',
             author: packageObj.author,
             ...meta,
-            include: self.providerList.userScriptIncludes.concat(meta.include || [])
+            include: self.providerList.userScriptIncludes.concat(includes.regex || includes.map(include => include.regex))
           })
         })
         this.userscript = this.meta + '\nconst includes = '
-        this.userscript += toSource([...self.providerList.userScriptSources, {
-          regex: channelregex,
-          groups: [],
-          active: true,
-          init: function() {
-            if (!this.useGetValue) return
-            const matchLinkRegEx = new RegExp('^' + this.weblink.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') +
-            /\/add\.json\?userscript&url=(.*)/.source)
-            const socket = (unsafeWindow || window).socket
-            if (!socket) return false
-            if (typeof socket.on !== 'function') return false
-            clearInterval(initTimer)
-            let srcTimer
-            socket.on('changeMedia', ({ id }) => {
-              clearInterval(srcTimer)
-              const match = id.match(matchLinkRegEx)
-              if (!match) return
-              const url = match[1]
-              if (!includes.find(include => include.regex.test(url))) return
-              console.log(match)
-              srcTimer = setInterval(() => {
-                const e = document.getElementById('ytapiplayer_html5_api')
-                console.log(e)
-                if (!e) return
-                clearInterval(srcTimer)
-                e.src = GM_getValue(url)
-              }, 1000)
-            })
-          }
-        }])
+        this.userscript += toSource(self.providerList.userScriptSources.concat(includes))
         this.userscript += '\n\nconst config = ' + toSource(Object.assign({
           weblink: self.bot.server.weblink,
         }, opt)) + '\n\n' + userscript
@@ -251,10 +222,38 @@ class AddCustom {
       new UserScript('add.new.user', 'Mit Channelberechtigung', {
         useGetValue: true
       }, {
-        include: channelregex,
         grant: [
           'GM_setValue', 'GM_getValue', 'unsafeWindow'
         ]
+      }, {
+        regex: channelregex,
+        groups: [],
+        active: true,
+        init: function() {
+          if (!this.useGetValue) return
+          const matchLinkRegEx = new RegExp('^' + this.weblink.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&') +
+          /\/add\.json\?userscript&url=(.*)/.source)
+          const socket = (unsafeWindow || window).socket
+          if (!socket) return false
+          if (typeof socket.on !== 'function') return false
+          clearInterval(initTimer)
+          let srcTimer
+          socket.on('changeMedia', ({ id }) => {
+            clearInterval(srcTimer)
+            const match = id.match(matchLinkRegEx)
+            if (!match) return
+            const url = match[1]
+            if (!includes.find(include => include.regex.test(url))) return
+            console.log(match)
+            srcTimer = setInterval(() => {
+              const e = document.getElementById('ytapiplayer_html5_api')
+              console.log(e)
+              if (!e) return
+              clearInterval(srcTimer)
+              e.src = GM_getValue(url)
+            }, 1000)
+          })
+        }
       }),
       new UserScript('add.doask.user', 'Mit Abfrage', {
         doAsk: true
@@ -433,7 +432,7 @@ module.exports = {
             }, 10000)
           }).on('info', () => {
             this.sendMessage(addition.filename + ' wird addiert')
-            addition.add()
+            addition.add(meta.addnext)
           }).on('progress', ({ bytesLoaded, bytesTotal }) => {
             progress = bytesLoaded + '/' + bytesTotal
             if (!timer) timer = setInterval(() => {
