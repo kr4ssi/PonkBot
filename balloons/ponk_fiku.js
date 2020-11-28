@@ -163,8 +163,8 @@ class FikuSystem {
       }
       const setFiku = (msg) => {
         if (msg) this.bot.sendMessage(msg)
-        this.bot.API.emotes.logoHintergrund(this.name, (msg ? 'last' : 'fiku'), { command: 'hintergrund' })
-        setTimeout(() => this.bot.API.emotes.logoHintergrund(this.name, (msg ? 'last' : 'fiku'), { command: 'logo' }), 1000)
+        this.bot.API.emotes.logoHintergrund(this.name, (msg ? 'last' : '/bgfiku'), { command: 'hintergrund' })
+        setTimeout(() => this.bot.API.emotes.logoHintergrund(this.name, (msg ? 'last' : '/logofiku'), { command: 'logo' }), 2000)
       }
       fikuPoll(title, opts, timeout)
       setFiku()
