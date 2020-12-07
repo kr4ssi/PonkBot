@@ -380,6 +380,58 @@ class AddCustom {
     })
     return addition
   }
+
+  download(url, title, meta) {
+    if (this.downloading) return this.bot.sendMessage('ladiert schon 1')
+    this.limit = this.limit.filter(({ date }) => {
+      return date > (Date.now() - (12 * 60 * 60 * 1000))
+    })
+    if (this.bot.getUserRank(meta.user) < 4 && this.limit.reduce((acc, limit) => {
+      if (limit.user === meta.user) acc += limit.size
+      return acc
+    }, 0) > 536870912) return this.bot.sendMessage('zuviel ladiert')
+    const addition = new Addition(url, this.providerList)
+    //if (addition.fikuonly) throw new Error('not addable')
+    this.downloading = true
+    let progress
+    let timer
+    addition.download(url).then(stream => {
+      stream.prependListener('message', message => {
+        if (message === addition.downloadmsg) return
+        if (!message.startsWith('[download]'))
+        return this.bot.sendPrivate(message, meta.user)
+        progress = message
+        if (!timer) timer = setInterval(() => {
+          this.bot.sendPrivate(progress, meta.user)
+        }, 10000)
+      }).on('info', () => {
+        this.bot.sendMessage(addition.fileurl + ' wird addiert')
+        addition.add(meta.addnext)
+      }).on('progress', ({ bytesLoaded, bytesTotal }) => {
+        progress = bytesLoaded + '/' + bytesTotal
+        if (!timer) timer = setInterval(() => {
+          this.bot.sendPrivate(progress, meta.user)
+          if (addition.added) return
+          addition.added = true
+          addition.add(meta.addnext)
+        }, 10000)
+      }).on('close', () => {
+        clearInterval(timer)
+        this.downloading = false
+        this.limit.push({
+          user: meta.user,
+          size: addition.size,
+          date: Date.now()
+        })
+        if (progress) this.bot.sendPrivate(progress, meta.user)
+      }).on('error', err => {
+        clearInterval(timer)
+        this.downloading = false
+        this.bot.sendMessage(err.message || err)
+      })
+    }).catch(console.error)
+    return addition
+  }
 }
 
 module.exports = {
@@ -406,64 +458,15 @@ module.exports = {
       }
       url = validUrl.isHttpsUri(url)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
-      if (title === 'download') {
-        if (this.getUserRank(user) < 2) return
-        if (this.downloading) return this.sendMessage('ladiert schon 1')
-        this.API.add.limit = this.API.add.limit.filter(limit => {
-          return limit.date > (Date.now() - (12 * 60 * 60 * 1000))
-        })
-        if (this.getUserRank(user) < 4 && this.API.add.limit.reduce((acc, limit) => {
-          if (limit.user === user) acc += limit.size
-          return acc
-        }, 0) > 536870912) return this.sendMessage('zuviel ladiert')
-        const addition = new Addition(url, this.API.add.providerList)
-        //if (addition.fikuonly) throw new Error('not addable')
-        this.downloading = true
-        let progress
-        let timer
-        addition.download(url).then(stream => {
-          stream.prependListener('message', message => {
-            if (message === this.downloadmsg) return
-            if (!message.startsWith('[download]'))
-            return this.sendMessage(message)
-            progress = message
-            if (!timer) timer = setInterval(() => {
-              this.sendPrivate(progress, user)
-            }, 10000)
-          }).on('info', () => {
-            this.sendMessage(addition.filename + ' wird addiert')
-            addition.add(meta.addnext)
-          }).on('progress', ({ bytesLoaded, bytesTotal }) => {
-            progress = bytesLoaded + '/' + bytesTotal
-            if (!timer) timer = setInterval(() => {
-              this.sendPrivate(progress, user)
-              if (addition.added) return
-              addition.added = true
-              addition.add()
-            }, 10000)
-          }).on('close', () => {
-            clearInterval(timer)
-            this.downloading = false
-            this.API.add.limit.push({
-              user,
-              size: addition.size,
-              date: Date.now()
-            })
-            if (progress) this.sendPrivate(progress, user)
-          }).on('error', err => {
-            this.sendMessage(err.message || err)
-          })
-        }).catch(console.error)
-      }
       else this.API.add.add(url, title, { user, ...meta })
     },
     readd(user, params, meta) {
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       this.API.add.add(url, this.currMedia.title, {
-        ...meta,
         user,
         addnext: true,
+        ...meta
       }).on('queue', () => {
         this.mediaDelete(this.currUID)
       }).on('play', () => {
@@ -471,8 +474,25 @@ module.exports = {
         this.commands.handlers.settime(user, jumpto.toString(), meta)
       })
     },
-    userscripts(user, params, meta) {
-      this.sendByFilter(this.API.add.userScriptPollOpts.join('\n'))
+    download(user, params, meta) {
+      const split = params.split(' ')
+      let url = split.shift()
+      let title = split.join(' ').trim()
+      if (url) {
+        url = validUrl.isHttpsUri(url)
+        if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
+        this.API.add.download(url, title, { user, ...meta })
+      }
+      else if (this.currMedia.type === 'yt') {
+        url = 'https://youtu.be/' + this.currMedia.id
+        this.API.add.download(url, this.currMedia.title, {
+          user,
+          addnext: true,
+          ...meta
+        }).on('queue', () => {
+          this.mediaDelete(this.currUID)
+        })
+      }
     },
     sub(user, params, meta) {
       if (params === 'off') return this.API.add.srt = []
@@ -482,6 +502,9 @@ module.exports = {
         const srt = parser.fromSrt(body, true)
         this.API.add.srt = srt.filter(srt => srt.startTime > this.currMedia.currentTime * 1000)
       })
+    },
+    userscripts(user, params, meta) {
+      this.sendByFilter(this.API.add.userScriptPollOpts.join('\n'))
     }
   }
 }

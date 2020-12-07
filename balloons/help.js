@@ -367,5 +367,10 @@ module.exports = {
   sub: {
     synop: '',
     rank: 2
+  },
+  download: {
+    synop: '',
+    rank: 2,
+    addnext: 'willkür'
   }
 }
