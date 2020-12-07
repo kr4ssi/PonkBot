@@ -464,9 +464,9 @@ module.exports = {
       const url = validUrl.isHttpsUri(params)
       if (!url) return this.sendMessage('Ist keine https-Elfe /pfräh')
       this.API.add.add(url, this.currMedia.title, {
+        ...meta,
         user,
         addnext: true,
-        ...meta
       }).on('queue', () => {
         this.mediaDelete(this.currUID)
       }).on('play', () => {
@@ -486,9 +486,9 @@ module.exports = {
       else if (this.currMedia.type === 'yt') {
         url = 'https://youtu.be/' + this.currMedia.id
         this.API.add.download(url, this.currMedia.title, {
+          ...meta,
           user,
-          addnext: true,
-          ...meta
+          addnext: true
         }).on('queue', () => {
           this.mediaDelete(this.currUID)
         })
