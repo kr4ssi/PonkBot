@@ -47,7 +47,7 @@ class Addition extends EventEmitter {
     return this.match[0].replace('http://', 'https://')
   }
   get id() {
-    if (this.type !='cm') return this.fileurl.replace(/(?:^http:\/\/)/i, 'https://')
+    if (this.type != 'cm') return this.fileurl.replace(/(?:^http:\/\/)/i, 'https://')
     let id = `${this.bot.server.weblink}/add.json?`
     if (this.needUserScript) id += 'userscript&'
     return id += `url=${this.fileid}`
@@ -126,6 +126,7 @@ class Addition extends EventEmitter {
       pos : next ? 'next' : 'end',
       temp : true,
     })
+    this.emit('add')
     return this.bot.API.add.cmAdditions[this.id] = this
   }
 }

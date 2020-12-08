@@ -2,6 +2,7 @@
 const fs = require('fs')
 const URL = require('url')
 const path = require('path')
+const crypto = require('crypto');
 const { PythonShell } = require('python-shell')
 const parseLink = require('./add_parselink.js')
 const { File } = require('megajs')
@@ -581,6 +582,19 @@ const providers = Object.entries({
       }))
     },
     type: 'cm'
+  },
+  'twitch.tv': {
+    regex: 'TwitchStreamIE',
+    type: 'cu',
+    getInfo() {
+      return Provider.prototype.getInfo.call(this, this.url).then(() => {
+        this.fileurl = '<iframe src="https://player.twitch.tv/?channel=' + this.matchGroup('id') + '&parent=twitch.tv"></iframe>'
+        this.on('add', () => {
+          this.fileurl = 'cu:' + crypto.createHash("sha256").update(this.id).digest("base64")
+        })
+        return this
+      })
+    }
   },
   'youtube.com': {
     regex: 'YoutubeIE',
