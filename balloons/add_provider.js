@@ -591,6 +591,37 @@ const providers = Object.entries({
         this.fileurl = '<iframe src="https://player.twitch.tv/?channel=' + this.matchGroup('id') + '&parent=twitch.tv"></iframe>'
         this.on('add', () => {
           this.fileurl = 'cu:' + crypto.createHash("sha256").update(this.id).digest("base64")
+          this.on('queue', () => {
+            const userScriptPoll = () => {
+              this.bot.client.once('newPoll', poll => {
+                this.userScriptPollId = poll.timestamp
+              })
+              this.bot.client.createPoll({
+                title: this.title,
+                opts: [
+                  this.url,
+                  `Geht nur mit Extension`,
+                  'Firefox: https://addons.mozilla.org/de/firefox/addon/ignore-x-frame-options-header/',
+                  'Chrome: https://chrome.google.com/webstore/detail/ignore-x-frame-headers/gleekbfjekiniecknbkamfmkohkpodhe'
+                ],
+                obscured: false
+              })
+              this.once('delete', () => {
+                if (this.bot.poll.timestamp === this.userScriptPollId)
+                this.bot.client.closePoll()
+              })
+            }
+            userScriptPoll()
+            this.on('play', data => {
+              if (!this.bot.pollactive) userScriptPoll()
+              if (this.bot.poll.timestamp != this.userScriptPollId)
+              userScriptPoll()
+              this.bot.client.once('changeMedia', () => {
+                if (this.bot.poll.timestamp === this.userScriptPollId)
+                this.bot.client.closePoll()
+              })
+            })
+          })
         })
         return this
       })
