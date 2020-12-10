@@ -25,7 +25,16 @@ module.exports = function(ponk) {
     }, 500))
   }
   ponk.client.on('channelOpts', opts => {
-    if (opts.show_public) ponk.client.sendOptions({ show_public: false })
+    if (!opts.show_public) return
+    ponk.client.once('readChanLog', ({ data }) => {
+      ponk.client.sendOptions({ show_public: false })
+      ponk.client.createPoll({
+        title: `${(data.trim().split('\n').pop().match(/\[mod\] (\w+)/) || [])[1]} ist der huso`,
+        opts: ['/gas', '/hinaus', '/pissdich', '/2homo', '/fdax'],
+        obscured: false
+      })
+    })
+    ponk.client.socket.emit('readChanLog')
   })
   ponk.client.socket.on('newPoll',            (poll)=>{ ponk.handleNewPoll(poll) });
   ponk.client.socket.on('updatePoll',         (poll)=>{ ponk.handleUpdatePoll(poll) });
