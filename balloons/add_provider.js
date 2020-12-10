@@ -43,6 +43,7 @@ module.exports = class ProviderList extends Array {
       })
     }).then(ytdlRegex => {
       providers.forEach(([name, rules = {}]) => {
+        if (rules.disabled) return
         const provider = new Provider(this.bot, name, rules, ytdlRegex)
         this.push(provider)
         const p = (provider, [priority , id]) => ({ provider,
@@ -481,6 +482,7 @@ const providers = Object.entries({
     }
   },
   'streamtape.com': {
+    disabled: true,
     regex: /https?:\/\/(?:www\.)?streamtape\.com\/[ve]\/([^/?#&]+)/,
     groups: ['id'],
     getInfo(url) {

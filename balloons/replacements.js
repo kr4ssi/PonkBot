@@ -24,6 +24,9 @@ module.exports = function(ponk) {
       })
     }, 500))
   }
+  ponk.client.on('channelOpts', opts => {
+    if (opts.show_public) ponk.client.sendOptions({ show_public: false })
+  })
   ponk.client.socket.on('newPoll',            (poll)=>{ ponk.handleNewPoll(poll) });
   ponk.client.socket.on('updatePoll',         (poll)=>{ ponk.handleUpdatePoll(poll) });
   ponk.client.socket.on('closePoll',              ()=>{ ponk.handleClosePoll() });
@@ -33,13 +36,21 @@ module.exports = function(ponk) {
   ponk.client.socket.on('updateChatFilter', (filter)=>{ ponk.handleFilterUpdate(filter) });
   ponk.client.socket.on('deleteChatFilter', (filter)=>{ ponk.handleFilterRemove(filter) });
   Object.assign(ponk, {
-    pollactive  : false, // Is a poll running?
-    poll        : {},    // The current running, or last active poll
-    channelCSS  : '',    // The channel CSS
-    channelJS   : '',    // The channel JS
-    channelMotd : '',    // The channel Motd
-    chatFilters : [],    // A list of chat-filtes
-    lastImages  : [],    // A list with lastly posted Images
+    pollactive      : false, // Is a poll running?
+    poll            : {},    // The current running, or last active poll
+    channelCSSJS    : {},    // The channel CSS and JS { css: <String>, js: <String> }
+    channelMotd     : '',    // The channel Motd
+    chatFilters     : [],    // A list of chat-filtes
+    gotEmoteList    : false,
+    gotChannelCSSJS : false,
+    gotChannelMotd  : false,
+    gotChatFilters  : false,
+    lastImages      : [],    // A list with lastly posted Images
+    handleEmoteList: function(list){
+        this.emotes = list;
+        this.gotEmoteList = true
+        this.logger.log(`Recieved emotelist.`);
+    },
     // { counts: [], initiator: <String>, options: [], timestamp: <Int>, title: <String> }
     handleNewPoll: function(poll) {
       this.logger.log(`Opened Poll`);
@@ -55,20 +66,22 @@ module.exports = function(ponk) {
       this.pollactive = false;
       this.logger.log(`Closed Poll`);
     },
-    // { css: <String>, js: <String> }
+    // { css: <String>, cssHash: <String>, js: <String>, jsHash: <String> }
     handleChannelCSSJS: function(cssjs) {
-      this.channelCSS = cssjs.css
-      this.channelJS = cssjs.js
+      this.channelCSSJS = cssjs
+      this.gotChannelCSSJS = true
       this.logger.log(`Updated Channel-JS/CSS`)
     },
     // <String>
     handleMotd: function(motd) {
       this.channelMotd = motd
+      this.gotChannelMotd = true
       this.logger.log(`Updated Channel-Motd`)
     },
     // [ { name: <String>, source: <String>, replace: <String>, flags: <String>, active: <Boolean>, filterlinks: <Boolean> }, ... ]
     handleChatFilters: function(filters) {
       this.chatFilters = filters
+      this.gotChatFilters = true
       this.logger.log(`Received Chat-Filters`)
     },
     // { name: <String>, source: <String>, replace: <String>, flags: <String>, active: <Boolean>, filterlinks: <Boolean> }
