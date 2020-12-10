@@ -46,10 +46,10 @@ module.exports = function(ponk) {
     gotChannelMotd  : false,
     gotChatFilters  : false,
     lastImages      : [],    // A list with lastly posted Images
-    handleEmoteList: function(list){
-        this.emotes = list;
-        this.gotEmoteList = true
-        this.logger.log(`Recieved emotelist.`);
+    handleEmoteList: function(list) {
+      this.emotes = list;
+      this.gotEmoteList = true
+      this.logger.log(`Recieved emotelist.`);
     },
     // { counts: [], initiator: <String>, options: [], timestamp: <Int>, title: <String> }
     handleNewPoll: function(poll) {
@@ -68,6 +68,8 @@ module.exports = function(ponk) {
     },
     // { css: <String>, cssHash: <String>, js: <String>, jsHash: <String> }
     handleChannelCSSJS: function(cssjs) {
+      this.channelCSS = cssjs.css
+      this.channelJS = cssjs.js
       this.channelCSSJS = cssjs
       this.gotChannelCSSJS = true
       this.logger.log(`Updated Channel-JS/CSS`)
