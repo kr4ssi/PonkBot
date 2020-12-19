@@ -150,7 +150,7 @@ class FikuSystem {
             }).on('queue', () => {
               const playlist = this.bot.playlist.filter(item => item.temp)
               playlist.sort((a, b) => a.media.seconds - b.media.seconds)
-              let seconds = 0
+              let seconds = this.bot.currMedia.seconds
               while (seconds < 600 && playlist.length) {
                 const item = playlist.shift()
                 seconds = seconds + item.media.seconds
