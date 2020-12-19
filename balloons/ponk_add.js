@@ -156,7 +156,7 @@ class AddCustom {
       this.bot.sendMessage(msg.replace(/&#39;/g,  `'`) + ' ' + link)
       if (msg === 'This item is already on the playlist')
       return this.bot.sendMessage('Das darf garnicht passieren')
-      if (msg === 'The uploader has made this video non-embeddable https://youtu.be/' + id)
+      if (msg === 'The uploader has made this video non-embeddable' && link === 'https://youtu.be/' + id)
       this.bot.commandDispatcher(this.name, '.download ' + link)
       if (this.cmAdditions[id]) {
         this.cmAdditions[id].emit('queueFail')
