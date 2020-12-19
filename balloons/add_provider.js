@@ -26,7 +26,12 @@ module.exports = class ProviderList extends Array {
       PythonShell.run(path.join(__dirname, 'add_youtube-dl_get_regex.py'), {
         cwd: path.join(__dirname, '..', 'youtube-dl'),
         parser: data => {
-          let [name, regex, groups] = JSON.parse(data)
+          if (data) try {
+            data = JSON.parse(data)
+          } catch(err) {
+            reject(Object.assign(err, { data }))
+          }
+          let [name = '', regex = '', groups = []] = data
           regex = regex.replace(grpregex, (match, p1, p2, p3, p4) => {
             if (p1) return ''
             if (p2) return groups.push(p2) && '('

@@ -13,8 +13,7 @@ class AutoAdd {
       ids: [
         'UCNqljVvVXoMv9T7dPTvg0JA',
         'UCVtVOddS0ms54kntAYXIVGg',
-        'UCmldc3khRlR73WjRwYb-esw',
-        'UCrNUaf1noT1ifNRZayEyznQ'
+        'UCmldc3khRlR73WjRwYb-esw'
       ],        // Youtube-Channel-Ids to watch
       bot: ponk // The bot
     })

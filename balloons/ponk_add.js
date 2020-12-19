@@ -187,7 +187,7 @@ class AddCustom {
     })
   }
   async setupProviderList() {
-    this.providerList = await new ProviderList(this.bot)
+    this.providerList = await new ProviderList(this.bot).then(undefined, console.error)
     this.supportedProviders = this.providerList.supportedProviders
     this.setupUserScript()
     this.setupServer()
