@@ -416,7 +416,7 @@ module.exports = {
         this.sendByFilter('<div class="wikiinfo">' + list.reduce((max, curr) => {
           const thumbs = curr.thumbs_up - curr.thumbs_down
           return (max.thumbs > thumbs) ? max : Object.assign(curr, { thumbs })
-        }, {}).definition + '</div>', true)
+        }, { thumbs: -Infinity }).definition + '</div>', true)
       })
     },
     dict(user, params, meta) {
