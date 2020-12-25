@@ -413,7 +413,10 @@ module.exports = {
         }, json: true,
         getlist: 'list'
       }).then(({ list }) => {
-        this.sendByFilter('<div class="wikiinfo">' + list[0].definition + '</div>', true)
+        this.sendByFilter('<div class="wikiinfo">' + list.reduce((max, curr) => {
+          const thumbs = curr.thumbs_up - curr.thumbs_down
+          return (max.thumbs > thumbs) ? max : Object.assign(curr, { thumbs })
+        }, {}).definition + '</div>', true)
       })
     },
     dict(user, params, meta) {
