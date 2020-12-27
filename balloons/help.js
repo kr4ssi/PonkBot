@@ -372,5 +372,13 @@ module.exports = {
     synop: '',
     rank: 2,
     addnext: 'willkür'
+  },
+  c3: {
+    synop: '',
+    rank: 4
+  },
+  fahrplan: {
+    synop: '',
+    rank: 1
   }
 }
