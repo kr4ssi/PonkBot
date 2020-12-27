@@ -1,54 +1,34 @@
 /*!
-**|   PonkBot C3-Manifests
+**|   PonkBot C3
 **@
 */
 
 'use strict';
 
 const CyTubeClient = require('../lib/client.js')
+const crypto = require('crypto')
 
-class C3Manifests extends Array {
+class C3 extends Array {
   constructor(ponk) {
     super()
     Object.assign(this, {
-      base        : 'https://streaming.media.ccc.de/',
-      event       : 'rc3',
-      bot         : ponk
+      base        : 'https://streaming.media.ccc.de/rc3'
     })
-    this.bot.fetch(this.base + this.event, {
+    ponk.fetch(this.base, {
       $: true
-    }).then(({ $ }) => Promise.all($('.panel.panel-default').map((i, e) => {
-      const path = $(e).parent().attr('href')
-      return this.bot.fetch(this.base + path, {
-        $: true,
-        match: /<title>([^<]+)/
-      }).then(({ $, match }) => ({ $, match, path }))
-    }).toArray())).then(results => results.forEach(({ $, match, path }) => {
-      const title = match[1]
-      const urls = $('a').filter((i, e) => /\.(?:mpd|m3u8)$/.test(e.attribs.href)).map((i, e) => e.attribs.href).toArray()
-      this.bot.server.host.get('/' + path + '.json', (req, res) => {
-        res.json({
-          title,
-          live: true,
-          duration: 0,
-          sources: urls.map(url => {
-            let quality = 720
-            let contentType = 'application/x-mpegURL'
-            if (url.endsWith('manifest.mpd')) contentType = 'application/dash+xml'
-            else if (url.endsWith('native_hd.m3u8')) quality = 1080
-            else if (url.endsWith('translated_hd.m3u8')) quality = 540
-            else if (url.endsWith('translated_sd.m3u8')) quality = 480
-            else if (url.endsWith('translated-2_hd.m3u8')) quality = 360
-            else if (url.endsWith('translated-2_sd.m3u8')) quality = 240
-            return {
-              contentType,
-              quality,
-              url
-            }
-          }).filter(source => !source.url.includes('translated'))
-        })
+    }).then(({ $ }) => $('.roomtitle.regular').each((i, e) => {
+      const room = $(e).parent().parent().parent().parent().attr('href').split('/').pop()
+      const id = `<iframe src="${this.base}/embed/${room}/dash/native"></iframe>`
+      this.push({
+        media: {
+          id,
+          type: 'cu',
+          title: $(e).text(),
+          pos: 'end',
+          temp: true,
+        },
+        rid: 'cu:' + crypto.createHash("sha256").update(id).digest("base64")
       })
-      this.push(this.bot.server.weblink + '/' + path + '.json')
     }))
   }
 }
@@ -60,18 +40,17 @@ module.exports = {
   },
   giggle(ponk){
     return new Promise((resolve, reject)=>{
-      ponk.API.c3Manifests = new C3Manifests(ponk)
-      ponk.logger.log('Registering rC3')
+      ponk.API.c3 = new C3(ponk)
+      ponk.logger.log('Registering C3')
       resolve()
     })
   },
   handlers: {
     c3: function(user, params, meta) {
-      const c3Manifests = this.API.c3Manifests
-      if (params != 'keller') c3Manifests.forEach(id => {
-        if (this.playlist.some(item => item.media.id === id)) return
-        console.log(id)
-        this.mediaSend({ type: 'cm', id })
+      if (params != 'keller') this.API.c3.forEach(({ media, rid }) => {
+        if (this.playlist.some(item => item.media.id === rid)) return
+        console.log(media)
+        this.mediaSend(media)
       })
       else {
         const { host, port, secure, user, auth } = this.client
@@ -85,22 +64,16 @@ module.exports = {
         }).once('started', () => {
           tempclient.playlist()
         }).once('playlist', playlist => {
-          c3Manifests.forEach(id => {
-            if (playlist.some(item => item.media.id === id)) return
-            tempclient.socket.emit('queue', {
-              type: 'cm',
-              id,
-              pos: 'end',
-              temp: true,
-              duration: 0,
-            });
+          this.API.c3.forEach(({ media, rid }) => {
+            if (playlist.some(item => item.media.id === rid)) return
+            tempclient.socket.emit('queue', media)
           })
-          setTimeout(() => tempclient.socket.close(), 3000)
-        }).on('error', error => console.log(error))
+          setTimeout(() => tempclient.socket.close(), 15000)
+        }).on('errorMsg', error => console.log(error)).on('queueFail', error => console.log(error)).on('error', error => console.log(error))
       }
     },
     fahrplan: function(user, params, meta) {
-      this.fetch(this.API.c3Manifests.base + this.API.c3Manifests.event, {
+      this.fetch(this.API.c3.base, {
         $: true
       }).then(({ $ }) => {
         $('.panel-body:has(img' + (params ? ('[alt^=\'' + params + '\' i]') : '') + ')').each((i, panel) => {
