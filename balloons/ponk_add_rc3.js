@@ -80,7 +80,7 @@ module.exports = {
           const name = $(panel).find('img').attr('alt')
           const curr = $(panel).find('.current-talk strong').text() + ' ' + $(panel).find('.current-talk span').text()
           const next = $(panel).find('.next-talk strong').text() + ' ' + $(panel).find('.next-talk span').text()
-          this.sendMessage(name + ' - ' + curr + ' - ' + next)
+          this.sendMessage(`${name} - ${curr}'\n'${next}`)
         })
       })
     }
