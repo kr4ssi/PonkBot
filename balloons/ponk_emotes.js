@@ -384,28 +384,17 @@ class Emotes {
         css1: '#leftpane-inner:after { background-image:url("',
         css2: '"); }',
         message: 'Verfügbare Logos: ',
-        options: {
-          fiku: 'https://tinyimg.io/i/wVmC0iw.png',
-          ks: 'https://tinyimg.io/i/NF44780.png',
-          partei: 'https://tinyimg.io/i/JlE5E57.png',
-          heimatabend: 'https://tinyimg.io/i/vPBysg8.png'
-        }
+        options: Object.fromEntries(this.emotes.filter(({ name }) => {
+          return name.startsWith('/logo')
+        }).map(({ name, image }) => [name.slice(5), image]))
       },
       hintergrund: {
         css1: 'body { background-image:url("',
         css2: '"); }',
         message: 'Verfügbare Hintergründe: ',
-        options: {
-          partei: 'https://framapic.org/wNoS851YWyan/bKKxkMmYIGeU',
-          synthwave: 'https://tinyimg.io/i/HkAMo0B.jpg',
-          heinrich: 'https://i.htgl.fr/nI3AixC4',
-          sterne: 'https://tinyimg.io/i/Z48nCKm.gif',
-          fiku: 'https://tinyimg.io/i/4DUPI3z.jpg',
-          donald: 'https://s16.directupload.net/images/190225/29lmm2s3.jpg',
-          mödchen: 'https://framapic.org/c96PYIXOep4s/tdnZDLRiNEis',
-          nacht: 'https://framapic.org/6B7qKZuvbmcU/NPa1SiDUXbCK',
-          sternenkadse: 'https://tinyimg.io/i/FENDoXG.jpg'
-        }
+        options: Object.fromEntries(this.emotes.filter(({ name }) => {
+          return name.startsWith('/bg')
+        }).map(({ name, image }) => [name.slice(5), image]))
       }
     }[meta.command]
     if (params) {
