@@ -384,7 +384,7 @@ class Emotes {
         css1: '#leftpane-inner:after { background-image:url("',
         css2: '"); }',
         message: 'Verfügbare Logos: ',
-        options: Object.fromEntries(this.emotes.filter(({ name }) => {
+        options: Object.fromEntries(this.bot.emotes.filter(({ name }) => {
           return name.startsWith('/logo')
         }).map(({ name, image }) => [name.slice(5), image]))
       },
@@ -392,7 +392,7 @@ class Emotes {
         css1: 'body { background-image:url("',
         css2: '"); }',
         message: 'Verfügbare Hintergründe: ',
-        options: Object.fromEntries(this.emotes.filter(({ name }) => {
+        options: Object.fromEntries(this.bot.emotes.filter(({ name }) => {
           return name.startsWith('/bg')
         }).map(({ name, image }) => [name.slice(5), image]))
       }
