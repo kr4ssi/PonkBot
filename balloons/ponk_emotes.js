@@ -394,7 +394,7 @@ class Emotes {
         message: 'Verfügbare Hintergründe: ',
         options: Object.fromEntries(this.bot.emotes.filter(({ name }) => {
           return name.startsWith('/bg')
-        }).map(({ name, image }) => [name.slice(5), image]))
+        }).map(({ name, image }) => [name.slice(3), image]))
       }
     }[meta.command]
     if (params) {
