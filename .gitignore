@@ -64,6 +64,10 @@ config.js
 test-*
 dev-*
 
+# PonkBot production deployment files
+prod-*
+prod/
+
 # Fuck package lock
 package-lock.json
 

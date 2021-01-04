@@ -37,7 +37,7 @@ module.exports = {
     api: {
         youtube      : 'MyYouTubeAPIkey',
         wolfram      : 'MyWolframAPIkey',
-        wunderground : 'MyWUndergroundAPIkey',
+        openweather  : 'MyOpenWeatherAPIkey',
         cleverbot    : 'MyCleverBotAPIkey',
     }
 }

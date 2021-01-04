@@ -1,8 +1,14 @@
 {
   "name": "ponkbot",
-  "version": "0.6.10",
+  "version": "0.7.1",
   "description": "A chatbot for CyTube",
   "main": "service.js",
+  "engines": { 
+    "node": ">=11.0.0"
+  },
+  "engines": {
+    "node": ">=11.0.0"
+  },
   "scripts": {
     "postinstall": "git clone https://github.com/ytdl-org/youtube-dl.git",
     "prestart": "cd youtube-dl && git pull",
@@ -39,6 +45,7 @@
     "js-beautify": "latest",
     "knex": "latest",
     "limiter": "latest",
+    "minimist": "latest",
     "megajs": "latest",
     "mysql": "latest",
     "python-shell": "latest",
