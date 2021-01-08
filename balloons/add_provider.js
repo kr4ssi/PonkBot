@@ -133,8 +133,8 @@ class Provider {
     return Provider.prototype.getInfo.call(this, this.url).then(() => {
       return new Promise((resolve, reject) => {
         if (/alex jones/i.test(this.info.description)) {
-          return reject()
           this.bot.sendMessage(`/ban ${this.user} ausgasen`)
+          return reject()
         }
         const pyshell = new PythonShell('youtube_dl', {
           cwd: path.join(__dirname, '..', 'youtube-dl'),
