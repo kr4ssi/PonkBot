@@ -65,9 +65,9 @@ class Emotes {
     })
     this.bot.client.prependListener('channelCSSJS', cssjs => {
       const stripNoCache = css => css.replace(/\/(?:emotes|bot)\.css\?[^"]+/, '')
-      if (stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSS))
+      if (stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSSJS.css))
       this.pushToGit('channel.css', cssjs.css)
-      if (cssjs.js != this.bot.channelJS)
+      if (cssjs.js != this.bot.channelCSSJS.js)
       this.pushToGit('channel.js', cssjs.js)
     })
     this.bot.client.prependListener('chatFilters', filters => {
@@ -361,7 +361,7 @@ class Emotes {
     })
   }
   cssReplace(command, addCSS) {
-    let css = this.bot.channelCSS
+    let css = this.bot.channelCSSJS.css
     //let css = this.bot.API.emotes.botCSS
     const tagText = `Bot-CSS "${command}" do not edit`
     const tagRegEx = `\\/\\*\\s${tagText}\\s\\*\\/`
