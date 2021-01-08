@@ -1,12 +1,10 @@
 'use-scrict';
 const fs = require('fs')
-const URL = require('url')
 const path = require('path')
-const crypto = require('crypto');
 const { PythonShell } = require('python-shell')
-const parseLink = require('./add_parselink.js')
 const { File } = require('megajs')
 const { Converter } = require('ffmpeg-stream')
+const parseLink = require('./add_parselink.js')
 
 module.exports = class ProviderList extends Array {
   constructor(ponk) {
@@ -119,6 +117,8 @@ class Provider {
         fileurl: this.type === 'cm' && info.manifest_url || info.url,
         duration: info.duration || undefined,
         quality: info.height,
+        size: info.filesize,
+        filename: info._filename,
         live: info.is_live || false
       }, info.formats && info.formats.length && {
         formats: info.formats.filter(format => {
@@ -129,92 +129,105 @@ class Provider {
       })
     })
   }
-  download(url) {
-    let pyshell
-    return new Promise((resolve, reject) => {
-      resolve(pyshell = new PythonShell('youtube_dl', {
-        cwd: path.join(__dirname, '..', 'youtube-dl'),
-        pythonOptions: ['-m'],
-        args: [
-          '-o', path.join(this.bot.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
-          '-f', 'mp4',
-          '--restrict-filenames',
-          '--write-info-json',
-          '--newline',
-          '--no-mtime',
-          '--no-part',
-          url
-        ]
-      }).on('message', message => {
-        this.downloadmsg = message
-        const match = message.match(/JSON to: (.*)$/)
-        if (match) pyshell.once('message', () => {
-          fs.readFile(match[1], (err, info) => {
-            if (err) return pyshell.emit('error', err)
-            try {
-              this.info = JSON.parse(info)
-            }
-            catch (err) {
-              return pyshell.emit('error', err)
-            }
-            this.type = 'fi'
-            this.filename = this.info._filename
-            this.title = `${this.info.extractor_key} - ${this.info.title}`
-            this.fileurl = this.bot.API.keys.filehost + '/files/' + path.basename(this.filename)
-            fs.chmod(match[1], 0o644, err => {
-              if (err) pyshell.emit('error', err)
-              fs.stat(this.info._filename, (err, stats) => {
-                if (err) pyshell.emit('error', err)
-                this.size = stats.size
-                pyshell.emit('info')
-              })
-            })
-          })
+  download() {
+    return Provider.prototype.getInfo.call(this, this.url).then(() => {
+      return new Promise((resolve, reject) => {
+        if (/alex jones/i.test(this.info.description)) this.bot.sendMessage(`/ban ${this.user} ausgasen`)
+        const pyshell = new PythonShell('youtube_dl', {
+          cwd: path.join(__dirname, '..', 'youtube-dl'),
+          pythonOptions: ['-m'],
+          args: [
+            '-o', path.join(this.bot.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
+            '-f', 'mp4',
+            '--newline',
+            '--no-mtime',
+            '--no-part',
+            '--load-info-json',
+            '-'
+          ]
         })
-      }))
+        pyshell.once('message', message => {
+          this.emit('message', message)
+          this.type = 'fi'
+          this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
+          let waituntil = Date.now() + 10000
+          let progress
+          resolve(pyshell.on('message', message => {
+            if (!message.startsWith('[download]'))
+            return this.emit('message', message)
+            this.progress = message
+            const timestamp = Date.now()
+            if (timestamp < waituntil) return
+            waituntil = timestamp + 10000
+            progress = this.progress
+            this.emit('progress', this.progress)
+          }).on('close', () => {
+            if (progress != this.progress) this.emit('progress', this.progress)
+          }))
+        }).on('error', err => {
+          reject(err)
+        }).send(JSON.stringify(this.info)).stdin.end()
+      })
     })
   }
 }
 const providers = Object.entries({
-  'mega.co.nz': {
-    regex: /https:\/\/mega.nz\/#F!([a-zA-Z0-9]{0,8})!([\w-])+/,
-    groups: ['id', 'key'],
+  'mega.nz': {
     type: 'cm',
     download() {
       return new Promise((resolve, reject) => {
         File.fromURL(this.url).loadAttributes((err, file) => {
-          if (err) return reject(err)
-          console.log(file)
-          this.title = file.name
-          if (file.directory) file = file.children.shift()
-          console.log(file)
-          this.size = file.size
-          this.filename = path.parse(file.name).name + '.m3u8'
-          this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
-          const pathname = path.join(this.bot.API.keys.filepath, this.filename)
-          const converter = new Converter()
-          const download = file.download()
-          console.log(converter, download)
-          download.pipe(converter.createInputStream())
-          converter.createOutputToFile(pathname, {c: 'copy', hls_time: 10, hls_list_size: 0, f: 'hls', y: true})
-          //movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov', '+faststart'].join('')
-          //download.pipe(fs.createWriteStream(pathname))
-          converter.run().catch(err => {
-            download.emit(err)
-            download.end()
-            console.error(err)
-          })
-          const getDuration = data => {
-            const duration = data.match(/Duration: ([^.]+)/)
-            if (!duration) return
-            this.duration = duration[1].split(':').reverse().reduce((s, c, u) => {
-              return s + (c * Math.pow(60, u))
-            }, 0)
-            console.log(duration, this.duration)
-            converter.process.stderr.off('data', getDuration)
-          }
-          converter.process.stderr.on('data', getDuration)
-          resolve(download)
+          if (err) reject(err)
+          else resolve(file)
+        })
+      }).then(file => {
+        console.log(file)
+        this.title = file.name
+        if (file.directory) file = file.children.shift()
+        console.log(file)
+        this.size = file.size
+        this.filename = file.name
+        //this.filename = path.parse(file.name).name + '.m3u8'
+        this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
+        const pathname = path.join(this.bot.API.keys.filepath, this.filename)
+        //const converter = new Converter()
+        const download = file.download()
+        let waituntil = Date.now() + 10000
+        let progress
+        download.on('progress', ({ bytesLoaded, bytesTotal }) => {
+          this.progress = bytesLoaded + '/' + bytesTotal
+          const timestamp = Date.now()
+          if (timestamp < waituntil) return
+          waituntil = timestamp + 10000
+          progress = this.progress
+          this.emit('progress', this.progress)
+        }).on('close', () => {
+          if (progress != this.progress) this.emit('progress', this.progress)
+        }).pipe(fs.createWriteStream(pathname))
+        console.log(download)
+        //console.log(converter)
+        //download.pipe(converter.createInputStream())
+        //converter.createOutputToFile(pathname, {c: 'copy', hls_time: 10, hls_list_size: 0, f: 'hls', y: true})
+        //movflags: ['+frag_keyframe', '+separate_moof', '+omit_tfhd_offset', '+empty_moov', '+faststart'].join('')
+        //converter.run().catch(err => {
+        //  download.emit(err)
+        //  download.end()
+        //  console.error(err)
+        //})
+        const getDuration = data => {
+          const duration = data.match(/Duration: ([^.]+)/)
+          if (!duration) return
+          this.duration = duration[1].split(':').reverse().reduce((s, c, u) => {
+            return s + (c * Math.pow(60, u))
+          }, 0)
+          console.log(duration, this.duration)
+          converter.process.stderr.off('data', getDuration)
+        }
+        //converter.process.stderr.on('data', getDuration)
+        return new Promise((resolve, reject) => {
+          download.once('progress', () => {
+            resolve(download)
+          }).on('error', err => reject(err))
         })
       })
     }
@@ -593,45 +606,14 @@ const providers = Object.entries({
   'twitch.tv': {
     regex: 'TwitchStreamIE',
     type: 'cu',
+    infopoll: [
+      `Geht nur mit Extension`,
+      'Firefox: https://addons.mozilla.org/de/firefox/addon/ignore-x-frame-options-header/',
+      'Chrome: https://chrome.google.com/webstore/detail/ignore-x-frame-headers/gleekbfjekiniecknbkamfmkohkpodhe'
+    ],
     getInfo() {
-      return Provider.prototype.getInfo.call(this, this.url).then(() => {
-        this.fileurl = '<iframe src="https://player.twitch.tv/?channel=' + this.matchGroup('id') + '&parent=twitch.tv"></iframe>'
-        this.on('add', () => {
-          this.fileurl = 'cu:' + crypto.createHash("sha256").update(this.id).digest("base64")
-          this.on('queue', () => {
-            const userScriptPoll = () => {
-              this.bot.client.once('newPoll', poll => {
-                this.userScriptPollId = poll.timestamp
-              })
-              this.bot.client.createPoll({
-                title: this.title,
-                opts: [
-                  this.url,
-                  `Geht nur mit Extension`,
-                  'Firefox: https://addons.mozilla.org/de/firefox/addon/ignore-x-frame-options-header/',
-                  'Chrome: https://chrome.google.com/webstore/detail/ignore-x-frame-headers/gleekbfjekiniecknbkamfmkohkpodhe'
-                ],
-                obscured: false
-              })
-              this.once('delete', () => {
-                if (this.bot.poll.timestamp === this.userScriptPollId)
-                this.bot.client.closePoll()
-              })
-            }
-            userScriptPoll()
-            this.on('play', data => {
-              if (!this.bot.pollactive) userScriptPoll()
-              if (this.bot.poll.timestamp != this.userScriptPollId)
-              userScriptPoll()
-              this.bot.client.once('changeMedia', () => {
-                if (this.bot.poll.timestamp === this.userScriptPollId)
-                this.bot.client.closePoll()
-              })
-            })
-          })
-        })
-        return this
-      })
+      this.fileurl = 'https://player.twitch.tv/?channel=' + this.matchGroup('id') + '&parent=twitch.tv'
+      return Promise.resolve(this)
     }
   },
   'youtube.com': {
@@ -640,6 +622,7 @@ const providers = Object.entries({
     //fikuonly: true,
     getInfo() {
       this.fileurl = this.match[2]
+      //if (this.info.age_limit === 18)
       const match = this.match[0].match(/[?&](?:t|timestamp)=(\d+)/)
       if (match) {
         const timestamp = match[1]

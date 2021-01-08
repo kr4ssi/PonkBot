@@ -24,12 +24,13 @@ const toSource = source => require('js-beautify').js(require('tosource')(source)
 const parser = require('subtitles-parser')
 
 class Addition extends EventEmitter {
-  constructor(...args) {
+  constructor(url, providerList, meta) {
     super()
-    this.matchUrl(...args)
+    this.matchUrl(url, providerList)
     this.fileid = Date.now()
     Object.assign(this, {
-      user: '',
+      user: meta.user,
+      addnext: meta.addnext,
       timestamp: 0,
       duration: 0,
       fileurl: '',
@@ -41,16 +42,58 @@ class Addition extends EventEmitter {
       formats: [],
       headers: {},
       matchGroup: id => this.match[this.groups.indexOf(id) + 1]
+    }).on('message', msg => {
+      this.bot.sendMessage(msg)
+    }).on('progress', msg => {
+      this.bot.sendPrivate(msg, this.user)
+    })
+    if (this.needUserScript || this.infopoll) this.on('queue', () => {
+      const userScriptPoll = () => {
+        this.bot.client.once('newPoll', poll => {
+          this.userScriptPollId = poll.timestamp
+        })
+        this.bot.client.createPoll({
+          title: this.title,
+          opts: this.infopoll || [
+            this.url + '#userscript'+ this.fileid,
+            `Geht nur mit Userscript (Letztes update: ${this.bot.API.add.userscriptdate})`,
+            '(ks*.user.js bitte löschen)',
+            ...this.bot.API.add.userScriptPollOpts
+          ],
+          obscured: false
+        })
+        this.once('delete', () => {
+          if (this.bot.poll.timestamp === this.userScriptPollId)
+          this.bot.client.closePoll()
+        })
+      }
+      userScriptPoll()
+      this.on('play', data => {
+        if (!this.bot.pollactive) userScriptPoll()
+        if (this.bot.poll.timestamp != this.userScriptPollId)
+        userScriptPoll()
+        this.bot.client.once('changeMedia', () => {
+          if (this.bot.poll.timestamp === this.userScriptPollId)
+          this.bot.client.closePoll()
+        })
+      })
     })
   }
   get url() {
     return this.match[0].replace('http://', 'https://')
   }
   get id() {
+    if (this.type === 'cu') {
+      if (!this.added) return this.embed
+      return 'cu:' + crypto.createHash("sha256").update(this.embed).digest("base64")
+    }
     if (this.type != 'cm') return this.fileurl.replace(/(?:^http:\/\/)/i, 'https://')
     let id = `${this.bot.server.weblink}/add.json?`
     if (this.needUserScript) id += 'userscript&'
     return id += `url=${this.fileid}`
+  }
+  get embed() {
+    return `<iframe src="${this.fileurl}"></iframe>`
   }
   get sources () {
     if (this.live && this.formats.length) return this.formats
@@ -118,15 +161,16 @@ class Addition extends EventEmitter {
     })
     return tryToGetDuration()
   }
-  add(next) {
+  add(next = this.addnext) {
     this.bot.client.socket.emit('queue', {
-      title: this.title,
+      title: this.title || this.url,
       type : this.type,
       id : this.id,
       pos : next ? 'next' : 'end',
       temp : true,
     })
     this.emit('add')
+    this.added = true
     return this.bot.API.add.cmAdditions[this.id] = this
   }
 }
@@ -156,11 +200,16 @@ class AddCustom {
       this.bot.sendMessage(msg.replace(/&#39;/g,  `'`) + ' ' + link)
       if (msg === 'This item is already on the playlist')
       return this.bot.sendMessage('Das darf garnicht passieren')
-      if (msg === 'The uploader has made this video non-embeddable' && link === 'https://youtu.be/' + id)
-      this.bot.commandDispatcher(this.name, '.download ' + link)
       if (this.cmAdditions[id]) {
-        this.cmAdditions[id].emit('queueFail')
-        this.cmAdditions[id].removeAllListeners()
+        if (link === 'https://youtu.be/' + id) {
+          if (/^(?:The uploader has made this video non-embeddable)|(?:Cannot add age restricted videos.)/.test(msg))
+          return this.cmAdditions[id].download().then(() => {
+            this.bot.sendMessage(this.cmAdditions[id].fileurl + ' wird addiert')
+            this.cmAdditions[id].add()
+          })
+          this.cmAdditions[id].emit('queueFail')
+          //this.cmAdditions[id].removeAllListeners()
+        }
       }
     })
     this.bot.client.prependListener('delete', ({ uid }) => {
@@ -329,11 +378,9 @@ class AddCustom {
   }
 
   add(url, title, meta) {
-    const addition = new Addition(url, this.providerList)
+    const addition = new Addition(url, this.providerList, meta)
     if (meta.gettitle) addition.gettitle = true
-    else addition.on('message', msg => {
-      this.bot.sendMessage(msg)
-    }).getInfo().then(() => {
+    else addition.getInfo().then(() => {
       //addition.emit('info', addition)
       if (!meta.fiku && addition.fikuonly)
       throw `Kein Hoster gefunden. Addierbare Hosts: ${this.supportedProviders}`
@@ -343,37 +390,6 @@ class AddCustom {
       if (addition.type === 'cm' && !addition.live && !addition.duration)
       return addition.getDuration()
     }).then(() => {
-      if (addition.needUserScript) addition.on('queue', () => {
-        const userScriptPoll = () => {
-          this.bot.client.once('newPoll', poll => {
-            addition.userScriptPollId = poll.timestamp
-          })
-          this.bot.client.createPoll({
-            title: addition.title,
-            opts: [
-              addition.url + '#userscript'+ addition.fileid,
-              `Geht nur mit Userscript (Letztes update: ${this.userscriptdate})`,
-              '(ks*.user.js bitte löschen)',
-              ...this.userScriptPollOpts
-            ],
-            obscured: false
-          })
-          addition.once('delete', () => {
-            if (this.bot.poll.timestamp === addition.userScriptPollId)
-            this.bot.client.closePoll()
-          })
-        }
-        userScriptPoll()
-        addition.on('play', data => {
-          if (!this.bot.pollactive) userScriptPoll()
-          if (this.bot.poll.timestamp != addition.userScriptPollId)
-          userScriptPoll()
-          this.bot.client.once('changeMedia', () => {
-            if (this.bot.poll.timestamp === addition.userScriptPollId)
-            this.bot.client.closePoll()
-          })
-        })
-      })
       addition.add(meta.addnext)
     }).catch(err => {
       console.error(err)
@@ -391,42 +407,23 @@ class AddCustom {
       if (limit.user === meta.user) acc += limit.size
       return acc
     }, 0) > 536870912) return this.bot.sendMessage('zuviel ladiert')
-    const addition = new Addition(url, this.providerList)
-    //if (addition.fikuonly) throw new Error('not addable')
+    const addition = new Addition(url, this.providerList, meta)
     this.downloading = true
-    let progress
-    let timer
-    addition.download(url).then(stream => {
-      stream.prependListener('message', message => {
-        if (message === addition.downloadmsg) return
-        if (!message.startsWith('[download]'))
-        return this.bot.sendPrivate(message, meta.user)
-        progress = message
-        if (!timer) timer = setInterval(() => {
-          this.bot.sendPrivate(progress, meta.user)
-        }, 10000)
-      }).on('info', () => {
-        this.bot.sendMessage(addition.fileurl + ' wird addiert')
-        addition.add(meta.addnext)
-      }).on('progress', ({ bytesLoaded, bytesTotal }) => {
-        progress = bytesLoaded + '/' + bytesTotal
-        if (!timer) timer = setInterval(() => {
-          this.bot.sendPrivate(progress, meta.user)
-          if (addition.added) return
-          addition.added = true
-          addition.add(meta.addnext)
-        }, 10000)
-      }).on('close', () => {
-        clearInterval(timer)
+    addition.download().then(stream => {
+      this.bot.sendMessage(addition.fileurl + ' wird addiert')
+      if (title) addition.title = title
+      addition.add(meta.addnext)
+      stream.on('close', async () => {
         this.downloading = false
+        if (!addition.size) {
+          addition.size = await fs.promises.stat(path.join(this.bot.API.keys.filepath, addition.filename)).size
+        }
         this.limit.push({
           user: meta.user,
           size: addition.size,
           date: Date.now()
         })
-        if (progress) this.bot.sendPrivate(progress, meta.user)
       }).on('error', err => {
-        clearInterval(timer)
         this.downloading = false
         this.bot.sendMessage(err.message || err)
       })
