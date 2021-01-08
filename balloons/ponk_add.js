@@ -53,7 +53,7 @@ class Addition extends EventEmitter {
           this.userScriptPollId = poll.timestamp
         })
         this.bot.client.createPoll({
-          title: this.title,
+          title: this.title || this.url,
           opts: this.infopoll || [
             this.url + '#userscript'+ this.fileid,
             `Geht nur mit Userscript (Letztes update: ${this.bot.API.add.userscriptdate})`,
