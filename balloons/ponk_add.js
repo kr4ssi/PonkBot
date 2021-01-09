@@ -47,37 +47,6 @@ class Addition extends EventEmitter {
     }).on('progress', msg => {
       this.bot.sendPrivate(msg, this.user)
     })
-    if (this.needUserScript || this.infopoll) this.on('queue', () => {
-      const userScriptPoll = () => {
-        this.bot.client.once('newPoll', poll => {
-          this.userScriptPollId = poll.timestamp
-        })
-        this.bot.client.createPoll({
-          title: this.title || this.url,
-          opts: this.infopoll || [
-            this.url + '#userscript'+ this.fileid,
-            `Geht nur mit Userscript (Letztes update: ${this.bot.API.add.userscriptdate})`,
-            '(ks*.user.js bitte löschen)',
-            ...this.bot.API.add.userScriptPollOpts
-          ],
-          obscured: false
-        })
-        this.once('delete', () => {
-          if (this.bot.poll.timestamp === this.userScriptPollId)
-          this.bot.client.closePoll()
-        })
-      }
-      userScriptPoll()
-      this.on('play', data => {
-        if (!this.bot.pollactive) userScriptPoll()
-        if (this.bot.poll.timestamp != this.userScriptPollId)
-        userScriptPoll()
-        this.bot.client.once('changeMedia', () => {
-          if (this.bot.poll.timestamp === this.userScriptPollId)
-          this.bot.client.closePoll()
-        })
-      })
-    })
   }
   get url() {
     return this.match[0].replace('http://', 'https://')
@@ -162,6 +131,37 @@ class Addition extends EventEmitter {
     return tryToGetDuration()
   }
   add(next = this.addnext) {
+    if (this.needUserScript || this.infopoll) this.on('queue', () => {
+      const userScriptPoll = () => {
+        this.bot.client.once('newPoll', poll => {
+          this.userScriptPollId = poll.timestamp
+        })
+        this.bot.client.createPoll({
+          title: this.title || this.url,
+          opts: this.infopoll || [
+            this.url + '#userscript'+ this.fileid,
+            `Geht nur mit Userscript (Letztes update: ${this.bot.API.add.userscriptdate})`,
+            '(ks*.user.js bitte löschen)',
+            ...this.bot.API.add.userScriptPollOpts
+          ],
+          obscured: false
+        })
+        this.once('delete', () => {
+          if (this.bot.poll.timestamp === this.userScriptPollId)
+          this.bot.client.closePoll()
+        })
+      }
+      userScriptPoll()
+      this.on('play', data => {
+        if (!this.bot.pollactive) userScriptPoll()
+        if (this.bot.poll.timestamp != this.userScriptPollId)
+        userScriptPoll()
+        this.bot.client.once('changeMedia', () => {
+          if (this.bot.poll.timestamp === this.userScriptPollId)
+          this.bot.client.closePoll()
+        })
+      })
+    })
     this.bot.client.socket.emit('queue', {
       title: this.title || this.url,
       type : this.type,
