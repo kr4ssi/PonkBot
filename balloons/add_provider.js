@@ -133,7 +133,7 @@ class Provider {
     return Provider.prototype.getInfo.call(this, this.url).then(() => {
       return new Promise((resolve, reject) => {
         if (/alex jones/i.test(this.info.description)) {
-          this.bot.sendMessage(`/ban ${this.user} ausgasen`)
+          this.bot.sendMessage(`/kick ${this.user} ausgasen`)
           return reject()
         }
         const pyshell = new PythonShell('youtube_dl', {
