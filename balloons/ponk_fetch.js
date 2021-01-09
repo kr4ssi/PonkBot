@@ -42,75 +42,69 @@ module.exports = {
           unpack = false,
           onCaptcha = false
         } = {}) {
-          return new Promise((resolve, reject) => {
-            console.log('Fetch:', ...arguments)
-            if ((getlist || getprop) && !json && !jsonparse) throw new Error('json or jsonparse must set to true')
-            if (getrandom && !getlist) throw new Error('getrandom from where')
-            const r = cloud ? cloudscraper : request
-            headers = Object.assign({
+          if ((getlist || getprop) && !json && !jsonparse) throw new Error('json or jsonparse must set to true')
+          if (getrandom && !getlist) throw new Error('getrandom from where')
+          class matchError extends Error {}
+          const r = cloud ? cloudscraper : request
+          console.log('Fetch:', ...arguments)
+          return new Promise((resolve, reject) => r(Object.assign({
+            headers: Object.assign({
               'User-Agent': (new UserAgent()).toString()
-            }, headers)
-            r(Object.assign({
+            }, headers), url, qs, form, method, json //: match ? false : json
+          }, body && { body }, onCaptcha && { onCaptcha }), (err, res) => {
+            if (err) reject(err)
+            else resolve(res)
+          })).then((res, body = res.body) => {
+            if (jsonparse) body = JSON.parse(body)
+            if (body && body.err) throw body.err
+            const result = {
+              body,
+              statusCode: res.statusCode,
               headers,
-              url, qs, form, method, json
-            },//: match ? false : json
-            body && { body }, onCaptcha && { onCaptcha }), (err, res, body) => {
-              class matchError extends Error {}
-              try {
-                if (err) throw err
-                if (jsonparse) body = JSON.parse(body)
-                if (body && body.err) throw body.err
-                let result = {
-                  body,
-                  statusCode: res.statusCode,
-                  headers,
-                  res
-                }
-                if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
-                  console.error(body)
-                  throw new matchError(res.statusCode)
-                }
-                if (getprop && !body[getprop]) throw new matchError('no property \'' + getprop + '\' found')
-                result.prop = (body && body[getprop]) || body
-                if (getlist) {
-                  if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new matchError('no list \'' + getlist + '\' found')
-                  result.list = result.prop[getlist]
-                  if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
-                }
-                if (match) {
-                  result.match = result.prop.match(match)
-                  if (!result.match) {
-                    console.error(body)
-                    throw new matchError('no match \'' + match + '\' found')
-                  }
-                }
-                if (unpack) {
-                  function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
-                  const regex = /return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/g
-                  let match = regex.exec(result.prop)
-                  if (!match) {
-                    //console.error(body)
-                    throw new matchError('no packed code found')
-                  }
-                  while (match && !result.unpack) {
-                    const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
-                    console.log(unpacked)
-                    result.unpack = unpacked.match(unpack)
-                    match = regex.exec(result.prop)
-                  }
-                  if (!result.unpack) {
-                    //console.error(body)
-                    throw new matchError('no match \'' + unpack + '\' in packed code found')
-                  }
-                }
-                if ($ && result.prop) result.$ = cheerio.load(result.prop)
-                resolve(result)
+              res
+            }
+            if (res.statusCode != 200 && !customerr.includes(res.statusCode)) {
+              console.error(body)
+              throw new matchError(res.statusCode)
+            }
+            if (getprop && !body[getprop]) throw new matchError(`no property '${getprop}' found`)
+            result.prop = (body && body[getprop]) || body
+            if (getlist) {
+              if (!result.prop[getlist] || result.prop[getlist].length < 1) throw new matchError('no list \'' + getlist + '\' found')
+              result.list = result.prop[getlist]
+              if (getrandom) result.random = result.list[Math.floor(Math.random() * result.list.length)]
+            }
+            if (match) {
+              result.match = result.prop.match(match)
+              if (!result.match) {
+                console.error(body)
+                throw new matchError('no match \'' + match + '\' found')
               }
-              catch (err) {
-                err instanceof matchError ? ponk.sendMessage(/\d/.test(err.message) ? ('Status: ' + err.message) : 'Keine Ergebnisse /elo') : console.error(err)
-                reject(err)
+            }
+            if (unpack) {
+              function unPack(p,a,c,k,e,d){while(c--)if(k[c])p=p.replace(new RegExp('\\b'+c.toString(a)+'\\b','g'),k[c]);return p}
+              const regex = /return p}\('(.*)',(\d+),(\d+),'(.*)'\.split\('\|'\)/g
+              let match = regex.exec(result.prop)
+              if (!match) {
+                //console.error(body)
+                throw new matchError('no packed code found')
               }
-            })
+              while (match && !result.unpack) {
+                const unpacked = unPack(match[1], match[2], match[3], match[4].split('|'))
+                console.log(unpacked)
+                result.unpack = unpacked.match(unpack)
+                match = regex.exec(result.prop)
+              }
+              if (!result.unpack) {
+                //console.error(body)
+                throw new matchError('no match \'' + unpack + '\' in packed code found')
+              }
+            }
+            if ($ && result.prop) result.$ = cheerio.load(result.prop)
+            return result
+          }).catch(err => {
+            err instanceof matchError ? ponk.sendMessage(/\d/.test(err.message) ? ('Status: ' + err.message) : 'Keine Ergebnisse /elo') : console.error(err)
+            throw err
           })
         },
         addNetzm(id, willkür, user, type = 'fi', title, url) {
@@ -329,7 +323,7 @@ module.exports = {
     anagramde(user, params, meta) {
       const text = params.toLowerCase().trim()
       if (text.length > 17) this.sendMessage('Nur 17 Zeichen /elo')
-      this.fetch('http://www.sibiller.de/anagramme/cgi-bin/CallWP.cgi', {
+      this.fetch('https://www.sibiller.de/anagramme/cgi-bin/CallWP.cgi', {
         method: 'post',
         form: {
           text,
