@@ -345,7 +345,7 @@ const providers = Object.entries({
         cloud: true,
         $: true
       }).then(({ $, headers }) => {
-        const hostname = 'https://' + URL.parse(url).hostname
+        const hostname = 'https://' + new URL(url).hostname
         const location = hostname + $('.Grahpics a').attr('href')
         if (/\/Tipp\.html$/.test(url))
         this.emit('message', `Addiere: ${location}`)
