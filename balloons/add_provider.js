@@ -755,6 +755,12 @@ const providers = Object.entries({
   'br.de': {},
   'bild.de': {},
   'tvnow.de': {},
+  'lbry.tv': {
+    regex: 'LBRYIE'
+  },
+  'dr.dk': {
+    regex: 'DRTVIE'
+  },
   '.m3u8-links': {
     regex: /.*\.m3u8$/,
     getInfo(url) {
