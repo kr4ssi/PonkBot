@@ -140,12 +140,11 @@ class Provider {
           cwd: path.join(__dirname, '..', 'youtube-dl'),
           pythonOptions: ['-m'],
           args: [
-            '-o', path.join(this.bot.API.keys.filepath, '%(title)s-%(id)s.%(ext)s'),
+            '-o', path.join(this.bot.API.keys.filepath, path.parse(this.filename).name + '.%(ext)s'),
             '-f', 'mp4',
             '--newline',
             '--no-mtime',
             '--no-part',
-            '--restrict-filenames',
             '--load-info-json',
             '-'
           ]
@@ -153,6 +152,8 @@ class Provider {
         pyshell.once('message', message => {
           this.emit('message', message)
           this.type = 'fi'
+          const match = message.match(/^\[download\] Destination: (.*)/)
+          if (match) this.filename = path.parse(match[1]).base
           this.fileurl = this.bot.API.keys.filehost + '/files/' + this.filename
           let waituntil = Date.now() + 10000
           let progress
