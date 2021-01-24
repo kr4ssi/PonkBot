@@ -145,6 +145,7 @@ class Provider {
             '--newline',
             '--no-mtime',
             '--no-part',
+            '--restrict-filenames',
             '--load-info-json',
             '-'
           ]
