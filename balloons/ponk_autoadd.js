@@ -5,37 +5,42 @@
 
 'use strict';
 
-const Watcher = require('rss-watcher')
+const RssFeedEmitter = require('rss-feed-emitter')
 
 class AutoAdd {
   constructor(ponk){
     Object.assign(this, {
-      ids: [
-        'UCNqljVvVXoMv9T7dPTvg0JA',
-        'UCVtVOddS0ms54kntAYXIVGg',
-        'UCmldc3khRlR73WjRwYb-esw'
-      ],        // Youtube-Channel-Ids to watch
-      bot: ponk // The bot
+      bot      : ponk,     // The bot
     })
-    this.ids.forEach(id => {
-      const watcher = new Watcher('https://www.youtube.com/feeds/videos.xml?channel_id=' + id)
-      watcher.on('new article', article => {
-        this.bot.db.getKeyValue(id).then(newfeed => {
-          //console.log(newfeed, article, article.link, article.title)
-          if (article.link === newfeed) return
-          this.bot.sendMessage(article.author + ' - ' + article.title + ' addiert')
-          this.bot.API.add.add(article.link, undefined, {fiku: true})
-          this.bot.db.setKeyValue(id, article.link)
-        })
+    this.bot.db.knex.schema.hasTable('watcher').then(exists => {
+      if (!exists) return this.bot.db.knex.schema.createTable('watcher', table => {
+        table.string('id', 24).primary()
+        table.bigint('last').unsigned()
+      }).then(() => this.bot.db.knex('watcher').insert([{ id: 'UCNqljVvVXoMv9T7dPTvg0JA' },
+      { id: 'UCVtVOddS0ms54kntAYXIVGg' },
+      { id: 'UC_EZd3lsmxudu3IQzpTzOgw' }]))
+    }).then(() => this.bot.db.knex('watcher').select('id').then(async rows => {
+      await new Promise(resolve => setInterval(resolve, 2000))
+      const feeder = new RssFeedEmitter({
+        userAgent: ponk.API.randAgent,
+        skipFirstLoad: true
       }).on('error', err => {
-        console.error(err)
-      }).run((err, articles) => {
-        if (err) return console.error(err)
-        articles.forEach(article => {
-          //console.log(article)
+        this.bot.sendMessage(err.message || err)
+      }).on('new-item', article => {
+        const id = article['yt:channelid']['#']
+        const videoid = article['yt:videoid']['#']
+        this.bot.db.knex('watcher').where({ id }).select('last').then(last => {
+          if (videoid === last) return
+          this.bot.sendMessage(`${article.author}\n${article.image.url}.pic ${article.title} addiert`)
+          this.bot.API.add.add(article.link, article.title, { fiku: true })
+          this.bot.db.knex('watcher').where({ id }).update({ last: videoid })
         })
       })
-    })
+      rows.forEach(({ id }) => feeder.add({
+        url: 'https://www.youtube.com/feeds/videos.xml?channel_id=' + id,
+        refresh: 300000
+      }))
+    }))
   }
 }
 

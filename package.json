@@ -3,9 +3,6 @@
   "version": "0.7.1",
   "description": "A chatbot for CyTube",
   "main": "service.js",
-  "engines": { 
-    "node": ">=11.0.0"
-  },
   "engines": {
     "node": ">=11.0.0"
   },
@@ -45,12 +42,12 @@
     "js-beautify": "latest",
     "knex": "latest",
     "limiter": "latest",
-    "minimist": "latest",
     "megajs": "latest",
+    "minimist": "latest",
     "mysql": "latest",
     "python-shell": "latest",
     "request": "latest",
-    "rss-watcher": "latest",
+    "rss-feed-emitter": "latest",
     "simple-git": "latest",
     "socket.io": "latest",
     "socket.io-client": "latest",
