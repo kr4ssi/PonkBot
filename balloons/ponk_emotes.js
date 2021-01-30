@@ -553,7 +553,7 @@ module.exports = {
       }).then(() => this.API.emotes.createEmoteCSS()).then(() => {
         this.API.emotes.pushToGit('emotes.css', this.API.emotes.emoteCSS)
         this.client.socket.emit('setChannelCSS', {
-          css: this.channelCSS.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Date.now())
+          css: this.channelCSSJS.css.replace(/\/emotes\.css\?[^"]+/, '/emotes.css?' + Date.now())
         })
       })
     },
