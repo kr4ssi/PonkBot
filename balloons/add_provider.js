@@ -103,7 +103,8 @@ class Provider {
       args: [
         '--restrict-filenames',
         '-f', 'best',
-        '--dump-json'
+        '--dump-json',
+        '--no-playlist'
       ].concat(moreargs, url)
     }, (err, data) => {
       if (err) return reject(err)
