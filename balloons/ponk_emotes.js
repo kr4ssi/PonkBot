@@ -228,7 +228,7 @@ class Emotes {
   scheduleEmote() {
     return this.emotePromise = this.emotePromise.then(() => {
       return this.downloadEmote(...arguments).catch(err => {
-        this.sendMessage(err.message || err)
+        this.bot.sendMessage(err.message || err)
       })
     })
   }
