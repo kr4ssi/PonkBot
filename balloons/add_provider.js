@@ -765,7 +765,7 @@ const providers = Object.entries({
     regex: 'DRTVIE'
   },
   '.m3u8-links': {
-    regex: /.*\.m3u8(?:\?|$)/,
+    regex: /.*\.m3u8(?:\?.*|$)/,
     getInfo(url) {
       this.title = 'Kein Livestream'
       this.fileurl = url
