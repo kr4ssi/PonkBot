@@ -25,7 +25,7 @@ class AutoAdd {
         userAgent: ponk.API.randAgent,
         skipFirstLoad: true
       }).on('error', err => {
-        this.bot.sendMessage(err.message || err)
+        console.error(err)
       }).on('new-item', article => {
         const id = article['yt:channelid']['#']
         const videoid = article['yt:videoid']['#']
