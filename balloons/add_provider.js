@@ -597,6 +597,17 @@ const providers = Object.entries({
       this.fileurl = pData.sourcesCode[0].src
     }
   },
+  '2ix2.com': {
+    regex: /https?:\/\/(?:www\.)?2ix2\.com\/.+/,
+    userScript: function() {
+      let match
+      document.querySelectorAll('script').forEach(e => {
+        match = e.textContent.match(/file: "([^"]+)/) || match
+      })
+      if (!match) return false
+      this.fileurl = match[1]
+    }
+  },
   'tvnow.de': {
     regex: /https?:\/\/((?:www\.)?tvnow.de)\/(.*)/,
     getInfo() {
