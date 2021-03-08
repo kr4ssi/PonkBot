@@ -64,7 +64,7 @@ class Emotes {
       res.json(this.bot.emotes.map(({ name, image }) => ({ name, image })))
     })
     this.bot.client.prependListener('channelCSSJS', cssjs => {
-      const stripNoCache = css => css.replace(/\/(?:emotes|bot)\.css\?[^"]+/, '')
+      const stripNoCache = (css = '') => css.replace(/\/(?:emotes|bot)\.css\?[^"]+/, '')
       if (stripNoCache(cssjs.css) != stripNoCache(this.bot.channelCSSJS.css))
       this.pushToGit('channel.css', cssjs.css)
       if (cssjs.js != this.bot.channelCSSJS.js)
